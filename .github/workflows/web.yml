@@ -41,7 +41,16 @@ jobs:
       - name: wasm-bindgen-cli (rhwp Cargo.lock과 같은 버전)
         run: |
           want="$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/"/,"",$3); print $3; exit}' third_party/rhwp/Cargo.lock)"
-          cargo install wasm-bindgen-cli --version "$want" --locked
+          # 사전 빌드본을 먼저 받는다 (소스 빌드는 수 분). 실패하면 cargo install로 되돌아간다.
+          name="wasm-bindgen-$want-x86_64-unknown-linux-musl"
+          mkdir -p "$HOME/.cargo/bin"
+          if curl -sSfL -m 180 "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/$want/$name.tar.gz" \
+               | tar xz -C "$HOME/.cargo/bin" --strip-components=1 "$name/wasm-bindgen"; then
+            chmod +x "$HOME/.cargo/bin/wasm-bindgen"
+          else
+            cargo install wasm-bindgen-cli --version "$want" --locked
+          fi
+          wasm-bindgen --version
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
