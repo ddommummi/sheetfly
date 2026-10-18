@@ -1,4 +1,6 @@
 //! 얇은 뷰어 셸: 열기, 쪽 수, 쪽 SVG만 노출한다. rhwp의 `wasm_api` 전체를 다시 export하지 않는다.
+//!
+//! 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 use rhwp::DocumentCore;
 use wasm_bindgen::prelude::*;
 
