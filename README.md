@@ -37,7 +37,7 @@ npm run test:corpus  # 샘플 코퍼스 크래시 시험
 npm run budget       # 용량 예산 검사
 ```
 
-문서는 브라우저 안(Web Worker + WASM)에서만 처리되고 서버로 전송되지 않는다. 배포는 Cloudflare Workers Static Assets(assets-only)를 쓰며 설정은 `apps/web/wrangler.jsonc`에 있다.
+문서는 브라우저 안(Web Worker + WASM)에서만 처리되고 서버로 전송되지 않는다. 배포는 Cloudflare Workers Static Assets(assets-only)를 쓰며 설정은 `apps/web/wrangler.jsonc`에 있다. GitHub 연동 배포 절차는 [`docs/deploy-cloudflare.md`](docs/deploy-cloudflare.md).
 
 ## 라이선스
 

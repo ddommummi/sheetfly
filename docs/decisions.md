@@ -147,6 +147,16 @@
 - **대안**: 예열 없음(첫 문서 느림), 매 Worker 예열(CPU 낭비), 메인 스레드 렌더(UI 멈춤).
 
 
+### D-025 Git 연동 배포: Cloudflare Workers Builds + 희소 체크아웃 빌드 스크립트 — 설정 준비, 실제 연결은 오너
+- **무엇**: 오너가 "GitHub 연동으로 배포"를 원해 `scripts/cloudflare-build.sh`(희소 체크아웃 → Rust → wasm-bindgen 사전 빌드본 → WASM → 웹)와 `docs/deploy-cloudflare.md`를 만들었다. Cloudflare 설정: Root directory `apps/web`, Build command `bash ../../scripts/cloudflare-build.sh`, Deploy command 기본 `npx wrangler deploy`. `apps/web`에 wrangler 4.151.1을 고정(Workers Builds는 `package.json`의 wrangler를 사용).
+- **왜 이렇게**: 공식 문서상 빌드 제한 20분, Rust 캐시 없음, Rust 포함·서브모듈 지원은 명시되지 않음. 서브모듈은 3GB+라 `scripts/fetch-rhwp.sh`로 필요한 파일만(약 57~105MB, 수 초) 받는다 — 같은 WASM이 빌드됨을 확인(sha256 일치). `wasm-opt`는 기본 생략(약 6분 절약, brotli +4%).
+- **실측**: 빈 HOME의 깨끗한 환경에서 657초(10분 57초). **Cloudflare 서버 속도는 미확인**이라 첫 실제 빌드 시간을 보고 판단한다.
+- **대안**: GitHub Actions에서 빌드해 `wrangler deploy`(시간 제한 없음, 시크릿 필요), 빌드된 WASM을 저장소에 커밋(저장소 비대·산출물 불일치 위험으로 기각).
+- **전제(오너)**: 저장소에 `main`이 없다(작업 브랜치만 있음) → `main` 생성/머지 필요. 배포 = 공개 URL 생성이므로 PRD 8.7 검토 게이트. 에이전트는 Cloudflare 계정에 접근할 수 없어 실제 연결·배포를 하지 못했다.
+- **개발 의존성 영향**: wrangler가 선택적 LGPL(sharp-libvips) 패키지 14개를 끌어온다(배포물에 미포함). `docs/licensing/dependency-audit.md`에 기록, 오너 확인 항목.
+- **D-022 정정**: 빌드 "바이트 동일"은 같은 HOME/CARGO_HOME 경로에서만 성립한다. 경로가 다르면 의존성 panic 위치 문자열 때문에 약 3.7KB 달라진다(글루·동작은 동일).
+
+
 ---
 
 ## 오너 결정/확인 요청 목록 (1단계 종료 시점)
@@ -174,4 +184,5 @@
 | 15 | 엔진 panic(구역 0개 문서의 `getPageInfo`)을 업스트림에 알릴지 (D-018) — 원본에 글을 올리는 일이라 승인 전에는 안 함 | 선택 |
 | 16 | CI 워크플로 첫 수동 실행과 트리거 활성화 시점 (D-023) | 2단계 후 |
 | 17 | `frame-ancestors`(임베드)·100MB 한도 (D-017, D-020) | 공개 전 |
-
+| 18 | Cloudflare 연결: `main` 브랜치 준비, 계정에서 저장소 연결, 첫 빌드 시간 확인 (D-025, `docs/deploy-cloudflare.md`) | 공개 전 |
+| 19 | wrangler 개발 의존성의 선택적 LGPL 패키지 허용 여부 (D-025) | 공개 전 |
