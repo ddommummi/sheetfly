@@ -59,15 +59,20 @@ licensing/build-third-party.sh > THIRD_PARTY_LICENSES
 
 ## 2단계 npm 감사 (`apps/web`, 2026-10-18)
 
-`package-lock.json`의 전 항목(esbuild 플랫폼 바이너리 포함 29개)을 확인했다. **모두 개발 의존성(빌드·시험)이며 배포 산출물(`dist/`)에 들어가지 않는다.**
+`package-lock.json`의 전 항목(wrangler 추가 후 93개)을 확인했다. **모두 개발 의존성(빌드·시험)이며 배포 산출물(`dist/`)에 들어가지 않는다.**
 
 | 패키지 | 버전 | 라이선스 | 용도 |
 |---|---|---|---|
 | esbuild (+ `@esbuild/*` 플랫폼 바이너리 26개) | 0.28.2 | MIT | 번들·최소화 |
 | binaryen | 132.0.0 | Apache-2.0 | `wasm-opt` |
 | playwright-core | 1.64.1 | Apache-2.0 (`NOTICE`, `ThirdPartyNotices.txt` 동봉) | E2E |
+| wrangler (+ miniflare 등 하위 약 60개) | 4.151.1 | MIT / Apache-2.0 (아래 LGPL 예외 참조) | 배포·로컬 서버. Cloudflare Workers Builds가 `package.json`의 wrangler 버전을 쓰므로 고정 |
 
 - 금지 라이선스 0건. `license-checker` 같은 자동 도구는 쓰지 않고 락 파일의 `license` 필드와 각 패키지의 LICENSE 파일 존재를 직접 확인했다.
 - esbuild는 번들 결과에 작은 런타임 도우미 코드를 넣을 수 있다. esbuild의 MIT 고지가 배포물에 필요한지(사실상 최소한의 도우미)는 **미확인**이라, 안전하게 `THIRD_PARTY_LICENSES`에 esbuild를 추가하는 것을 오너/변호사 판단 항목으로 남긴다.
 - 직접 포팅한 알고리즘(Volexity hwp-extract, BSD-3-Clause)의 고지를 `THIRD_PARTY_LICENSES`에 추가했다(`licensing/ported-algorithms.txt`, 업스트림 원문 그대로).
+
+**LGPL 예외 (wrangler 추가 시 발생, 2026-10-18)**: `wrangler → miniflare → sharp`가 선택적(optional)으로 끌어오는 `@img/sharp-libvips-*`(LGPL-3.0-or-later) 네이티브 바이너리 10개와 `@img/sharp-wasm32`·`@img/sharp-win32-*`(Apache-2.0 AND LGPL-3.0-or-later 포함) 4개, 합계 14개. PRD 8.2는 LGPL을 "검토 필요"로 둔다.
+- **판단(오너 확인 필요)**: 모두 **개발 도구의 선택 의존성**(이미지 처리, 로컬 `wrangler dev`용)이고, 우리 배포물(`dist/`)에는 들어가지 않는다(번들에 `libvips` 문자열 0건 확인). 우리가 이 바이너리를 재배포하지 않으므로 LGPL 의무(재링크 허용·소스 제공 등)가 생기지 않는다고 보지만 법률 판단은 아니다.
+- 이 패키지들을 아예 설치하지 않으려면 `npm ci --omit=optional`을 쓰면 된다(Workers Builds 빌드 명령에는 쓰지 않았다 — esbuild도 플랫폼 바이너리를 optional로 받으므로 함께 빠진다).
 

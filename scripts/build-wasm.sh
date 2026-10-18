@@ -3,6 +3,7 @@
 #   cargo build(릴리스, rhwp 자신의 프로필) → wasm-bindgen(web) → wasm-opt -Oz(명시 기능 목록)
 # 사용: scripts/build-wasm.sh [출력 디렉터리]   (기본: apps/web/src/wasm)
 # 필요: rustup(+ wasm32-unknown-unknown), wasm-bindgen-cli(rhwp Cargo.lock과 같은 버전), apps/web의 npm install(binaryen)
+# 환경변수: WASM_OPT=0 이면 wasm-opt를 건너뛴다 (약 6분 절약, 전송 크기 +4%: brotli 3.13→3.26MB). 기본 1.
 # 근거: docs/decisions.md D-005 (wasm-opt --all-features는 브라우저가 로드하지 못하는 산출물을 만든다)
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -10,9 +11,10 @@ out="${1:-$root/apps/web/src/wasm}"
 rhwp="$root/third_party/rhwp"
 tc="${RUSTUP_TOOLCHAIN:-1.93.1}"          # rhwp의 rust-toolchain.toml과 같다 (D-004)
 target_dir="${CARGO_TARGET_DIR:-$root/target/rhwp-wasm}"
+use_opt="${WASM_OPT:-1}"
 wasm_opt="$root/apps/web/node_modules/.bin/wasm-opt"
 [ -x "$wasm_opt" ] || wasm_opt="$(command -v wasm-opt || true)"
-[ -n "$wasm_opt" ] || { echo "wasm-opt가 없다: apps/web에서 npm install" >&2; exit 1; }
+if [ "$use_opt" != 0 ] && [ -z "$wasm_opt" ]; then echo "wasm-opt가 없다: apps/web에서 npm install (또는 WASM_OPT=0)" >&2; exit 1; fi
 
 want="$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/"/,"",$3); print $3; exit}' "$rhwp/Cargo.lock")"
 have="$(wasm-bindgen --version | awk '{print $2}')"
@@ -30,11 +32,16 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 echo "[2/3] wasm-bindgen $have"
 wasm-bindgen --target web --no-typescript --out-dir "$tmp" "$target_dir/wasm32-unknown-unknown/release/rhwp.wasm"
 
-echo "[3/3] wasm-opt -Oz"
-"$wasm_opt" -Oz \
-  --enable-bulk-memory --enable-sign-ext --enable-mutable-globals \
-  --enable-nontrapping-float-to-int --enable-multivalue --enable-reference-types \
-  "$tmp/rhwp_bg.wasm" -o "$tmp/rhwp_bg.opt.wasm"
+if [ "$use_opt" != 0 ]; then
+  echo "[3/3] wasm-opt -Oz"
+  "$wasm_opt" -Oz \
+    --enable-bulk-memory --enable-sign-ext --enable-mutable-globals \
+    --enable-nontrapping-float-to-int --enable-multivalue --enable-reference-types \
+    "$tmp/rhwp_bg.wasm" -o "$tmp/rhwp_bg.opt.wasm"
+else
+  echo "[3/3] wasm-opt 건너뜀 (WASM_OPT=0)"
+  cp "$tmp/rhwp_bg.wasm" "$tmp/rhwp_bg.opt.wasm"
+fi
 
 mkdir -p "$out"
 cp "$tmp/rhwp.js" "$out/rhwp.js"
@@ -45,7 +52,7 @@ cat > "$out/BUILD_INFO.json" <<JSON
   "rhwpCommit": "$(git -C "$rhwp" rev-parse HEAD)",
   "toolchain": "$tc",
   "wasmBindgen": "$have",
-  "wasmOpt": "$("$wasm_opt" --version | head -n1)",
+  "wasmOpt": "$([ "$use_opt" != 0 ] && "$wasm_opt" --version | head -n1 || echo skipped)",
   "wasmSha256": "$sha"
 }
 JSON
