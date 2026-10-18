@@ -26,7 +26,9 @@ jobs:
       # 액션 SHA는 업스트림(rhwp) 워크플로가 고정해 둔 값을 그대로 가져왔다. 직접 검증한 것은 아니다.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: rhwp 희소 체크아웃 (전체 서브모듈은 3GB 이상, 이쪽은 약 57MB)
+      - name: rhwp 희소 체크아웃 (전체 서브모듈은 3GB 이상, 이쪽은 약 57MB + 시험 샘플 690MB)
+        env:
+          RHWP_SAMPLES: "1"
         run: scripts/fetch-rhwp.sh
 
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable 브랜치 (업스트림 고정값)
