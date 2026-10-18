@@ -1,0 +1,49 @@
+name: Fuzz smoke
+
+# rhwp가 가진 cargo-fuzz 타깃(third_party/rhwp/fuzz)을 우리 고정 커밋에 대해 짧게 돌린다.
+# 서브모듈 작업 트리를 더럽히지 않도록 fuzz/를 복사해서 실행한다. 아직 Actions에서 검증하지 못한 초안이다.
+on:
+  workflow_dispatch:
+    inputs:
+      max_total_time:
+        description: 타깃당 libFuzzer 실행 초
+        required: false
+        default: "180"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [parse_hwp, parse_hwpx, export_svg]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable 브랜치 (업스트림 고정값)
+        with:
+          toolchain: nightly
+      - name: cargo-fuzz 설치
+        run: cargo install cargo-fuzz --locked
+      - name: 서브모듈 밖으로 fuzz 복사 (작업 트리 보호)
+        run: |
+          mkdir -p "$RUNNER_TEMP/fz/src"
+          cp -r third_party/rhwp/fuzz "$RUNNER_TEMP/fz/fuzz"
+          sed -i "s#^path = \"\.\.\"#path = \"$GITHUB_WORKSPACE/third_party/rhwp\"#" "$RUNNER_TEMP/fz/fuzz/Cargo.toml"
+          cp third_party/rhwp/Cargo.lock "$RUNNER_TEMP/fz/fuzz/Cargo.lock"
+          printf '[package]\nname = "fuzzproj"\nversion = "0.0.0"\nedition = "2021"\n[workspace]\nexclude = ["fuzz"]\n' > "$RUNNER_TEMP/fz/Cargo.toml"
+          : > "$RUNNER_TEMP/fz/src/lib.rs"
+      - name: 퍼징
+        working-directory: ${{ runner.temp }}/fz
+        run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=${{ github.event.inputs.max_total_time || '180' }} -timeout=20 -rss_limit_mb=2048
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: ${{ runner.temp }}/fz/fuzz/artifacts

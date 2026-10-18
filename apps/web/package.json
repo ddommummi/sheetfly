@@ -1,0 +1,22 @@
+{
+  "name": "sheetfly-web",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Sheetfly 웹 뷰어 (HWP/HWPX 읽기 전용). 문서는 브라우저 밖으로 나가지 않는다.",
+  "scripts": {
+    "build:wasm": "bash ../../scripts/build-wasm.sh",
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs",
+    "dev": "node scripts/build.mjs && node scripts/serve.mjs",
+    "test:e2e": "node tests/e2e.mjs",
+    "test:corpus": "node tests/corpus.mjs",
+    "budget": "node scripts/budget.mjs"
+  },
+  "devDependencies": {
+    "binaryen": "132.0.0",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.64.1"
+  }
+}

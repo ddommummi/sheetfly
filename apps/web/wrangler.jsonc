@@ -1,0 +1,14 @@
+{
+  // Cloudflare Workers Static Assets, 스크립트 없는(assets-only) 배포. PRD 7-B.
+  // 문법 근거: developers.cloudflare.com/workers/static-assets (2026-10-18 확인)
+  //  - html_handling 기본값 auto-trailing-slash: /licenses → licenses.html
+  //  - not_found_handling "404-page": 없는 경로는 가장 가까운 404.html을 404 상태로 응답
+  //  - 파일당 25MiB, 무료 플랜 버전당 20,000개 한도 (WASM ≈ 11.7MB)
+  "name": "sheetfly",
+  "compatibility_date": "2026-10-18",
+  "assets": {
+    "directory": "./dist/",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
