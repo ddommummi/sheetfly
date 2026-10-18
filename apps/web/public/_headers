@@ -1,0 +1,10 @@
+# Cloudflare Workers Static Assets 헤더 규칙 (PRD 7-B). 개발 서버(scripts/serve.mjs)도 이 파일을 그대로 읽어 적용한다.
+# 한 요청이 여러 규칙에 걸리면 헤더가 모두 적용된다 (공식 문서: 규칙은 누적, 같은 헤더는 쉼표로 합쳐짐).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

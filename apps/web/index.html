@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sheetfly</title>
+  <meta name="description" content="문서 한 장을 가볍게 연다. 광고와 추적 없이, 문서가 기기 밖으로 나가지 않는 문서 뷰어.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <meta name="sheetfly-worker" content="%WORKER%">
+  <meta name="sheetfly-wasm" content="%WASM%">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="%CSS%">
+</head>
+<body data-state="empty">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Sheetfly"><span class="logo" aria-hidden="true"></span>Sheetfly</a>
+    <button id="open-btn" class="btn primary" type="button" data-s="open" data-s-title="openTitle">파일 열기</button>
+    <span id="file-name" class="file-name"></span>
+    <span class="spacer"></span>
+    <div class="group doc-only" role="group" aria-label="쪽 이동">
+      <button id="prev-page" class="btn icon" type="button" data-s-title="prevPage" disabled>
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <input id="page-input" class="page-input" type="number" min="1" value="1" inputmode="numeric" aria-label="쪽 번호">
+      <span id="page-total" class="page-total"></span>
+      <button id="next-page" class="btn icon" type="button" data-s-title="nextPage" disabled>
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="group doc-only" role="group" aria-label="확대/축소">
+      <button id="zoom-out" class="btn icon" type="button" data-s-title="zoomOut">−</button>
+      <select id="zoom-select" class="select" aria-label="확대 비율">
+        <option value="auto">자동</option>
+        <option value="fit-width">너비 맞춤</option>
+        <option value="fit-page">쪽 맞춤</option>
+        <option value="0.5">50%</option>
+        <option value="0.75">75%</option>
+        <option value="1">100%</option>
+        <option value="1.25">125%</option>
+        <option value="1.5">150%</option>
+        <option value="2">200%</option>
+        <option value="3">300%</option>
+      </select>
+      <button id="zoom-in" class="btn icon" type="button" data-s-title="zoomIn">+</button>
+      <button id="fit-width" class="btn" type="button" data-s-title="zoomFitWidth">너비</button>
+      <button id="fit-page" class="btn" type="button" data-s-title="zoomFitPage">쪽</button>
+    </div>
+    <button id="search-btn" class="btn doc-only" type="button" data-s="search" data-s-title="searchTitle">검색</button>
+    <button id="theme-btn" class="btn" type="button">테마: 자동</button>
+  </header>
+
+  <div id="searchbar" class="searchbar" role="search" hidden>
+    <input id="search-input" class="search-input" type="search" autocomplete="off" spellcheck="false" aria-label="검색어">
+    <label class="check"><input id="search-case" type="checkbox"> <span data-s="searchCase">대소문자 구분</span></label>
+    <span id="search-count" class="search-count" aria-live="polite"></span>
+    <button id="search-prev" class="btn icon" type="button" data-s-title="searchPrev" disabled>↑</button>
+    <button id="search-next" class="btn icon" type="button" data-s-title="searchNext" disabled>↓</button>
+    <button id="search-close" class="btn icon" type="button" data-s-title="searchClose">✕</button>
+  </div>
+
+  <main id="stage" class="stage" tabindex="-1">
+    <section id="empty" class="empty">
+      <div class="drop-card">
+        <svg class="drop-icon" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><path d="M12 6h17l9 9v27H12z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M29 6v9h9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M18 26h12M18 32h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <h1 data-s="dropTitle">문서를 여기로 끌어다 놓으세요</h1>
+        <p data-s="dropHint"></p>
+        <button id="open-btn-empty" class="btn primary large" type="button" data-s="open">파일 열기</button>
+      </div>
+    </section>
+    <div id="pages" class="pages" hidden></div>
+  </main>
+
+  <div id="drop-overlay" class="drop-overlay" aria-hidden="true"><span data-s="dropActive">놓으면 문서를 엽니다</span></div>
+
+  <div id="loading" class="overlay" role="status" hidden>
+    <div class="overlay-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loading-text"></p>
+      <p id="loading-slow" class="muted" hidden data-s="loadingSlow"></p>
+      <button id="loading-cancel" class="btn" type="button" data-s="cancel">취소</button>
+    </div>
+  </div>
+
+  <div id="error" class="error" role="alert" hidden>
+    <div class="error-body">
+      <strong id="error-title"></strong>
+      <span id="error-text"></span>
+    </div>
+    <button id="open-other" class="btn" type="button" data-s="openOther">다른 파일 열기</button>
+    <button id="error-close" class="btn icon" type="button" aria-label="닫기">✕</button>
+  </div>
+
+  <dialog id="pw-dialog" class="dialog" aria-labelledby="pw-title">
+    <form id="pw-form">
+      <h2 id="pw-title" data-s="passwordTitle">암호가 걸린 문서입니다</h2>
+      <p id="pw-error" class="field-error" hidden>비밀번호가 일치하지 않습니다. 다시 입력해 주세요.</p>
+      <label class="field"><span data-s="passwordLabel">비밀번호</span>
+        <input id="pw-input" type="password" autocomplete="off" required>
+      </label>
+      <div class="dialog-actions">
+        <button id="pw-cancel" class="btn" type="button" data-s="passwordCancel">취소</button>
+        <button class="btn primary" type="submit" data-s="passwordSubmit">열기</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="footer">
+    <span data-s="privacy"></span>
+    <a href="/licenses" data-s="licenses">오픈소스 라이선스</a>
+    <span class="notice" data-s="hancomNotice"></span>
+  </footer>
+
+  <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+  <input id="file-input" type="file" accept=".hwp,.hwpx" hidden>
+  <script type="module" src="%MAIN%"></script>
+</body>
+</html>

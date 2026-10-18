@@ -4,3 +4,5 @@ dist/
 out/
 *.log
 .DS_Store
+apps/web/src/wasm/
+.wrangler/

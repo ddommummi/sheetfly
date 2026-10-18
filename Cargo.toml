@@ -1,4 +1,4 @@
-# Sheetfly 작업공간 (1단계: 스파이크만 있음). 프로젝트 라이선스는 오너 결정 전이라 license 필드를 두지 않는다.
+# Sheetfly 작업공간 (1단계: 스파이크만 있음). 프로젝트 라이선스: MIT (루트 LICENSE).
 [workspace]
 resolver = "2"
 members = ["spikes/rhwp-lib", "spikes/rhwp-wasm"]

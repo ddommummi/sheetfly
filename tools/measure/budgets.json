@@ -1,7 +1,10 @@
 {
-  "_note": "잠정 예산(오너 승인 전). 1단계 실측(rhwp v0.8.7, wasm-opt -Oz 적용) 기준 회귀 방지선이며 목표치가 아니다. docs/phase1/report.md 참조.",
+  "_note": "용량 예산(오너 승인 2026-10-18, docs/decisions.md D-007). 1단계 실측(rhwp v0.8.7, wasm-opt -Oz) 기준 회귀 방지선이며 목표치가 아니다. 앱 자산 상한은 2단계 실측(main 6.3KB / worker 12.7KB / css 2.2KB)에 여유를 둔 값.",
   "brotliBytes": {
     "wasm": 3300000,
+    "js_main": 12000,
+    "js_worker": 25000,
+    "css": 5000,
     "js": 40000,
     "total": 3340000
   }

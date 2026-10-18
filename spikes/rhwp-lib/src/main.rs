@@ -1,5 +1,7 @@
 //! 스파이크: rhwp를 라이브러리로 직접 호출해 문서를 열고, 쪽 0의 PageLayerTree를 얻어 구조를 센다.
 //! 사용: spike-rhwp-lib <파일>
+//!
+//! 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 use rhwp::paint::layer_tree::{LayerNode, LayerNodeKind};
 use rhwp::DocumentCore;
 use std::collections::BTreeMap;

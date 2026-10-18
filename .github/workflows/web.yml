@@ -1,0 +1,105 @@
+name: Web
+
+# 아직 GitHub Actions에서 한 번도 실행해 보지 못한 초안이다 (docs/phase2/report.md "미검증").
+# 첫 수동 실행(workflow_dispatch)이 통과하면 pull_request / push 트리거를 켠다.
+on:
+  workflow_dispatch:
+    inputs:
+      corpus_limit:
+        description: 코퍼스 시험 파일 수 (0이면 전체; 전체는 오래 걸린다)
+        required: false
+        default: "150"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTUP_TOOLCHAIN: "1.93.1" # rhwp의 rust-toolchain.toml과 같다 (docs/decisions.md D-004)
+
+jobs:
+  build-test:
+    name: build, budget, e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      # 액션 SHA는 업스트림(rhwp) 워크플로가 고정해 둔 값을 그대로 가져왔다. 직접 검증한 것은 아니다.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: rhwp 희소 체크아웃 (전체 서브모듈은 3GB 이상, 이쪽은 약 57MB)
+        run: scripts/fetch-rhwp.sh
+
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable 브랜치 (업스트림 고정값)
+        with:
+          toolchain: "1.93.1"
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2.9.1
+        with:
+          workspaces: third_party/rhwp -> ../../target/rhwp-wasm
+
+      - name: wasm-bindgen-cli (rhwp Cargo.lock과 같은 버전)
+        run: |
+          want="$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/"/,"",$3); print $3; exit}' third_party/rhwp/Cargo.lock)"
+          cargo install wasm-bindgen-cli --version "$want" --locked
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: npm ci
+        working-directory: apps/web
+        run: npm ci
+
+      - name: WASM 빌드 (scripts/build-wasm.sh)
+        run: scripts/build-wasm.sh
+
+      - name: 웹 빌드
+        working-directory: apps/web
+        run: npm run build
+
+      - name: 용량 예산 검사 (초과 시 실패)
+        working-directory: apps/web
+        run: npm run budget
+
+      - name: Chromium 설치
+        working-directory: apps/web
+        run: npx playwright-core install --with-deps chromium
+
+      - name: E2E
+        working-directory: apps/web
+        run: npm run test:e2e
+
+      - name: 코퍼스 크래시 시험
+        working-directory: apps/web
+        run: |
+          limit="${{ github.event.inputs.corpus_limit }}"
+          npm run test:corpus -- --limit "${limit:-150}" --timeout 60
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: web-dist
+          path: apps/web/dist
+          retention-days: 7
+
+  dependency-policy:
+    name: cargo-deny (rhwp 의존성 그래프)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: rhwp 희소 체크아웃
+        run: scripts/fetch-rhwp.sh
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable 브랜치 (업스트림 고정값)
+        with:
+          toolchain: "1.93.1"
+      - name: cargo-deny 설치
+        run: cargo install cargo-deny --version 0.20.2 --locked
+      - name: 라이선스·출처·bans (필수)
+        run: cargo deny --locked --manifest-path third_party/rhwp/Cargo.toml --config licensing/deny.toml check licenses bans sources
+      - name: 보안 권고 (현재 실패 6건 — 업스트림 갱신 대기, docs/licensing/dependency-audit.md)
+        continue-on-error: true
+        run: cargo deny --locked --manifest-path third_party/rhwp/Cargo.toml --config licensing/deny.toml check advisories

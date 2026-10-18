@@ -2,6 +2,7 @@
 name = "spike-rhwp-wasm"
 version = "0.0.0"
 edition = "2021"
+license = "MIT"
 publish = false
 description = "1단계 스파이크: rhwp를 의존성으로 쓰는 얇은 WASM 셸. 필요한 API만 export했을 때 크기가 얼마나 줄어드는지 잰다."
 
