@@ -23,7 +23,7 @@
 
 ## 라이선스
 
-Sheetfly 자체 코드는 **MIT License**이다 ([`LICENSE`](LICENSE), Copyright (c) 2026 ddommummi). 서브모듈과 의존성은 각자의 라이선스를 따르며, [`NOTICE`](NOTICE), [`THIRD_PARTY_LICENSES`](THIRD_PARTY_LICENSES), [`licenses/`](licenses/)에 수록한다. 소스 파일마다 라이선스 헤더를 붙이지는 않는다(루트 `LICENSE`가 적용됨).
+Sheetfly 자체 코드는 **MIT License**이다 ([`LICENSE`](LICENSE), Copyright (c) 2026 Dongwook Kim). 서브모듈과 의존성은 각자의 라이선스를 따르며, [`NOTICE`](NOTICE), [`THIRD_PARTY_LICENSES`](THIRD_PARTY_LICENSES), [`licenses/`](licenses/)에 수록한다. 소스 파일마다 라이선스 헤더를 붙이지는 않는다(루트 `LICENSE`가 적용됨).
 
 ## Acknowledgements
 
