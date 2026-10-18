@@ -7,7 +7,8 @@ manifest="${1:-$root/third_party/rhwp/Cargo.toml}"
 bar='================================================================================'
 cat <<HDR
 Sheetfly — THIRD_PARTY_LICENSES
-(프로젝트 라이선스: 미정 — 오너 결정 대기)
+Sheetfly itself: Copyright (c) 2026 ddommummi — MIT License (see LICENSE).
+The components below are third-party and keep their own licenses.
 
 $bar
 1. rhwp (git submodule: third_party/rhwp)

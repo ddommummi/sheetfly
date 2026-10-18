@@ -6,7 +6,7 @@
 
 ## 상태
 
-**1단계 (저장소 구성·측정·감사) 진행 중.** 아직 사용할 수 있는 제품이 없다.
+**1단계 (저장소 구성·측정·감사) 완료, 2단계 준비 중.** 아직 사용할 수 있는 제품이 없다.
 수치 목표는 모두 가설이며, 실측값은 [`docs/phase1/report.md`](docs/phase1/report.md)와 [`docs/decisions.md`](docs/decisions.md)에 있다.
 
 ## 저장소 구성
@@ -23,7 +23,7 @@
 
 ## 라이선스
 
-**프로젝트 라이선스는 아직 정해지지 않았다.** 오너가 결정하기 전까지 루트 `LICENSE` 파일을 두지 않으며, 신규 파일에 라이선스 헤더를 붙이지 않는다. 서브모듈의 라이선스는 아래와 [`NOTICE`](NOTICE), [`licenses/`](licenses/)에 따른다.
+Sheetfly 자체 코드는 **MIT License**이다 ([`LICENSE`](LICENSE), Copyright (c) 2026 ddommummi). 서브모듈과 의존성은 각자의 라이선스를 따르며, [`NOTICE`](NOTICE), [`THIRD_PARTY_LICENSES`](THIRD_PARTY_LICENSES), [`licenses/`](licenses/)에 수록한다. 소스 파일마다 라이선스 헤더를 붙이지는 않는다(루트 `LICENSE`가 적용됨).
 
 ## Acknowledgements
 
