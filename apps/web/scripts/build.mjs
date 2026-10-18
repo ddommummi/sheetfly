@@ -50,7 +50,8 @@ for (const file of Object.keys(result.metafile.outputs)) {
 
 const wasmBytes = readFileSync(join(wasmDir, 'rhwp_bg.wasm'));
 const wasmHash = createHash('sha256').update(wasmBytes).digest('hex');
-const wasmName = `rhwp_bg-${wasmHash.slice(0, 10)}.wasm`;
+// 배포 산출물의 파일명에는 업스트림 이름을 쓰지 않는다 (PRD 8.8). 출처 표기는 /licenses에 있다.
+const wasmName = `engine-${wasmHash.slice(0, 10)}.wasm`;
 writeFileSync(join(dist, 'assets', wasmName), wasmBytes);
 out.wasm = `/assets/${wasmName}`;
 

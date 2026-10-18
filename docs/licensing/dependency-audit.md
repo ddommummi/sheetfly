@@ -43,11 +43,11 @@ MIT OR Apache-2.0 계열이 대부분(약 140개)이고 MIT 단독 27개, BSD-3-
 
 ## 범위 밖 / 미수행
 
-- **npm 의존성 미감사.** rhwp의 `rhwp-studio`, `rhwp-chrome` 등은 우리가 쓰지 않으므로 이번에 감사하지 않았다. 우리 프런트(2단계)의 npm 의존성은 그때 `license-checker`로 감사한다.
+- **rhwp의 npm 패키지(`rhwp-studio`, `rhwp-chrome` 등)는 감사하지 않았다.** 우리가 쓰지 않는다. 우리 웹 앱(`apps/web`)의 npm 의존성은 아래 "2단계 npm 감사"에서 다룬다.
 - 선택 피처(`native-skia`, `gpu`)와 비기본 워크스페이스 멤버(`bindings/Native`, `tools/*`)는 제외했다. 뷰어 전용 최소 빌드에서 쓰지 않을 예정이다.
 - **업스트림 `THIRD_PARTY_LICENSES.md`는 현행이 아니다.** 예: `cfb` 0.14(문서) ↔ 0.15(Cargo.toml), `quick-xml` 0.41 ↔ 0.42, `wasm-bindgen` 0.2.125 ↔ 0.2.127(Cargo.lock). 우리는 그 문서를 신뢰하지 않고 `Cargo.lock`에서 직접 생성한다.
 - `ed25519-dalek`: 업스트림 문서는 2.2.0 BSD-3-Clause, Cargo.toml은 `"3"`. 생성물 기준으로 확인한다.
-- 업스트림이 "직접 포팅한 알고리즘"으로 Volexity `hwp-extract`(BSD-3-Clause)와 한컴 `hwpx-owpml-model`·`dvc`(Apache-2.0)를 **참조**했다고 밝힌다. 포팅분의 고지는 업스트림 `THIRD_PARTY_LICENSES.md`에 있다. **우리 `THIRD_PARTY_LICENSES`에는 아직 이 항목이 없다** → 서브모듈 파일을 그대로 쓰는 이상 그 고지도 수록해야 하는지 오너/변호사가 판단해야 하며, 안전하게는 해당 절을 부록으로 옮겨 싣는 것이 낫다. (할 일)
+- 업스트림이 "직접 포팅한 알고리즘"으로 Volexity `hwp-extract`(BSD-3-Clause)와 한컴 `hwpx-owpml-model`·`dvc`(Apache-2.0)를 **참조**했다고 밝힌다. 포팅분의 고지는 업스트림 `THIRD_PARTY_LICENSES.md`에 있다. → 2단계에서 해당 절을 `licensing/ported-algorithms.txt`로 원문 그대로 옮겨 `THIRD_PARTY_LICENSES`에 수록했다(WASM에 포함되므로).
 
 ## 재현
 
@@ -56,3 +56,18 @@ export RUSTUP_TOOLCHAIN=1.93.1
 cargo deny --locked --manifest-path third_party/rhwp/Cargo.toml --config licensing/deny.toml check
 licensing/build-third-party.sh > THIRD_PARTY_LICENSES
 ```
+
+## 2단계 npm 감사 (`apps/web`, 2026-10-18)
+
+`package-lock.json`의 전 항목(esbuild 플랫폼 바이너리 포함 29개)을 확인했다. **모두 개발 의존성(빌드·시험)이며 배포 산출물(`dist/`)에 들어가지 않는다.**
+
+| 패키지 | 버전 | 라이선스 | 용도 |
+|---|---|---|---|
+| esbuild (+ `@esbuild/*` 플랫폼 바이너리 26개) | 0.28.2 | MIT | 번들·최소화 |
+| binaryen | 132.0.0 | Apache-2.0 | `wasm-opt` |
+| playwright-core | 1.64.1 | Apache-2.0 (`NOTICE`, `ThirdPartyNotices.txt` 동봉) | E2E |
+
+- 금지 라이선스 0건. `license-checker` 같은 자동 도구는 쓰지 않고 락 파일의 `license` 필드와 각 패키지의 LICENSE 파일 존재를 직접 확인했다.
+- esbuild는 번들 결과에 작은 런타임 도우미 코드를 넣을 수 있다. esbuild의 MIT 고지가 배포물에 필요한지(사실상 최소한의 도우미)는 **미확인**이라, 안전하게 `THIRD_PARTY_LICENSES`에 esbuild를 추가하는 것을 오너/변호사 판단 항목으로 남긴다.
+- 직접 포팅한 알고리즘(Volexity hwp-extract, BSD-3-Clause)의 고지를 `THIRD_PARTY_LICENSES`에 추가했다(`licensing/ported-algorithms.txt`, 업스트림 원문 그대로).
+

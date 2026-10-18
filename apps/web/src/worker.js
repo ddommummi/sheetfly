@@ -42,6 +42,12 @@ function openDocument({ buffer, password }) {
     throw classify(e);
   }
   try {
+    // 손상으로 구역(section)이 0개가 된 문서는 pageCount()가 1 이상인데 getPageInfo()가 panic한다
+    // (엔진 index out of bounds, rendering.rs get_page_info_native). trap으로 Worker를 잃지 않도록 먼저 걸러낸다.
+    // 시험: 손상 변형 코퍼스에서 같은 원인의 panic 5건 (docs/phase2/report.md).
+    try {
+      if (JSON.parse(d.getDocumentInfo()).sectionCount === 0) { d.free(); throw { code: 'corrupt', message: 'no sections' }; }
+    } catch (e) { if (e && e.code) throw e; }
     const pageCount = d.pageCount();
     if (pageCount === 0) { d.free(); throw { code: 'no_pages', message: 'no pages' }; }
     const sizes = new Float32Array(pageCount * 2);
@@ -177,6 +183,24 @@ async function search({ id, query, caseSensitive }) {
   return { done: true, total, hits: found, truncated: false };
 }
 
+// ── 예열 ──────────────────────────────────────────────────────────────
+// WASM은 처음 실행될 때 느린 기본 코드로 돌다가 반복 실행되면 최적화된다. 사용자가 파일을 고르는 동안
+// 작은 가상 문서로 조판·렌더 경로를 몇 번 돌려 첫 문서의 열기 지연을 줄인다.
+function warmup({ loops = 1, text = 40, parse = false }) {
+  let d = HwpDocument.createEmpty();
+  try {
+    d.insertText(0, 0, 0, '가나다라마바사 Hello world 1234567890 '.repeat(text));
+    if (parse) { // 가상 문서를 HWP로 내보냈다가 다시 읽어 파서 경로도 한 번 돌린다
+      const bytes = d.exportHwp();
+      d.free();
+      d = new HwpDocument(bytes);
+    }
+    for (let i = 0; i < loops; i++) {
+      d.pageCount(); d.getPageInfo(0); d.renderPageSvg(0); d.getPageTextLayout(0);
+    }
+  } finally { d.free(); }
+}
+
 // ── 메시지 처리 ───────────────────────────────────────────────────────
 let ready = null;
 
@@ -195,6 +219,11 @@ self.onmessage = async (e) => {
       return reply({});
     }
     await ready;
+    if (m.type === 'warmup') {
+      const t0 = performance.now();
+      try { warmup(m); } catch { /* 예열 실패는 무시한다 */ }
+      return reply({ ms: performance.now() - t0 });
+    }
     if (m.type === 'open') {
       const r = openDocument(m);
       return reply(r, [r.sizes.buffer]);

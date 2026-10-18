@@ -6,20 +6,38 @@
 
 ## 상태
 
-**1단계 (저장소 구성·측정·감사) 완료, 2단계 준비 중.** 아직 사용할 수 있는 제품이 없다.
-수치 목표는 모두 가설이며, 실측값은 [`docs/phase1/report.md`](docs/phase1/report.md)와 [`docs/decisions.md`](docs/decisions.md)에 있다.
+**1단계(저장소 구성·측정·감사) 완료, 2단계(웹 뷰어 MVP: HWP/HWPX 읽기 전용) 구현·검증 완료.** 아직 공개 배포는 하지 않았다.
+측정값과 결정은 [`docs/phase1/report.md`](docs/phase1/report.md), [`docs/phase2/report.md`](docs/phase2/report.md), [`docs/decisions.md`](docs/decisions.md)에 있다.
 
 ## 저장소 구성
 
 | 경로 | 내용 |
 |---|---|
 | `third_party/rhwp/` | HWP/HWPX 엔진. 고정 커밋 서브모듈 (아래 Acknowledgements) |
-| `tools/measure/` | 1단계 측정 하네스 (헤드리스 Chromium에서 WASM 열기·렌더 시간 측정) |
+| `apps/web/` | 웹 뷰어 (바닐라 JS, Worker + WASM). 배포 설정(`wrangler.jsonc`, `public/_headers`) 포함 |
+| `scripts/` | WASM 빌드 스크립트 (`build-wasm.sh`) |
+| `tools/measure/` | 측정 하네스·용량 예산 검사 (헤드리스 Chromium에서 WASM 열기·렌더 시간 측정) |
+| `spikes/` | 1단계 스파이크 (rhwp를 의존성으로 쓰는 네이티브/WASM 예제) |
+| `licensing/` | 서드파티 라이선스 생성·정책 (`cargo-about`, `cargo-deny`) |
 | `docs/` | 결정 기록, 라이선스·상표 조사, 측정 보고서 |
 | `licenses/` | 업스트림 라이선스 원문 사본 (수정 없음) |
 | `NOTICE` | 출처·저작권 고지 |
 
 서브모듈을 받으려면: `git clone --recurse-submodules <repo>` (업스트림 작업 트리가 약 5GB이므로 `git clone --recurse-submodules --shallow-submodules`를 권장).
+
+## 웹 앱 실행
+
+```sh
+git clone --recurse-submodules --shallow-submodules <repo>
+cd sheetfly/apps/web && npm ci
+npm run build:wasm   # rhwp를 WASM으로 빌드한다 (약 15분). 필요: rustup, wasm-bindgen-cli 0.2.127
+npm run dev          # 빌드 후 http://127.0.0.1:8787 (배포와 같은 _headers/CSP 적용)
+npm run test:e2e     # Chromium E2E (먼저 npm run build)
+npm run test:corpus  # 샘플 코퍼스 크래시 시험
+npm run budget       # 용량 예산 검사
+```
+
+문서는 브라우저 안(Web Worker + WASM)에서만 처리되고 서버로 전송되지 않는다. 배포는 Cloudflare Workers Static Assets(assets-only)를 쓰며 설정은 `apps/web/wrangler.jsonc`에 있다.
 
 ## 라이선스
 

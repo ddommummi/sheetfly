@@ -1,16 +1,21 @@
 // 코퍼스 크래시 시험: 샘플 문서 전체를 실제 Worker(CSP 헤더 적용 환경)로 열고
 // 앞쪽 쪽들과 마지막 쪽을 렌더하고 전체 검색까지 수행해, 엔진 trap(크래시)·멈춤을 분류한다.
 //   node tests/corpus.mjs [--limit N] [--timeout 60] [--max-mb 40] [--out result.json]
+//   손상 변형 모드: --mutate K [--seed 1] [--max-kb 600]  (각 파일을 K번 무작위로 손상시켜 연다)
 // 분류: ok / password(비밀번호 요구, 정상) / corrupt(우아한 오류, 크래시 아님) / crash(trap·worker 죽음) / timeout / render_error
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { startServer, launch, instrument, samples } from './helpers.mjs';
+import { rng, mutate, KINDS } from './mutate.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const LIMIT = Number(arg('limit', 0));
 const TIMEOUT = Number(arg('timeout', 60)) * 1000;
 const MAX_BYTES = Number(arg('max-mb', 40)) * 1048576;
 const OUT = arg('out', '');
+const MUTATE = Number(arg('mutate', 0));
+const SEED = Number(arg('seed', 1));
+const MAX_KB = Number(arg('max-kb', 600));
 const RENDER_PAGES = 40;
 
 function* walk(dir) {
@@ -20,9 +25,19 @@ function* walk(dir) {
     else if (/\.(hwp|hwpx)$/i.test(e.name)) yield p;
   }
 }
-let files = [...walk(samples)].map((p) => ({ p, rel: relative(samples, p), size: statSync(p).size })).filter((f) => f.size <= MAX_BYTES);
+let files = [...walk(samples)].map((p) => ({ p, rel: relative(samples, p), size: statSync(p).size })).filter((f) => f.size <= (MUTATE ? MAX_KB * 1024 : MAX_BYTES));
 files.sort((a, b) => a.rel.localeCompare(b.rel));
 if (LIMIT) files = files.slice(0, LIMIT);
+
+
+if (MUTATE) {
+  const rand = rng(SEED);
+  const expanded = [];
+  for (const f of files) for (let k = 0; k < MUTATE; k++) expanded.push({ ...f, kind: KINDS[(k + Math.floor(rand() * KINDS.length)) % KINDS.length], variant: k, rs: Math.floor(rand() * 2 ** 31) });
+  files = expanded;
+}
+const ONLY = arg('only', '');
+if (ONLY) files = files.filter((f) => f.rel.includes(ONLY)); // 변형 생성 뒤에 걸러야 같은 시드가 같은 입력을 만든다
 
 const { server, url } = await startServer(0);
 const browser = await launch();
@@ -37,6 +52,7 @@ const results = [];
 const t00 = Date.now();
 for (const [idx, f] of files.entries()) {
   currentBuf = readFileSync(f.p);
+  if (MUTATE) currentBuf = mutate(currentBuf, rng(f.rs), f.kind);
   const t0 = Date.now();
   let r;
   try {
@@ -94,6 +110,7 @@ for (const [idx, f] of files.entries()) {
   }
   if (r.status === 'timeout') { try { await page.evaluate(() => window.__w?.terminate()); } catch { /* ignore */ } }
   r.rel = f.rel; r.size = f.size; r.ms = Date.now() - t0;
+  if (MUTATE) { r.kind = f.kind; r.variant = f.variant; r.rs = f.rs; }
   results.push(r);
   if (r.status === 'crash' || r.status === 'timeout' || r.status === 'render_error') console.log(`[${r.status}] ${f.rel} ${JSON.stringify(r)}`);
   if ((idx + 1) % 100 === 0) console.log(`  … ${idx + 1}/${files.length} (${Math.round((Date.now() - t00) / 1000)}s)`);

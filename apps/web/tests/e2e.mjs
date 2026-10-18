@@ -367,6 +367,97 @@ test('좁은 화면(모바일 폭): 가로 넘침 없음', async () => {
   await done(page);
 });
 
+
+// 코퍼스 손상 변형 시험(seed 20261018)에서 엔진이 panic(WASM trap)을 냈던 입력들. 같은 변형을 재현한다.
+// 원인: 구역이 0개가 된 문서에서 엔진의 getPageInfo가 index out of bounds로 panic (rendering.rs).
+// Worker가 열기 전에 sectionCount === 0을 걸러 이제 trap 없이 "손상 문서"로 안내한다.
+const FORMER_PANIC_CASES = [
+  { rel: 'basic/calendar_monthly.hwp', kind: 'swap', rs: 327194662 },
+  { rel: 'basic/Worldcup_FIFA2010_32.hwp', kind: 'truncate', rs: 466340100 },
+  { rel: 'group-drawing-02.hwp', kind: 'ff', rs: 207893298 },
+  { rel: 'biz_plan.hwp', kind: 'zero', rs: 922813041 },
+  { rel: 'chart/분산형/곡선이있는분산형.hwp', kind: 'ff', rs: 1613139692 },
+];
+async function mutantFile(c) {
+  const { mutate, rng } = await import('./mutate.mjs');
+  return { name: basename(c.rel), mimeType: 'application/octet-stream', buffer: mutate(readFileSync(`${samples}/${c.rel}`), rng(c.rs), c.kind) };
+}
+
+test('과거 엔진 panic 입력 5건: trap 없이 손상 문서로 안내하고 열려 있던 문서를 유지한다', async () => {
+  const page = await newPage();
+  await openSample(page, 'exam-kor-1p.hwp');
+  for (const c of FORMER_PANIC_CASES) {
+    await page.setInputFiles('#file-input', await mutantFile(c));
+    assert.match(await waitError(page, 30000), /손상되었거나 지원하지 않는 형식/, c.rel);
+    await page.click('#error-close');
+    assert.equal(await state(page), 'ready');
+    assert.equal(await page.locator('#file-name').innerText(), 'exam-kor-1p.hwp');
+  }
+  const panicked = page.__rec.console.filter((m) => /panicked/i.test(m));
+  assert.deepEqual(panicked, [], '엔진 panic 로그가 없어야 한다');
+  await done(page);
+});
+
+// Worker 응답을 가로채 "엔진 trap" 응답(fatal)을 주입한다. 실제 trap이 만드는 응답과 같은 모양이다
+// (worker.js의 classify → fail). 실제 입력으로 만든 trap은 위 방어로 사라져서 이렇게 시험한다.
+async function newPageWithTrapInjector() {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctx.addInitScript(() => {
+    const Orig = window.Worker;
+    window.Worker = class extends Orig {
+      set onmessage(fn) {
+        super.onmessage = (e) => {
+          const m = e.data;
+          const t = window.__simulateTrap;
+          if (t && m && m.ok && ((t === 'open' && 'pageCount' in m) || (t === 'render' && 'svg' in m))) {
+            window.__simulateTrap = null;
+            return fn({ data: { id: m.id, ok: false, error: { code: 'worker_crashed', message: 'unreachable (simulated)', fatal: true } } });
+          }
+          fn(e);
+        };
+      }
+    };
+  });
+  const page = await ctx.newPage();
+  page.__rec = instrument(page, url);
+  page.__ctx = ctx;
+  await page.goto(url + '/');
+  return page;
+}
+
+test('엔진 trap 응답(열기 단계): 알리고, 열려 있던 문서는 유지하고, 이어서 계속 쓸 수 있다', async () => {
+  const page = await newPageWithTrapInjector();
+  await openSample(page, 'exam-kor-1p.hwp');
+  await page.evaluate(() => { window.__simulateTrap = 'open'; });
+  await upload(page, 'HWP5-nopassword-123456.hwp');
+  assert.match(await waitError(page, 30000), /엔진 오류가 발생해 작업을 중단했습니다/);
+  await page.click('#error-close');
+  assert.equal(await state(page), 'ready');
+  assert.equal(await page.locator('#file-name').innerText(), 'exam-kor-1p.hwp');
+  await upload(page, 'HWP5-nopassword-123456.hwp'); // 주입은 한 번뿐 — 이어서 정상 열기
+  await page.waitForFunction(() => document.getElementById('file-name').textContent === 'HWP5-nopassword-123456.hwp', null, { timeout: 30000 });
+  await done(page);
+});
+
+test('엔진 trap 응답(쪽 렌더 단계): 문서를 닫고 알린 뒤 다시 열 수 있다', async () => {
+  const page = await newPageWithTrapInjector();
+  await page.evaluate(() => { window.__simulateTrap = null; });
+  await upload(page, 'exam-kor-1p.hwp');
+  await waitState(page, 'ready', 30000);
+  await page.waitForFunction(() => document.querySelector('.page[data-rendered="1"]'));
+  // 두 번째 쪽을 가진 문서를 열고, 스크롤로 새 쪽 렌더가 일어날 때 trap을 주입한다
+  await upload(page, '2025 행정업무운영 편람(최종).hwpx');
+  await page.waitForFunction(() => document.getElementById('file-name').textContent.startsWith('2025'), null, { timeout: 60000 });
+  await page.waitForFunction(() => document.querySelector('.page[data-rendered="1"]'));
+  await page.evaluate(() => { window.__simulateTrap = 'render'; });
+  await page.fill('#page-input', '300'); await page.press('#page-input', 'Enter');
+  assert.match(await waitError(page, 30000), /엔진 오류가 발생해 작업을 중단했습니다/);
+  assert.equal(await state(page), 'empty');
+  assert.equal(await pageCount(page), 0);
+  await openSample(page, 'exam-kor-1p.hwp');
+  await done(page);
+});
+
 test('외부 요청 0건, CSP 위반 0건, 페이지 오류 0건 (전체 시나리오 합산)', async () => {
   assert.deepEqual(allExternal, [], `외부 요청: ${allExternal.join(', ')}`);
   assert.deepEqual(allCsp, [], `CSP 위반: ${allCsp.join(' | ')}`);

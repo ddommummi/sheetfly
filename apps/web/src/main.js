@@ -44,9 +44,17 @@ function setLoading(on, name = '') {
 }
 
 function spawn() { return new DocWorker(cfg); }
+let warmedUp = false; // 같은 렌더러 안의 이후 Worker는 이미 최적화된 코드를 공유하므로 첫 Worker만 예열한다
 function prewarm() {
   if (warm || !cfg.workerUrl) return;
-  try { warm = spawn(); warm.ready.catch(() => { warm = null; }); } catch { warm = null; }
+  try {
+    const w = spawn();
+    warm = w;
+    w.ready.then(() => {
+      // 사용자가 파일을 고르는 동안 가상 문서로 엔진을 한 번 돌려 첫 문서의 열기 지연을 줄인다 (측정: docs/phase2/report.md)
+      if (!warmedUp && warm === w) { warmedUp = true; w.request('warmup', { loops: 1, parse: true }).catch(() => {}); }
+    }).catch(() => { if (warm === w) warm = null; });
+  } catch { warm = null; }
 }
 
 // ── 열기 ─────────────────────────────────────────────────────────────
