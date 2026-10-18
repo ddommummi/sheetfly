@@ -1,0 +1,18 @@
+# Sheetfly 작업공간 (1단계: 스파이크만 있음). 프로젝트 라이선스는 오너 결정 전이라 license 필드를 두지 않는다.
+[workspace]
+resolver = "2"
+members = ["spikes/rhwp-lib", "spikes/rhwp-wasm"]
+# 서브모듈은 자기 [workspace]를 가진다. 우리 작업공간 폴더 안에 있으므로 제외하지 않으면 "multiple workspace roots" 오류가 난다.
+exclude = ["third_party/rhwp"]
+
+# rhwp는 자기 워크스페이스 루트에서만 [patch]가 적용된다. 의존하는 쪽(여기)이 똑같이 걸어 주지 않으면
+# 네이티브 타깃에서 crates.io의 svg2pdf 0.13이 쓰이고, rhwp의 결정화·PDF 패치가 빠진다.
+# (WASM 타깃에서는 svg2pdf 자체가 컴파일되지 않는다.)
+[patch.crates-io]
+svg2pdf = { path = "third_party/rhwp/vendor/svg2pdf" }
+
+# rhwp의 [profile.release]와 동일하게 맞춘다 (프로필도 워크스페이스 루트에서만 적용되므로 복제 필요).
+[profile.release]
+lto = true
+codegen-units = 1
+strip = "debuginfo"

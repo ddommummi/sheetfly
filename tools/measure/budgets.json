@@ -1,0 +1,8 @@
+{
+  "_note": "잠정 예산(오너 승인 전). 1단계 실측(rhwp v0.8.7, wasm-opt -Oz 적용) 기준 회귀 방지선이며 목표치가 아니다. docs/phase1/report.md 참조.",
+  "brotliBytes": {
+    "wasm": 3300000,
+    "js": 40000,
+    "total": 3340000
+  }
+}

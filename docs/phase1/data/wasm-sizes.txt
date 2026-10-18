@@ -1,0 +1,7 @@
+A base (rhwp cdylib, wasm-bindgen only)              raw  13740427 gzip   4734758 brotli   3264065
+B base + wasm-opt -Oz           raw  11719311 gzip   4418802 brotli   3127133
+C opt-level=z                 raw  12101816 gzip   3850283 brotli   2798631
+D opt-level=z + wasm-opt -Oz              raw   8596493 gzip   3426675 brotli   2512779
+E thin shell (rhwp as dependency)  raw  14992159 gzip   4949184 brotli   3388917
+JS glue (base)                   raw    454484 gzip     48483 brotli     35319
+JS glue (thin shell)       raw    455403 gzip     48445 brotli     35328

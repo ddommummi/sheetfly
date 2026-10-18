@@ -1,0 +1,6696 @@
+{
+ "init": {
+  "importMs": 20.09999999962747,
+  "wasmInitMs": 200.90000000037253
+ },
+ "results": [
+  {
+   "rel": "hwp3-ellipse-empty-textbox.hwp",
+   "openMs": 60.10000000009313,
+   "pageCountMs": 0.20000000018626451,
+   "pages": 1,
+   "firstPageSvgBytes": 22732,
+   "pageSvgMs": [
+    68.29999999981374
+   ],
+   "pageCanvasMs": [
+    39.89999999990687
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 128.60000000009313,
+   "size": 2426
+  },
+  {
+   "rel": "hwp3-pagedef-1915.hwp",
+   "openMs": 14,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 38512,
+   "pageSvgMs": [
+    22.200000000186265
+   ],
+   "pageCanvasMs": [
+    13.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 36.200000000186265,
+   "size": 2460
+  },
+  {
+   "rel": "tac-host-spacing.hwpx",
+   "openMs": 38.39999999990687,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 10024,
+   "pageSvgMs": [
+    6.100000000093132
+   ],
+   "pageCanvasMs": [
+    10.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 44.5,
+   "size": 4183
+  },
+  {
+   "rel": "issue5590_per_row_column_widths.hwpx",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 23395,
+   "pageSvgMs": [
+    2
+   ],
+   "pageCanvasMs": [
+    5.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4,
+   "size": 4370
+  },
+  {
+   "rel": "issue6619_cellzone_border.hwpx",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 22326,
+   "pageSvgMs": [
+    2
+   ],
+   "pageCanvasMs": [
+    4.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.900000000372529,
+   "size": 4436
+  },
+  {
+   "rel": "issue5593_cell_center_front_object.hwpx",
+   "openMs": 4.399999999906868,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 10449,
+   "pageSvgMs": [
+    2.1000000000931323
+   ],
+   "pageCanvasMs": [
+    3.900000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.5,
+   "size": 4600
+  },
+  {
+   "rel": "issue2527_empty_linesegs.hwpx",
+   "openMs": 12.799999999813735,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 102736,
+   "pageSvgMs": [
+    8.200000000186265
+   ],
+   "pageCanvasMs": [
+    99.89999999990687
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 21,
+   "size": 4721
+  },
+  {
+   "rel": "hwp3-empty-cell.hwp",
+   "openMs": 12.300000000279397,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 159371,
+   "pageSvgMs": [
+    14.599999999627471
+   ],
+   "pageCanvasMs": [
+    227
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 26.899999999906868,
+   "size": 6277
+  },
+  {
+   "rel": "issue1892_hwp3_tab_roundtrip.hwp",
+   "openMs": 1.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 76745,
+   "pageSvgMs": [
+    3.6000000000931323
+   ],
+   "pageCanvasMs": [
+    21.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.2000000001862645,
+   "size": 6375
+  },
+  {
+   "rel": "hwpers_test4_complex_table.hwp",
+   "openMs": 19.40000000037253,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 22344,
+   "pageSvgMs": [
+    1
+   ],
+   "pageCanvasMs": [
+    9.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 20.40000000037253,
+   "size": 6656
+  },
+  {
+   "rel": "issue2439_zero_offset_coanchored_float_exclusion.hwp",
+   "openMs": 16.799999999813735,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 306147,
+   "pageSvgMs": [
+    8.700000000186265
+   ],
+   "pageCanvasMs": [
+    9.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 25.5,
+   "size": 7168
+  },
+  {
+   "rel": "hwp3-table-cell-order.hwp",
+   "openMs": 3.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 100309,
+   "pageSvgMs": [
+    5.899999999906868
+   ],
+   "pageCanvasMs": [
+    135.89999999990687
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9.100000000093132,
+   "size": 7921
+  },
+  {
+   "rel": "issue5797_shape_selfclosing_child.hwpx",
+   "openMs": 7.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 13453,
+   "pageSvgMs": [
+    0.7999999998137355
+   ],
+   "pageCanvasMs": [
+    75.79999999981374
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8,
+   "size": 8041
+  },
+  {
+   "rel": "issue1549_empty_host_float_clamp.hwpx",
+   "openMs": 10.899999999906868,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 299359,
+   "pageSvgMs": [
+    14
+   ],
+   "pageCanvasMs": [
+    36.39999999990687
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 24.899999999906868,
+   "size": 8050
+  },
+  {
+   "rel": "issue1639_empty_host_positive_only_float.hwpx",
+   "openMs": 12.600000000093132,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 280499,
+   "pageSvgMs": [
+    12.699999999720603,
+    1.2000000001862645
+   ],
+   "pageCanvasMs": [
+    9.100000000093132,
+    0.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 25.299999999813735,
+   "size": 8133
+  },
+  {
+   "rel": "issue1639_empty_host_negative_offset_float.hwpx",
+   "openMs": 6.5,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 280603,
+   "pageSvgMs": [
+    6.7999999998137355,
+    4.600000000093132
+   ],
+   "pageCanvasMs": [
+    19.899999999906868,
+    0.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 13.299999999813735,
+   "size": 8136
+  },
+  {
+   "rel": "issue1549_multipositive_float_tables.hwpx",
+   "openMs": 13.799999999813735,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 312186,
+   "pageSvgMs": [
+    21.700000000186265
+   ],
+   "pageCanvasMs": [
+    13.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 35.5,
+   "size": 8161
+  },
+  {
+   "rel": "issue1510_coanchored_float_tables.hwpx",
+   "openMs": 10.5,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 281965,
+   "pageSvgMs": [
+    15.200000000186265,
+    1.1999999997206032
+   ],
+   "pageCanvasMs": [
+    8.400000000372529,
+    0.6999999997206032
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 25.700000000186265,
+   "size": 8247
+  },
+  {
+   "rel": "issue5595_rotated_picture_topbottom.hwpx",
+   "openMs": 4.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 762,
+   "pageSvgMs": [
+    1.2000000001862645
+   ],
+   "pageCanvasMs": [
+    14.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.400000000372529,
+   "size": 8305
+  },
+  {
+   "rel": "issue1663_coanchored_float_orphan.hwpx",
+   "openMs": 4.400000000372529,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 7905,
+   "pageSvgMs": [
+    0.7999999998137355,
+    4.399999999906868
+   ],
+   "pageCanvasMs": [
+    4.5,
+    2.3999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.2000000001862645,
+   "size": 8411
+  },
+  {
+   "rel": "render-p35-font-native-bitmap.hwpx",
+   "openMs": 4.7000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 3865,
+   "pageSvgMs": [
+    4
+   ],
+   "pageCanvasMs": [
+    9.199999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.700000000186265,
+   "size": 8579
+  },
+  {
+   "rel": "re-01-hangul-only-empty-hancom.hwp",
+   "openMs": 2.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47223,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    4.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.6999999997206032,
+   "size": 8704
+  },
+  {
+   "rel": "re-01-hangul-only-hancom.hwp",
+   "openMs": 2.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47223,
+   "pageSvgMs": [
+    1.2999999998137355
+   ],
+   "pageCanvasMs": [
+    8.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.5,
+   "size": 8704
+  },
+  {
+   "rel": "re-02-space-count-empty-hancom.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 23847,
+   "pageSvgMs": [
+    1
+   ],
+   "pageCanvasMs": [
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.1000000000931323,
+   "size": 8704
+  },
+  {
+   "rel": "re-02-space-count-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 23847,
+   "pageSvgMs": [
+    1.1000000000931323
+   ],
+   "pageCanvasMs": [
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.1000000000931323,
+   "size": 8704
+  },
+  {
+   "rel": "re-06-punctuation-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47194,
+   "pageSvgMs": [
+    1.1000000000931323
+   ],
+   "pageCanvasMs": [
+    10.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.1000000000931323,
+   "size": 8704
+  },
+  {
+   "rel": "re-06-punctuation-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0.09999999962747097,
+   "pages": 1,
+   "firstPageSvgBytes": 47194,
+   "pageSvgMs": [
+    1.3000000002793968
+   ],
+   "pageCanvasMs": [
+    9
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.3000000002793968,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-center-empty-hancom.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47158,
+   "pageSvgMs": [
+    5.5
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7.600000000093132,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-center-hancom.hwp",
+   "openMs": 2.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47158,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    3.900000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.599999999627471,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-justify-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47223,
+   "pageSvgMs": [
+    1.2000000001862645
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2000000001862645,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-justify-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47223,
+   "pageSvgMs": [
+    1.1000000000931323
+   ],
+   "pageCanvasMs": [
+    4.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.1000000000931323,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-left-empty-hancom.hwp",
+   "openMs": 2.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47093,
+   "pageSvgMs": [
+    1.3000000002793968
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.5,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-left-hancom.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47093,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.5,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-right-empty-hancom.hwp",
+   "openMs": 3.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47154,
+   "pageSvgMs": [
+    5.5
+   ],
+   "pageCanvasMs": [
+    3.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9,
+   "size": 8704
+  },
+  {
+   "rel": "re-align-right-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47154,
+   "pageSvgMs": [
+    1.400000000372529
+   ],
+   "pageCanvasMs": [
+    8.599999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.400000000372529,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-batang-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.400000000372529
+   ],
+   "pageCanvasMs": [
+    4.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.400000000372529,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-batang-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.400000000372529
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.300000000745058,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-batangche-empty-hancom.hwp",
+   "openMs": 1.8999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    5.5
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7.399999999906868,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-batangche-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.2999999998137355
+   ],
+   "pageCanvasMs": [
+    3.8999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2000000001862645,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-dotum-empty-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.3000000002793968,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-dotum-hancom.hwp",
+   "openMs": 2.599999999627471,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    4.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.099999999627471,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-dotumche-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.3999999999068677,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-dotumche-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.2999999998137355
+   ],
+   "pageCanvasMs": [
+    4.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2000000001862645,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-gulim-empty-hancom.hwp",
+   "openMs": 1.8000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2000000001862645,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-gulim-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4.199999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.3000000002793968,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-gulimche-empty-hancom.hwp",
+   "openMs": 1.8000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2000000001862645,
+   "size": 8704
+  },
+  {
+   "rel": "re-font-gulimche-hancom.hwp",
+   "openMs": 2.099999999627471,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.2000000001862645
+   ],
+   "pageCanvasMs": [
+    4
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2999999998137355,
+   "size": 8704
+  },
+  {
+   "rel": "re-mixed-0tr-empty-hancom.hwp",
+   "openMs": 1.8000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 24340,
+   "pageSvgMs": [
+    0.6000000000931323
+   ],
+   "pageCanvasMs": [
+    7.599999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.400000000372529,
+   "size": 8704
+  },
+  {
+   "rel": "re-mixed-1tr-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 27981,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    3.8000000002793968
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.8999999999068677,
+   "size": 8704
+  },
+  {
+   "rel": "re-mixed-2tr-empty-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 25937,
+   "pageSvgMs": [
+    1.099999999627471
+   ],
+   "pageCanvasMs": [
+    3.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3,
+   "size": 8704
+  },
+  {
+   "rel": "re-multisize-10-10-empty-hancom.hwp",
+   "openMs": 1.7999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 26643,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.6999999997206032,
+   "size": 8704
+  },
+  {
+   "rel": "re-multisize-10-20-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 26276,
+   "pageSvgMs": [
+    0.8000000002793968
+   ],
+   "pageCanvasMs": [
+    7.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.8000000002793968,
+   "size": 8704
+  },
+  {
+   "rel": "re-multisize-8-14-empty-hancom.hwp",
+   "openMs": 1.7000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 26603,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    16
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.6000000000931323,
+   "size": 8704
+  },
+  {
+   "rel": "shift-return.hwp",
+   "openMs": 1.7999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 15407,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    18.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.6999999997206032,
+   "size": 8704
+  },
+  {
+   "rel": "footnote-tbox-01.hwp",
+   "openMs": 3.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 23704,
+   "pageSvgMs": [
+    3.5
+   ],
+   "pageCanvasMs": [
+    13.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7.400000000372529,
+   "size": 9216
+  },
+  {
+   "rel": "lseg-02-mixed.hwp",
+   "openMs": 1.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 47429,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    7.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.1999999997206032,
+   "size": 9216
+  },
+  {
+   "rel": "re-03-latin-only-empty-hancom.hwp",
+   "openMs": 1.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 108388,
+   "pageSvgMs": [
+    1.6000000000931323
+   ],
+   "pageCanvasMs": [
+    5.199999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.8000000002793968,
+   "size": 9216
+  },
+  {
+   "rel": "re-03-latin-only-hancom.hwp",
+   "openMs": 1.3000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 108380,
+   "pageSvgMs": [
+    1.6000000000931323
+   ],
+   "pageCanvasMs": [
+    7.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.900000000372529,
+   "size": 9216
+  },
+  {
+   "rel": "re-04-digit-only-empty-hancom.hwp",
+   "openMs": 1.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 104231,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    3.599999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3,
+   "size": 9216
+  },
+  {
+   "rel": "re-04-digit-only-hancom.hwp",
+   "openMs": 1.400000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 104267,
+   "pageSvgMs": [
+    5.599999999627471
+   ],
+   "pageCanvasMs": [
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7,
+   "size": 9216
+  },
+  {
+   "rel": "re-05-mixed-koen-empty-hancom.hwp",
+   "openMs": 1.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 73562,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    3.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.7999999998137355,
+   "size": 9216
+  },
+  {
+   "rel": "re-05-mixed-koen-hancom.hwp",
+   "openMs": 1.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 73478,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    3.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.6999999997206032,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-mixed-batang-arial-empty-hancom.hwp",
+   "openMs": 1.3000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 88198,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    7.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.8000000002793968,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-mixed-batang-empty-hancom.hwp",
+   "openMs": 1.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 84957,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.599999999627471,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-mixed-batangche-empty-hancom.hwp",
+   "openMs": 1.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 85082,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    3.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.6999999997206032,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-mixed-dotum-empty-hancom.hwp",
+   "openMs": 1.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 88780,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    7.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.5,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-mixed-dotum-times-empty-hancom.hwp",
+   "openMs": 1.2000000001862645,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 1,
+   "firstPageSvgBytes": 87524,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.7000000001862645,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-mixed-malgun-courier-empty-hancom.hwp",
+   "openMs": 1.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 57555,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    6.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.6999999997206032,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-mixed-malgun-empty-hancom.hwp",
+   "openMs": 1.3000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 89255,
+   "pageSvgMs": [
+    5.699999999720603
+   ],
+   "pageCanvasMs": [
+    3.8000000002793968
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-nospace-batang-arial-empty-hancom.hwp",
+   "openMs": 1.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 113200,
+   "pageSvgMs": [
+    1.1000000000931323
+   ],
+   "pageCanvasMs": [
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.2000000001862645,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-nospace-batang-empty-hancom.hwp",
+   "openMs": 1.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 107594,
+   "pageSvgMs": [
+    1.1000000000931323
+   ],
+   "pageCanvasMs": [
+    3.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.3000000002793968,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-nospace-batangche-empty-hancom.hwp",
+   "openMs": 1.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 108007,
+   "pageSvgMs": [
+    1.2000000001862645
+   ],
+   "pageCanvasMs": [
+    16.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.3999999999068677,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-nospace-dotum-empty-hancom.hwp",
+   "openMs": 1.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 112502,
+   "pageSvgMs": [
+    1.2000000001862645
+   ],
+   "pageCanvasMs": [
+    5.2999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.400000000372529,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-nospace-dotum-times-empty-hancom.hwp",
+   "openMs": 2.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 110569,
+   "pageSvgMs": [
+    2.2000000001862645
+   ],
+   "pageCanvasMs": [
+    4.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.400000000372529,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-nospace-malgun-courier-empty-hancom.hwp",
+   "openMs": 1.8000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 61039,
+   "pageSvgMs": [
+    1.3999999999068677
+   ],
+   "pageCanvasMs": [
+    4.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2000000001862645,
+   "size": 9216
+  },
+  {
+   "rel": "re-eng-nospace-malgun-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 113185,
+   "pageSvgMs": [
+    2.1000000000931323
+   ],
+   "pageCanvasMs": [
+    6.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.100000000093132,
+   "size": 9216
+  },
+  {
+   "rel": "re-font-malgun-hancom.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    1.599999999627471
+   ],
+   "pageCanvasMs": [
+    4.400000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.5,
+   "size": 9216
+  },
+  {
+   "rel": "lseg-01-basic.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 69637,
+   "pageSvgMs": [
+    1.6000000000931323
+   ],
+   "pageCanvasMs": [
+    11.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.7000000001862645,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-batang-arial-empty-hancom.hwp",
+   "openMs": 1.7999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 164568,
+   "pageSvgMs": [
+    2.7000000001862645
+   ],
+   "pageCanvasMs": [
+    5.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.5,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-batang-empty-hancom.hwp",
+   "openMs": 2.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 156517,
+   "pageSvgMs": [
+    2.8999999999068677
+   ],
+   "pageCanvasMs": [
+    7.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.100000000093132,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-batangche-empty-hancom.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 156991,
+   "pageSvgMs": [
+    2.7999999998137355
+   ],
+   "pageCanvasMs": [
+    5.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.899999999906868,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-dotum-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 163328,
+   "pageSvgMs": [
+    2.8999999999068677
+   ],
+   "pageCanvasMs": [
+    6.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.899999999906868,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-dotum-times-empty-hancom.hwp",
+   "openMs": 2.5,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 1,
+   "firstPageSvgBytes": 160555,
+   "pageSvgMs": [
+    3.6000000000931323
+   ],
+   "pageCanvasMs": [
+    10.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.2000000001862645,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-malgun-courier-empty-hancom.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 88421,
+   "pageSvgMs": [
+    1.8000000002793968
+   ],
+   "pageCanvasMs": [
+    5.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.8000000002793968,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-malgun-empty-hancom.hwp",
+   "openMs": 2.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 164448,
+   "pageSvgMs": [
+    7.2000000001862645
+   ],
+   "pageCanvasMs": [
+    6
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9.700000000186265,
+   "size": 9728
+  },
+  {
+   "rel": "re-eng-words-malgun-times-empty-hancom.hwp",
+   "openMs": 2.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 168117,
+   "pageSvgMs": [
+    3.6000000000931323
+   ],
+   "pageCanvasMs": [
+    19.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.100000000093132,
+   "size": 9728
+  },
+  {
+   "rel": "form-02.hwp",
+   "openMs": 4,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 8684,
+   "pageSvgMs": [
+    2.2000000001862645
+   ],
+   "pageCanvasMs": [
+    13.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.2000000001862645,
+   "size": 10752
+  },
+  {
+   "rel": "종이기준.hwp",
+   "openMs": 1.8000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 1010,
+   "pageSvgMs": [
+    0.19999999972060323
+   ],
+   "pageCanvasMs": [
+    3
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2,
+   "size": 12288
+  },
+  {
+   "rel": "종이기준.hwpx",
+   "openMs": 1.8999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 1010,
+   "pageSvgMs": [
+    0.20000000018626451
+   ],
+   "pageCanvasMs": [
+    2.8999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.1000000000931323,
+   "size": 12784
+  },
+  {
+   "rel": "issue-505-equations.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 4,
+   "firstPageSvgBytes": 5689,
+   "pageSvgMs": [
+    4.5,
+    0.39999999990686774,
+    0.40000000037252903,
+    0.19999999972060323
+   ],
+   "pageCanvasMs": [
+    7.600000000093132,
+    2.6000000000931323,
+    0.39999999990686774,
+    0.20000000018626451
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.5,
+   "size": 12800
+  },
+  {
+   "rel": "누름틀-2024.hwp",
+   "openMs": 2.3000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 9218,
+   "pageSvgMs": [
+    0.39999999990686774
+   ],
+   "pageCanvasMs": [
+    3.2999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.7000000001862645,
+   "size": 12800
+  },
+  {
+   "rel": "equation-lim.hwp",
+   "openMs": 2.400000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 3490,
+   "pageSvgMs": [
+    0.599999999627471
+   ],
+   "pageCanvasMs": [
+    3.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3,
+   "size": 13312
+  },
+  {
+   "rel": "issue1510_coanchored_float_tables.hwp",
+   "openMs": 10.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 308354,
+   "pageSvgMs": [
+    11.400000000372529
+   ],
+   "pageCanvasMs": [
+    13.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 21.90000000037253,
+   "size": 13312
+  },
+  {
+   "rel": "issue5800-hancom-symbol.hwp",
+   "openMs": 2.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 53619,
+   "pageSvgMs": [
+    5.7000000001862645
+   ],
+   "pageCanvasMs": [
+    6.2999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8,
+   "size": 13312
+  },
+  {
+   "rel": "hwp3-curve.hwp",
+   "openMs": 2.8999999999068677,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 73310,
+   "pageSvgMs": [
+    7.600000000093132,
+    3.7000000001862645
+   ],
+   "pageCanvasMs": [
+    29.899999999906868,
+    9
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.5,
+   "size": 13464
+  },
+  {
+   "rel": "누름틀-2024.hwpx",
+   "openMs": 3.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 9609,
+   "pageSvgMs": [
+    0.5
+   ],
+   "pageCanvasMs": [
+    5.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.8999999999068677,
+   "size": 13597
+  },
+  {
+   "rel": "group-drawing-02.hwp",
+   "openMs": 5.099999999627471,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 109016,
+   "pageSvgMs": [
+    2.5
+   ],
+   "pageCanvasMs": [
+    7.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7.599999999627471,
+   "size": 13824
+  },
+  {
+   "rel": "hwp_table_test_saved.hwp",
+   "openMs": 9.800000000279397,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 87426,
+   "pageSvgMs": [
+    8.399999999906868,
+    4.2999999998137355,
+    9.800000000279397
+   ],
+   "pageCanvasMs": [
+    51.3000000002794,
+    3.2999999998137355,
+    1.1000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 18.200000000186265,
+   "size": 13824
+  },
+  {
+   "rel": "issue1835_tac_stale_height.hwp",
+   "openMs": 9,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 85217,
+   "pageSvgMs": [
+    3.3000000002793968,
+    7.599999999627471,
+    1.6000000000931323
+   ],
+   "pageCanvasMs": [
+    8.899999999906868,
+    2.7000000001862645,
+    0.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 12.300000000279397,
+   "size": 13824
+  },
+  {
+   "rel": "pua-test.hwp",
+   "openMs": 5.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 383284,
+   "pageSvgMs": [
+    12
+   ],
+   "pageCanvasMs": [
+    28.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 17.5,
+   "size": 13824
+  },
+  {
+   "rel": "수식-문자처럼취급-아님.hwp",
+   "openMs": 1.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 8620,
+   "pageSvgMs": [
+    0.40000000037252903
+   ],
+   "pageCanvasMs": [
+    3.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1.900000000372529,
+   "size": 13824
+  },
+  {
+   "rel": "수식-문자처럼취급-아님.hwpx",
+   "openMs": 1.599999999627471,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 8919,
+   "pageSvgMs": [
+    0.3000000002793968
+   ],
+   "pageCanvasMs": [
+    5.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1.8999999999068677,
+   "size": 14492
+  },
+  {
+   "rel": "atop-equation-01.hwp",
+   "openMs": 1.3000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 2750,
+   "pageSvgMs": [
+    6.599999999627471
+   ],
+   "pageCanvasMs": [
+    4.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7.899999999906868,
+   "size": 14848
+  },
+  {
+   "rel": "쪽기준.hwp",
+   "openMs": 1.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 1006,
+   "pageSvgMs": [
+    0.10000000009313226
+   ],
+   "pageCanvasMs": [
+    2.3999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1.3999999999068677,
+   "size": 14848
+  },
+  {
+   "rel": "쪽기준.hwpx",
+   "openMs": 1.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 1006,
+   "pageSvgMs": [
+    0.10000000009313226
+   ],
+   "pageCanvasMs": [
+    2.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1.3000000002793968,
+   "size": 15311
+  },
+  {
+   "rel": "issue1893_clickhere_field_roundtrip.hwpx",
+   "openMs": 4.600000000093132,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 125747,
+   "pageSvgMs": [
+    6.300000000279397
+   ],
+   "pageCanvasMs": [
+    32
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.900000000372529,
+   "size": 15662
+  },
+  {
+   "rel": "calc-cell.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 12327,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    2.7999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.8999999999068677,
+   "size": 15872
+  },
+  {
+   "rel": "셀보호.hwp",
+   "openMs": 2.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 8990,
+   "pageSvgMs": [
+    4.2000000001862645
+   ],
+   "pageCanvasMs": [
+    2.8999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.800000000279397,
+   "size": 15872
+  },
+  {
+   "rel": "eq-01.hwp",
+   "openMs": 3.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 242804,
+   "pageSvgMs": [
+    10.300000000279397
+   ],
+   "pageCanvasMs": [
+    18.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 13.700000000186265,
+   "size": 16384
+  },
+  {
+   "rel": "h-pen-01.hwp",
+   "openMs": 1.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 10521,
+   "pageSvgMs": [
+    0.39999999990686774
+   ],
+   "pageCanvasMs": [
+    2.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1.8999999999068677,
+   "size": 16384
+  },
+  {
+   "rel": "re-eng-mixed-malgun-times-empty-hancom.hwp",
+   "openMs": 3.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 95266,
+   "pageSvgMs": [
+    2.6000000000931323
+   ],
+   "pageCanvasMs": [
+    9.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.100000000093132,
+   "size": 16384
+  },
+  {
+   "rel": "re-eng-nospace-malgun-times-empty-hancom.hwp",
+   "openMs": 1.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 118138,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    4.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.7999999998137355,
+   "size": 16384
+  },
+  {
+   "rel": "re-font-malgun-empty-hancom.hwp",
+   "openMs": 1.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 40852,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    3.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.1000000000931323,
+   "size": 16384
+  },
+  {
+   "rel": "re-mixed-malgun-timesnew-hancom.hwp",
+   "openMs": 1.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 8036,
+   "pageSvgMs": [
+    0.20000000018626451
+   ],
+   "pageCanvasMs": [
+    2.7999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1.3000000002793968,
+   "size": 16384
+  },
+  {
+   "rel": "shape-001.hwp",
+   "openMs": 1.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 1063,
+   "pageSvgMs": [
+    0.20000000018626451
+   ],
+   "pageCanvasMs": [
+    2.7999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1.400000000372529,
+   "size": 16384
+  },
+  {
+   "rel": "shape-group-02.hwp",
+   "openMs": 1.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 19021,
+   "pageSvgMs": [
+    0.6000000000931323
+   ],
+   "pageCanvasMs": [
+    7.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2,
+   "size": 16384
+  },
+  {
+   "rel": "table-004.hwp",
+   "openMs": 5.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 223047,
+   "pageSvgMs": [
+    8.799999999813735
+   ],
+   "pageCanvasMs": [
+    44.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 14,
+   "size": 16384
+  },
+  {
+   "rel": "tac-case-002.hwp",
+   "openMs": 3.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 30711,
+   "pageSvgMs": [
+    1.7000000001862645
+   ],
+   "pageCanvasMs": [
+    9.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.300000000279397,
+   "size": 16384
+  },
+  {
+   "rel": "tac-case-003.hwp",
+   "openMs": 2.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 30815,
+   "pageSvgMs": [
+    5.7999999998137355
+   ],
+   "pageCanvasMs": [
+    15.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.700000000186265,
+   "size": 16384
+  },
+  {
+   "rel": "tac-case-004.hwp",
+   "openMs": 2.8000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 30700,
+   "pageSvgMs": [
+    1.7999999998137355
+   ],
+   "pageCanvasMs": [
+    4.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.600000000093132,
+   "size": 16384
+  },
+  {
+   "rel": "tac-case-005.hwp",
+   "openMs": 2.7000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 30590,
+   "pageSvgMs": [
+    1.6000000000931323
+   ],
+   "pageCanvasMs": [
+    3.8999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.300000000279397,
+   "size": 16384
+  },
+  {
+   "rel": "textbox-under-image.hwp",
+   "openMs": 3.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 5582,
+   "pageSvgMs": [
+    7.300000000279397
+   ],
+   "pageCanvasMs": [
+    8.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.900000000372529,
+   "size": 16384
+  },
+  {
+   "rel": "셀보호2.hwp",
+   "openMs": 3.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 11637,
+   "pageSvgMs": [
+    1.6999999997206032
+   ],
+   "pageCanvasMs": [
+    3.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.600000000093132,
+   "size": 16384
+  },
+  {
+   "rel": "통합재정통계(2011.10월).hwp",
+   "openMs": 14.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 332964,
+   "pageSvgMs": [
+    13.600000000093132
+   ],
+   "pageCanvasMs": [
+    77.39999999990687
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 28.100000000093132,
+   "size": 16384
+  },
+  {
+   "rel": "셀보호.hwpx",
+   "openMs": 2.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 9105,
+   "pageSvgMs": [
+    0.8000000002793968
+   ],
+   "pageCanvasMs": [
+    6.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.3000000002793968,
+   "size": 16467
+  },
+  {
+   "rel": "issue5162_field_wraps_table.hwpx",
+   "openMs": 3,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 33728,
+   "pageSvgMs": [
+    1.7000000001862645
+   ],
+   "pageCanvasMs": [
+    14.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.7000000001862645,
+   "size": 16845
+  },
+  {
+   "rel": "통합재정통계(2014.8월).hwp",
+   "openMs": 8.799999999813735,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 369703,
+   "pageSvgMs": [
+    13
+   ],
+   "pageCanvasMs": [
+    30.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 21.799999999813735,
+   "size": 17408
+  },
+  {
+   "rel": "셀보호2.hwpx",
+   "openMs": 2.7000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 11867,
+   "pageSvgMs": [
+    1.099999999627471
+   ],
+   "pageCanvasMs": [
+    2.900000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.7999999998137355,
+   "size": 17449
+  },
+  {
+   "rel": "lseg-06-multisize.hwp",
+   "openMs": 2.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 182129,
+   "pageSvgMs": [
+    3.6000000000931323
+   ],
+   "pageCanvasMs": [
+    24.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6,
+   "size": 17920
+  },
+  {
+   "rel": "eq-002.hwp",
+   "openMs": 2.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 36930,
+   "pageSvgMs": [
+    4.2999999998137355
+   ],
+   "pageCanvasMs": [
+    17.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.899999999906868,
+   "size": 18432
+  },
+  {
+   "rel": "form-01.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 8816,
+   "pageSvgMs": [
+    0.6000000000931323
+   ],
+   "pageCanvasMs": [
+    5.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.6000000000931323,
+   "size": 18432
+  },
+  {
+   "rel": "lseg-05-tab.hwp",
+   "openMs": 2.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 265843,
+   "pageSvgMs": [
+    4.099999999627471
+   ],
+   "pageCanvasMs": [
+    7.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.599999999627471,
+   "size": 18432
+  },
+  {
+   "rel": "exam_math_8.hwp",
+   "openMs": 5.7999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 31179,
+   "pageSvgMs": [
+    6
+   ],
+   "pageCanvasMs": [
+    26.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 11.799999999813735,
+   "size": 18944
+  },
+  {
+   "rel": "lseg-03-spacing.hwp",
+   "openMs": 2.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 309320,
+   "pageSvgMs": [
+    3.8999999999068677
+   ],
+   "pageCanvasMs": [
+    7.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.099999999627471,
+   "size": 18944
+  },
+  {
+   "rel": "para-001.hwp",
+   "openMs": 9.400000000372529,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 544210,
+   "pageSvgMs": [
+    10.5,
+    16.09999999962747,
+    9.300000000279397
+   ],
+   "pageCanvasMs": [
+    74.1999999997206,
+    74.8000000002794,
+    32
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 19.90000000037253,
+   "size": 18944
+  },
+  {
+   "rel": "대각선샘플3.hwp",
+   "openMs": 6,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 21734,
+   "pageSvgMs": [
+    3.2999999998137355
+   ],
+   "pageCanvasMs": [
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9.299999999813735,
+   "size": 18944
+  },
+  {
+   "rel": "대각선샘플4.hwp",
+   "openMs": 6.800000000279397,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 21607,
+   "pageSvgMs": [
+    3.3999999999068677
+   ],
+   "pageCanvasMs": [
+    7.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.200000000186265,
+   "size": 18944
+  },
+  {
+   "rel": "대각선샘플5.hwp",
+   "openMs": 7.100000000093132,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 1,
+   "firstPageSvgBytes": 22018,
+   "pageSvgMs": [
+    3.3999999999068677
+   ],
+   "pageCanvasMs": [
+    9.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.600000000093132,
+   "size": 18944
+  },
+  {
+   "rel": "한셀OLE.hwp",
+   "openMs": 2.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 5684,
+   "pageSvgMs": [
+    16.200000000186265
+   ],
+   "pageCanvasMs": [
+    4.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 18.800000000279397,
+   "size": 18944
+  },
+  {
+   "rel": "한셀OLE.hwpx",
+   "openMs": 2.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 5684,
+   "pageSvgMs": [
+    1
+   ],
+   "pageCanvasMs": [
+    4.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.6000000000931323,
+   "size": 19024
+  },
+  {
+   "rel": "대각선샘플3.hwpx",
+   "openMs": 5.399999999906868,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 1,
+   "firstPageSvgBytes": 21734,
+   "pageSvgMs": [
+    3.8000000002793968
+   ],
+   "pageCanvasMs": [
+    4.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9.300000000279397,
+   "size": 19831
+  },
+  {
+   "rel": "landscape-001.hwp",
+   "openMs": 5.399999999906868,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 88754,
+   "pageSvgMs": [
+    3.7000000001862645
+   ],
+   "pageCanvasMs": [
+    18.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9.100000000093132,
+   "size": 19968
+  },
+  {
+   "rel": "issue1770_rowsplit_tolerance.hwpx",
+   "openMs": 58.3000000002794,
+   "pageCountMs": 0.09999999962747097,
+   "pages": 4,
+   "firstPageSvgBytes": 290447,
+   "pageSvgMs": [
+    42.10000000009313,
+    25.800000000279397,
+    13.299999999813735,
+    7.899999999906868
+   ],
+   "pageCanvasMs": [
+    45.89999999990687,
+    26.90000000037253,
+    25.199999999720603,
+    17.800000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 100.5,
+   "size": 20025
+  },
+  {
+   "rel": "대각선샘플5.hwpx",
+   "openMs": 4.900000000372529,
+   "pageCountMs": 0.09999999962747097,
+   "pages": 1,
+   "firstPageSvgBytes": 22018,
+   "pageSvgMs": [
+    3.400000000372529
+   ],
+   "pageCanvasMs": [
+    4.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.400000000372529,
+   "size": 20129
+  },
+  {
+   "rel": "hwp5-tbl-attr-1916.hwp",
+   "openMs": 18.100000000093132,
+   "pageCountMs": 0,
+   "pages": 4,
+   "firstPageSvgBytes": 340579,
+   "pageSvgMs": [
+    13.5,
+    11.399999999906868,
+    11.899999999906868,
+    10.300000000279397
+   ],
+   "pageCanvasMs": [
+    72.1999999997206,
+    11.300000000279397,
+    19.199999999720603,
+    10.400000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 31.600000000093132,
+   "size": 20208
+  },
+  {
+   "rel": "대각선샘플4.hwpx",
+   "openMs": 4.899999999906868,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 21607,
+   "pageSvgMs": [
+    3.2000000001862645
+   ],
+   "pageCanvasMs": [
+    8.200000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.100000000093132,
+   "size": 20219
+  },
+  {
+   "rel": "표-텍스트.hwpx",
+   "openMs": 3.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 77414,
+   "pageSvgMs": [
+    3.2999999998137355
+   ],
+   "pageCanvasMs": [
+    12.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.399999999906868,
+   "size": 20270
+  },
+  {
+   "rel": "lseg-04-indent.hwp",
+   "openMs": 3.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 309430,
+   "pageSvgMs": [
+    6.899999999906868
+   ],
+   "pageCanvasMs": [
+    18.40000000037253
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.399999999906868,
+   "size": 20992
+  },
+  {
+   "rel": "test-image.hwp",
+   "openMs": 7.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 12177,
+   "pageSvgMs": [
+    3.2999999998137355,
+    0.8000000002793968,
+    0.6999999997206032,
+    0.6000000000931323,
+    0.8000000002793968
+   ],
+   "pageCanvasMs": [
+    8.199999999720603,
+    0.20000000018626451,
+    0.19999999972060323,
+    0.20000000018626451,
+    4.2999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.5,
+   "size": 22016
+  },
+  {
+   "rel": "test-image.hwpx",
+   "openMs": 2.5,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 12269,
+   "pageSvgMs": [
+    0.8000000002793968,
+    0.599999999627471,
+    0.5,
+    0.7000000001862645,
+    1
+   ],
+   "pageCanvasMs": [
+    6.399999999906868,
+    0.39999999990686774,
+    0.20000000018626451,
+    0.10000000009313226,
+    0.2999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.3000000002793968,
+   "size": 22602
+  },
+  {
+   "rel": "table-001.hwp",
+   "openMs": 9.100000000093132,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 1,
+   "firstPageSvgBytes": 88101,
+   "pageSvgMs": [
+    6.2999999998137355
+   ],
+   "pageCanvasMs": [
+    15
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 15.5,
+   "size": 23040
+  },
+  {
+   "rel": "table-complex.hwp",
+   "openMs": 36.10000000009313,
+   "pageCountMs": 0,
+   "pages": 4,
+   "firstPageSvgBytes": 187047,
+   "pageSvgMs": [
+    13.5,
+    19.600000000093132,
+    16.100000000093132,
+    4.5
+   ],
+   "pageCanvasMs": [
+    46,
+    13.699999999720603,
+    21,
+    3.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 49.60000000009313,
+   "size": 24576
+  },
+  {
+   "rel": "hwp_table_test-m.hwp",
+   "openMs": 18.600000000093132,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 86790,
+   "pageSvgMs": [
+    4.899999999906868,
+    5.600000000093132,
+    2
+   ],
+   "pageCanvasMs": [
+    23,
+    3.3999999999068677,
+    0.8000000002793968
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 23.5,
+   "size": 25088
+  },
+  {
+   "rel": "hwp3-sample19.hwp",
+   "openMs": 4.100000000093132,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 256175,
+   "pageSvgMs": [
+    11.800000000279397,
+    9.5
+   ],
+   "pageCanvasMs": [
+    27.799999999813735,
+    9.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 15.900000000372529,
+   "size": 25471
+  },
+  {
+   "rel": "issue1892_hwp3_drawing_group_roundtrip.hwp",
+   "openMs": 2.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 102872,
+   "pageSvgMs": [
+    6.100000000093132
+   ],
+   "pageCanvasMs": [
+    28.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.5,
+   "size": 26112
+  },
+  {
+   "rel": "test-image2.hwp",
+   "openMs": 3,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 46844,
+   "pageSvgMs": [
+    2.5
+   ],
+   "pageCanvasMs": [
+    12.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.5,
+   "size": 26112
+  },
+  {
+   "rel": "추진일정.hwp",
+   "openMs": 7.100000000093132,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 76490,
+   "pageSvgMs": [
+    5.100000000093132
+   ],
+   "pageCanvasMs": [
+    17.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 12.200000000186265,
+   "size": 26112
+  },
+  {
+   "rel": "issue1950_hwp3_tab_charoffset.hwp",
+   "openMs": 1.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 96762,
+   "pageSvgMs": [
+    3.8000000002793968
+   ],
+   "pageCanvasMs": [
+    17.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 5.400000000372529,
+   "size": 26121
+  },
+  {
+   "rel": "hwp3-table-caption.hwp",
+   "openMs": 1.900000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 256188,
+   "pageSvgMs": [
+    11.5
+   ],
+   "pageCanvasMs": [
+    19
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 13.400000000372529,
+   "size": 26433
+  },
+  {
+   "rel": "추진일정.hwpx",
+   "openMs": 3.400000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 79204,
+   "pageSvgMs": [
+    2.7999999998137355
+   ],
+   "pageCanvasMs": [
+    12
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.2000000001862645,
+   "size": 27722
+  },
+  {
+   "rel": "issue2808_single_table_form_physical_ladder.hwpx",
+   "openMs": 2.400000000372529,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 36847,
+   "pageSvgMs": [
+    1.5
+   ],
+   "pageCanvasMs": [
+    15.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.900000000372529,
+   "size": 28091
+  },
+  {
+   "rel": "hwp3-sample19-hwpx.hwpx",
+   "openMs": 5.5,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 302617,
+   "pageSvgMs": [
+    5.100000000093132,
+    7.2000000001862645
+   ],
+   "pageCanvasMs": [
+    12.5,
+    3.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.600000000093132,
+   "size": 29016
+  },
+  {
+   "rel": "hwp3-sample19-hwp5.hwp",
+   "openMs": 4.100000000093132,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 302719,
+   "pageSvgMs": [
+    9.100000000093132,
+    3.1999999997206032
+   ],
+   "pageCanvasMs": [
+    7.2000000001862645,
+    2.1999999997206032
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 13.200000000186265,
+   "size": 29184
+  },
+  {
+   "rel": "hwp_table_test.hwp",
+   "openMs": 14.100000000093132,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 85217,
+   "pageSvgMs": [
+    3.1000000000931323,
+    7.100000000093132,
+    1.1999999997206032
+   ],
+   "pageCanvasMs": [
+    5.2000000001862645,
+    5.399999999906868,
+    0.7999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 17.200000000186265,
+   "size": 29184
+  },
+  {
+   "rel": "hwp3-sample13.hwp",
+   "openMs": 3.5,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 198404,
+   "pageSvgMs": [
+    5.399999999906868,
+    5.400000000372529,
+    5.699999999720603
+   ],
+   "pageCanvasMs": [
+    12.300000000279397,
+    14.599999999627471,
+    6.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.899999999906868,
+   "size": 29521
+  },
+  {
+   "rel": "2010-01-06.hwp",
+   "openMs": 35.3000000002794,
+   "pageCountMs": 0,
+   "pages": 6,
+   "firstPageSvgBytes": 297521,
+   "pageSvgMs": [
+    13.5,
+    10.699999999720603,
+    9.900000000372529,
+    10.699999999720603,
+    8,
+    8.600000000093132
+   ],
+   "pageCanvasMs": [
+    29.799999999813735,
+    9.800000000279397,
+    6.100000000093132,
+    6.699999999720603,
+    6.2000000001862645,
+    6.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 48.8000000002794,
+   "size": 31232
+  },
+  {
+   "rel": "hwp3-table-grid-gap.hwp",
+   "openMs": 3.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 147617,
+   "pageSvgMs": [
+    5.199999999720603,
+    4,
+    0.8000000002793968
+   ],
+   "pageCanvasMs": [
+    96.89999999990687,
+    8.399999999906868,
+    0.8999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.799999999813735,
+   "size": 31623
+  },
+  {
+   "rel": "text-align.hwp",
+   "openMs": 6.600000000093132,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 153864,
+   "pageSvgMs": [
+    3.2999999998137355
+   ],
+   "pageCanvasMs": [
+    14.800000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9.899999999906868,
+   "size": 32256
+  },
+  {
+   "rel": "endnote-01.hwp",
+   "openMs": 17.799999999813735,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 164737,
+   "pageSvgMs": [
+    3.6000000000931323,
+    4.399999999906868,
+    4.899999999906868,
+    0.6000000000931323,
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    20.600000000093132,
+    24.700000000186265,
+    10.600000000093132,
+    15.200000000186265,
+    6.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 21.399999999906868,
+   "size": 32768
+  },
+  {
+   "rel": "float-stack-defer.hwp",
+   "openMs": 11.699999999720603,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 370820,
+   "pageSvgMs": [
+    7.7000000001862645,
+    12.299999999813735
+   ],
+   "pageCanvasMs": [
+    28.5,
+    10.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 19.399999999906868,
+   "size": 32768
+  },
+  {
+   "rel": "footnote-01.hwp",
+   "openMs": 6.300000000279397,
+   "pageCountMs": 0,
+   "pages": 6,
+   "firstPageSvgBytes": 177646,
+   "pageSvgMs": [
+    7.5,
+    4,
+    4.199999999720603,
+    0.6000000000931323,
+    0.39999999990686774,
+    0.10000000009313226
+   ],
+   "pageCanvasMs": [
+    9.200000000186265,
+    14.699999999720603,
+    6.300000000279397,
+    0.7999999998137355,
+    2,
+    0
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 13.800000000279397,
+   "size": 32768
+  },
+  {
+   "rel": "group-box.hwp",
+   "openMs": 2.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 6103,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    15.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.2999999998137355,
+   "size": 32768
+  },
+  {
+   "rel": "inner-table-01.hwp",
+   "openMs": 14.700000000186265,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 281052,
+   "pageSvgMs": [
+    11,
+    8.5
+   ],
+   "pageCanvasMs": [
+    37.1999999997206,
+    12.800000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 25.700000000186265,
+   "size": 32768
+  },
+  {
+   "rel": "issue2808_report_physical_ladder.hwp",
+   "openMs": 6.600000000093132,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 225237,
+   "pageSvgMs": [
+    5.300000000279397,
+    3.3999999999068677
+   ],
+   "pageCanvasMs": [
+    65.39999999990687,
+    8.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 11.900000000372529,
+   "size": 32768
+  },
+  {
+   "rel": "multi-table-001.hwp",
+   "openMs": 42.8000000002794,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 17184,
+   "pageSvgMs": [
+    0.7999999998137355,
+    43.799999999813735
+   ],
+   "pageCanvasMs": [
+    9.400000000372529,
+    70.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 43.60000000009313,
+   "size": 32768
+  },
+  {
+   "rel": "multi-table-002.hwp",
+   "openMs": 47.10000000009313,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 2,
+   "firstPageSvgBytes": 17184,
+   "pageSvgMs": [
+    0.7999999998137355,
+    55.60000000009313
+   ],
+   "pageCanvasMs": [
+    2.7999999998137355,
+    29.800000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 48,
+   "size": 32768
+  },
+  {
+   "rel": "biz_plan.hwp",
+   "openMs": 21.600000000093132,
+   "pageCountMs": 0,
+   "pages": 6,
+   "firstPageSvgBytes": 24284,
+   "pageSvgMs": [
+    1.3000000002793968,
+    4.099999999627471,
+    4.2000000001862645,
+    8.100000000093132,
+    6.5,
+    3.6999999997206032
+   ],
+   "pageCanvasMs": [
+    30.40000000037253,
+    13.799999999813735,
+    14.299999999813735,
+    23.200000000186265,
+    11.299999999813735,
+    2.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 22.90000000037253,
+   "size": 33792
+  },
+  {
+   "rel": "draw-group.hwp",
+   "openMs": 2.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 18986,
+   "pageSvgMs": [
+    0.6000000000931323
+   ],
+   "pageCanvasMs": [
+    21.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3,
+   "size": 34816
+  },
+  {
+   "rel": "hwp3-table-cell-overlap.hwp",
+   "openMs": 7.100000000093132,
+   "pageCountMs": 0,
+   "pages": 7,
+   "firstPageSvgBytes": 341753,
+   "pageSvgMs": [
+    7.599999999627471,
+    4.2000000001862645,
+    1.7999999998137355,
+    4.600000000093132,
+    5.100000000093132,
+    1.2999999998137355,
+    3.8000000002793968
+   ],
+   "pageCanvasMs": [
+    48.299999999813735,
+    30.100000000093132,
+    3.8999999999068677,
+    22.700000000186265,
+    4.699999999720603,
+    9.100000000093132,
+    14.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 14.699999999720603,
+   "size": 35197
+  },
+  {
+   "rel": "para-unit-01.hwp",
+   "openMs": 7.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 598826,
+   "pageSvgMs": [
+    12.399999999906868,
+    1.7000000001862645
+   ],
+   "pageCanvasMs": [
+    12.600000000093132,
+    1.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 19.600000000093132,
+   "size": 36864
+  },
+  {
+   "rel": "issue1880_anchor_stack_sb_convert.hwpx",
+   "openMs": 25.5,
+   "pageCountMs": 0,
+   "pages": 13,
+   "firstPageSvgBytes": 9156,
+   "pageSvgMs": [
+    0.6999999997206032,
+    4.300000000279397,
+    4.399999999906868,
+    4.2999999998137355,
+    4.2000000001862645,
+    2.7999999998137355,
+    5.100000000093132,
+    7.5,
+    4.2999999998137355,
+    5.2000000001862645
+   ],
+   "pageCanvasMs": [
+    14.799999999813735,
+    21.600000000093132,
+    6.7999999998137355,
+    9.5,
+    5.900000000372529,
+    6.699999999720603,
+    28.600000000093132,
+    8,
+    9.200000000186265,
+    16.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 26.199999999720603,
+   "size": 39587
+  },
+  {
+   "rel": "issue1880_takeplace_oracle_p13.hwpx",
+   "openMs": 25.700000000186265,
+   "pageCountMs": 0,
+   "pages": 13,
+   "firstPageSvgBytes": 9156,
+   "pageSvgMs": [
+    0.7000000001862645,
+    3.7999999998137355,
+    3.7999999998137355,
+    5.2000000001862645,
+    4.399999999906868,
+    6.899999999906868,
+    4.900000000372529,
+    4.7999999998137355,
+    4.5,
+    5
+   ],
+   "pageCanvasMs": [
+    8.699999999720603,
+    8.400000000372529,
+    9.799999999813735,
+    5.100000000093132,
+    6.7999999998137355,
+    6.899999999906868,
+    7.2000000001862645,
+    12.299999999813735,
+    9.600000000093132,
+    5.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 26.40000000037253,
+   "size": 39587
+  },
+  {
+   "rel": "issue1880_takeplace_host_before.hwpx",
+   "openMs": 67.60000000009313,
+   "pageCountMs": 0,
+   "pages": 10,
+   "firstPageSvgBytes": 645955,
+   "pageSvgMs": [
+    27.5,
+    21.800000000279397,
+    23.09999999962747,
+    12.800000000279397,
+    19.699999999720603,
+    16.300000000279397,
+    13.399999999906868,
+    12.5,
+    11.5,
+    3.2000000001862645
+   ],
+   "pageCanvasMs": [
+    59.6999999997206,
+    13.5,
+    16,
+    10.399999999906868,
+    25.700000000186265,
+    21.799999999813735,
+    17.800000000279397,
+    25.299999999813735,
+    8,
+    2.3000000002793968
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 95.10000000009313,
+   "size": 39873
+  },
+  {
+   "rel": "text-align-2.hwp",
+   "openMs": 11,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 234460,
+   "pageSvgMs": [
+    8.399999999906868
+   ],
+   "pageCanvasMs": [
+    32.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 19.399999999906868,
+   "size": 42496
+  },
+  {
+   "rel": "issue1858_paper_anchor_float_stack.hwpx",
+   "openMs": 13.700000000186265,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 500818,
+   "pageSvgMs": [
+    15.899999999906868
+   ],
+   "pageCanvasMs": [
+    59.799999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 29.600000000093132,
+   "size": 43552
+  },
+  {
+   "rel": "issue1842_cell_tac_group_lineheight.hwp",
+   "openMs": 14,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 177908,
+   "pageSvgMs": [
+    10,
+    12
+   ],
+   "pageCanvasMs": [
+    30.600000000093132,
+    16.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 24,
+   "size": 47104
+  },
+  {
+   "rel": "통합재정통계(2010.11월).hwp",
+   "openMs": 10.5,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 1,
+   "firstPageSvgBytes": 333135,
+   "pageSvgMs": [
+    8.600000000093132
+   ],
+   "pageCanvasMs": [
+    68.60000000009313
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 19.200000000186265,
+   "size": 47616
+  },
+  {
+   "rel": "task-001.hwp",
+   "openMs": 4.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 80415,
+   "pageSvgMs": [
+    2.1999999997206032
+   ],
+   "pageCanvasMs": [
+    19.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.399999999906868,
+   "size": 49664
+  },
+  {
+   "rel": "tb-img-03.hwp",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 27756,
+   "pageSvgMs": [
+    1.3000000002793968
+   ],
+   "pageCanvasMs": [
+    5.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.3000000002793968,
+   "size": 52224
+  },
+  {
+   "rel": "대각선샘플.hwpx",
+   "openMs": 3.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 5916,
+   "pageSvgMs": [
+    1
+   ],
+   "pageCanvasMs": [
+    3.3000000002793968
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4.2999999998137355,
+   "size": 53712
+  },
+  {
+   "rel": "대각선샘플.hwp",
+   "openMs": 7,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 5916,
+   "pageSvgMs": [
+    1.099999999627471
+   ],
+   "pageCanvasMs": [
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.099999999627471,
+   "size": 55296
+  },
+  {
+   "rel": "table-ipc.hwp",
+   "openMs": 96.3000000002794,
+   "pageCountMs": 0,
+   "pages": 10,
+   "firstPageSvgBytes": 155697,
+   "pageSvgMs": [
+    10.899999999906868,
+    12.699999999720603,
+    9.200000000186265,
+    8,
+    7.600000000093132,
+    7.699999999720603,
+    8.700000000186265,
+    14.299999999813735,
+    12.700000000186265,
+    15.200000000186265
+   ],
+   "pageCanvasMs": [
+    33.59999999962747,
+    28.100000000093132,
+    26.200000000186265,
+    8.299999999813735,
+    7.100000000093132,
+    6.2999999998137355,
+    8,
+    7,
+    7.600000000093132,
+    8.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 107.20000000018626,
+   "size": 55808
+  },
+  {
+   "rel": "2026_oss_rst.hwp",
+   "openMs": 17.600000000093132,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 6,
+   "firstPageSvgBytes": 221533,
+   "pageSvgMs": [
+    7.2999999998137355,
+    5.600000000093132,
+    4.100000000093132,
+    3,
+    10,
+    3.1999999997206032
+   ],
+   "pageCanvasMs": [
+    44.90000000037253,
+    21,
+    10.299999999813735,
+    15.600000000093132,
+    17.5,
+    11.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 25,
+   "size": 57344
+  },
+  {
+   "rel": "hwp3-sample13-hwp5.hwpx",
+   "openMs": 4.899999999906868,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 216973,
+   "pageSvgMs": [
+    6.5,
+    12.300000000279397,
+    2.3999999999068677
+   ],
+   "pageCanvasMs": [
+    16.299999999813735,
+    15.800000000279397,
+    2.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 11.399999999906868,
+   "size": 58460
+  },
+  {
+   "rel": "hwp3-sample13-hwp5.hwp",
+   "openMs": 8.199999999720603,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 198389,
+   "pageSvgMs": [
+    7.7000000001862645,
+    7.899999999906868,
+    2.1000000000931323
+   ],
+   "pageCanvasMs": [
+    15.599999999627471,
+    8.100000000093132,
+    2.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 15.899999999906868,
+   "size": 59904
+  },
+  {
+   "rel": "21868765_별표2_보건소_분장사무.hwp",
+   "openMs": 65.39999999990687,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 4,
+   "firstPageSvgBytes": 376369,
+   "pageSvgMs": [
+    22.899999999906868,
+    14.800000000279397,
+    16.699999999720603,
+    11.600000000093132
+   ],
+   "pageCanvasMs": [
+    128.29999999981374,
+    6.600000000093132,
+    22.199999999720603,
+    18.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 88.39999999990687,
+   "size": 61952
+  },
+  {
+   "rel": "table_text_anchor_wrap.hwpx",
+   "openMs": 23.200000000186265,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 294340,
+   "pageSvgMs": [
+    15.600000000093132,
+    14,
+    13.099999999627471
+   ],
+   "pageCanvasMs": [
+    37.90000000037253,
+    14.899999999906868,
+    8.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 38.8000000002794,
+   "size": 63762
+  },
+  {
+   "rel": "issue_1133.hwp",
+   "openMs": 25.200000000186265,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 255208,
+   "pageSvgMs": [
+    9.399999999906868,
+    20.699999999720603,
+    2.900000000372529
+   ],
+   "pageCanvasMs": [
+    93.6999999997206,
+    49,
+    4.800000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 34.60000000009313,
+   "size": 69632
+  },
+  {
+   "rel": "bitmap.hwp",
+   "openMs": 1.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 61741,
+   "pageSvgMs": [
+    28.799999999813735
+   ],
+   "pageCanvasMs": [
+    3
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 30.399999999906868,
+   "size": 70144
+  },
+  {
+   "rel": "143E433F503322BD33.hwp",
+   "openMs": 4.7000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 595522,
+   "pageSvgMs": [
+    46.1999999997206
+   ],
+   "pageCanvasMs": [
+    76.60000000009313
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 50.89999999990687,
+   "size": 73216
+  },
+  {
+   "rel": "issue-6271-rowbreak-float-tail-line.hwp",
+   "openMs": 10.600000000093132,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 413645,
+   "pageSvgMs": [
+    21.399999999906868
+   ],
+   "pageCanvasMs": [
+    371.70000000018626
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 32,
+   "size": 78336
+  },
+  {
+   "rel": "mix-shape-01.hwp",
+   "openMs": 2.2999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 770,
+   "pageSvgMs": [
+    0.20000000018626451
+   ],
+   "pageCanvasMs": [
+    4.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.5,
+   "size": 78848
+  },
+  {
+   "rel": "el-school-001.hwp",
+   "openMs": 11.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 244915,
+   "pageSvgMs": [
+    6.2999999998137355
+   ],
+   "pageCanvasMs": [
+    103.60000000009313
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 17.799999999813735,
+   "size": 79872
+  },
+  {
+   "rel": "tac-case-001.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 30646,
+   "pageSvgMs": [
+    5.7999999998137355
+   ],
+   "pageCanvasMs": [
+    10.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 7.899999999906868,
+   "size": 81920
+  },
+  {
+   "rel": "issue-986-receipt.hwp",
+   "openMs": 21.199999999720603,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 549579,
+   "pageSvgMs": [
+    22.40000000037253
+   ],
+   "pageCanvasMs": [
+    100.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 43.60000000009313,
+   "size": 84992
+  },
+  {
+   "rel": "hwp3-sample.hwp",
+   "openMs": 38.3000000002794,
+   "pageCountMs": 0,
+   "pages": 16,
+   "firstPageSvgBytes": 481886,
+   "pageSvgMs": [
+    11.599999999627471,
+    11.600000000093132,
+    5.600000000093132,
+    16,
+    12.899999999906868,
+    11.700000000186265,
+    1.5,
+    7.5,
+    4,
+    12.399999999906868
+   ],
+   "pageCanvasMs": [
+    32.200000000186265,
+    14,
+    5.699999999720603,
+    25.800000000279397,
+    27.899999999906868,
+    17,
+    1.7999999998137355,
+    7.600000000093132,
+    9.200000000186265,
+    20.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 49.89999999990687,
+   "size": 88880
+  },
+  {
+   "rel": "issue_265.hwp",
+   "openMs": 24.299999999813735,
+   "pageCountMs": 0,
+   "pages": 16,
+   "firstPageSvgBytes": 481886,
+   "pageSvgMs": [
+    7.800000000279397,
+    8.799999999813735,
+    3.8999999999068677,
+    12.5,
+    13.300000000279397,
+    11.5,
+    1.7999999998137355,
+    7.5,
+    3.8000000002793968,
+    12.899999999906868
+   ],
+   "pageCanvasMs": [
+    11.299999999813735,
+    16.399999999906868,
+    4.2000000001862645,
+    34.5,
+    25.799999999813735,
+    25.200000000186265,
+    6.2999999998137355,
+    9.300000000279397,
+    11,
+    22.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 32.10000000009313,
+   "size": 88880
+  },
+  {
+   "rel": "p122.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 483,
+   "pageSvgMs": [
+    0.20000000018626451,
+    62.799999999813735,
+    0.10000000009313226
+   ],
+   "pageCanvasMs": [
+    3.3999999999068677,
+    31.300000000279397,
+    0.09999999962747097
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.3000000002793968,
+   "size": 89088
+  },
+  {
+   "rel": "math-001.hwp",
+   "openMs": 6.699999999720603,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 226117,
+   "pageSvgMs": [
+    6.900000000372529
+   ],
+   "pageCanvasMs": [
+    33.1999999997206
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 13.600000000093132,
+   "size": 92160
+  },
+  {
+   "rel": "water-mark.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 453451,
+   "pageSvgMs": [
+    62
+   ],
+   "pageCanvasMs": [
+    23.799999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 64.10000000009313,
+   "size": 96256
+  },
+  {
+   "rel": "pr-149.hwp",
+   "openMs": 1.7000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 290693,
+   "pageSvgMs": [
+    42.09999999962747
+   ],
+   "pageCanvasMs": [
+    16.800000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 43.799999999813735,
+   "size": 98304
+  },
+  {
+   "rel": "HWP3-password-123456.hwp",
+   "error": "유효하지 않은 파일: 비밀번호가 필요한 암호 문서입니다 (parse_document_with_password 또는 parse_hwp_with_password 로 비밀번호를 전달하세요)",
+   "size": 101244
+  },
+  {
+   "rel": "byeolpyo4.hwp",
+   "openMs": 132.6999999997206,
+   "pageCountMs": 0,
+   "pages": 25,
+   "firstPageSvgBytes": 457348,
+   "pageSvgMs": [
+    14.300000000279397,
+    12.399999999906868,
+    20.200000000186265,
+    10.699999999720603,
+    8.5,
+    10.100000000093132,
+    25,
+    10.799999999813735,
+    9.5,
+    11.300000000279397
+   ],
+   "pageCanvasMs": [
+    25.399999999906868,
+    8.5,
+    9.200000000186265,
+    16.5,
+    11,
+    7.800000000279397,
+    9.799999999813735,
+    8.700000000186265,
+    17.299999999813735,
+    9.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 147,
+   "size": 103936
+  },
+  {
+   "rel": "hcar-001.hwp",
+   "openMs": 32.1999999997206,
+   "pageCountMs": 0,
+   "pages": 6,
+   "firstPageSvgBytes": 604013,
+   "pageSvgMs": [
+    19.300000000279397,
+    19.299999999813735,
+    18.300000000279397,
+    5.900000000372529,
+    11.5,
+    13.699999999720603
+   ],
+   "pageCanvasMs": [
+    217.60000000009313,
+    69.29999999981374,
+    30.200000000186265,
+    24.200000000186265,
+    35.299999999813735,
+    66.20000000018626
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 51.5,
+   "size": 107008
+  },
+  {
+   "rel": "byeolpyo1.hwp",
+   "openMs": 24.799999999813735,
+   "pageCountMs": 0,
+   "pages": 4,
+   "firstPageSvgBytes": 460650,
+   "pageSvgMs": [
+    21.200000000186265,
+    16,
+    16.399999999906868,
+    7.899999999906868
+   ],
+   "pageCanvasMs": [
+    21.299999999813735,
+    12.600000000093132,
+    7.5,
+    5.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 46,
+   "size": 108032
+  },
+  {
+   "rel": "loading-fail-01.hwp",
+   "openMs": 54.10000000009313,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 14,
+   "firstPageSvgBytes": 269562,
+   "pageSvgMs": [
+    5.800000000279397,
+    7.5,
+    7.7999999998137355,
+    5.600000000093132,
+    7.399999999906868,
+    8.899999999906868,
+    4.900000000372529,
+    5,
+    3.6999999997206032,
+    4.2000000001862645
+   ],
+   "pageCanvasMs": [
+    85.1999999997206,
+    59.200000000186265,
+    32,
+    30.899999999906868,
+    30.299999999813735,
+    42.200000000186265,
+    11.199999999720603,
+    5.2000000001862645,
+    3.7000000001862645,
+    10.199999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 60.00000000046566,
+   "size": 108032
+  },
+  {
+   "rel": "hwp3-sample-hwpx.hwpx",
+   "openMs": 53,
+   "pageCountMs": 0,
+   "pages": 16,
+   "firstPageSvgBytes": 463737,
+   "pageSvgMs": [
+    7.399999999906868,
+    8.399999999906868,
+    4.100000000093132,
+    12.100000000093132,
+    15.399999999906868,
+    11.600000000093132,
+    1.6000000000931323,
+    8.399999999906868,
+    4.199999999720603,
+    12
+   ],
+   "pageCanvasMs": [
+    48.40000000037253,
+    11.900000000372529,
+    3.5,
+    30.5,
+    17.59999999962747,
+    17.600000000093132,
+    1.3999999999068677,
+    11.900000000372529,
+    10.099999999627471,
+    20.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 60.39999999990687,
+   "size": 108286
+  },
+  {
+   "rel": "HWP5-password-123456.hwpx",
+   "error": "유효하지 않은 파일: 비밀번호가 필요한 암호 문서입니다 (parse_document_with_password 또는 parse_hwp_with_password 로 비밀번호를 전달하세요)",
+   "size": 110701
+  },
+  {
+   "rel": "hwp3-sample-hwp5.hwp",
+   "openMs": 39.39999999990687,
+   "pageCountMs": 0,
+   "pages": 16,
+   "firstPageSvgBytes": 463737,
+   "pageSvgMs": [
+    7.100000000093132,
+    8.800000000279397,
+    4,
+    11.799999999813735,
+    13,
+    18.700000000186265,
+    1.599999999627471,
+    9.600000000093132,
+    4.5,
+    12.800000000279397
+   ],
+   "pageCanvasMs": [
+    11.200000000186265,
+    21.5,
+    4.100000000093132,
+    22.199999999720603,
+    14.5,
+    19,
+    1.5,
+    5.899999999906868,
+    4.400000000372529,
+    17.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 46.5,
+   "size": 111616
+  },
+  {
+   "rel": "SO-SUEOP.hwp",
+   "openMs": 93.29999999981374,
+   "pageCountMs": 0,
+   "pages": 46,
+   "firstPageSvgBytes": 124220,
+   "pageSvgMs": [
+    7.899999999906868,
+    8.200000000186265,
+    13.399999999906868,
+    9.5,
+    5,
+    14,
+    10.399999999906868,
+    11.200000000186265,
+    10.799999999813735,
+    7.600000000093132
+   ],
+   "pageCanvasMs": [
+    27.799999999813735,
+    28.799999999813735,
+    13.900000000372529,
+    15.299999999813735,
+    2.1000000000931323,
+    25.5,
+    31.899999999906868,
+    28.399999999906868,
+    37.200000000186265,
+    17.199999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 101.1999999997206,
+   "size": 112481
+  },
+  {
+   "rel": "nested_tac_table_wrap.hwp",
+   "openMs": 35.5,
+   "pageCountMs": 0,
+   "pages": 6,
+   "firstPageSvgBytes": 112763,
+   "pageSvgMs": [
+    5.800000000279397,
+    4.2999999998137355,
+    7.600000000093132,
+    3.7999999998137355,
+    4,
+    11.899999999906868
+   ],
+   "pageCanvasMs": [
+    69.20000000018626,
+    2.3999999999068677,
+    32.200000000186265,
+    5.7999999998137355,
+    5.899999999906868,
+    16.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 41.3000000002794,
+   "size": 114688
+  },
+  {
+   "rel": "복학원서.hwp",
+   "openMs": 6.899999999906868,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 859011,
+   "pageSvgMs": [
+    67.5
+   ],
+   "pageCanvasMs": [
+    80.10000000009313
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 74.39999999990687,
+   "size": 114688
+  },
+  {
+   "rel": "exam_social-p1.hwp",
+   "openMs": 32.200000000186265,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 1386449,
+   "pageSvgMs": [
+    51.89999999990687
+   ],
+   "pageCanvasMs": [
+    118.70000000018626
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 84.10000000009313,
+   "size": 117248
+  },
+  {
+   "rel": "hwp3-sample14.hwp",
+   "openMs": 12,
+   "pageCountMs": 0,
+   "pages": 11,
+   "firstPageSvgBytes": 385686,
+   "pageSvgMs": [
+    19.5,
+    10.299999999813735,
+    10.100000000093132,
+    10.199999999720603,
+    9.200000000186265,
+    9.100000000093132,
+    10.100000000093132,
+    5.5,
+    5.7999999998137355,
+    4.899999999906868
+   ],
+   "pageCanvasMs": [
+    15.399999999906868,
+    9.600000000093132,
+    3.3999999999068677,
+    9.5,
+    4.300000000279397,
+    10.100000000093132,
+    4.699999999720603,
+    10.399999999906868,
+    4,
+    4.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 31.5,
+   "size": 123239
+  },
+  {
+   "rel": "hwpctl_Action_Table__v1.1.hwp",
+   "openMs": 113.70000000018626,
+   "pageCountMs": 0,
+   "pages": 16,
+   "firstPageSvgBytes": 165120,
+   "pageSvgMs": [
+    9.199999999720603,
+    16.300000000279397,
+    23.299999999813735,
+    18.399999999906868,
+    11.700000000186265,
+    11.799999999813735,
+    12.399999999906868,
+    12,
+    9.400000000372529,
+    11.100000000093132
+   ],
+   "pageCanvasMs": [
+    28.899999999906868,
+    8.700000000186265,
+    10.5,
+    10.799999999813735,
+    17.799999999813735,
+    9.5,
+    7.100000000093132,
+    7.100000000093132,
+    7.600000000093132,
+    6.2999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 122.89999999990687,
+   "size": 131072
+  },
+  {
+   "rel": "pic-crop-01.hwp",
+   "openMs": 1.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 128165,
+   "pageSvgMs": [
+    2.6000000000931323
+   ],
+   "pageCanvasMs": [
+    8.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4,
+   "size": 131072
+  },
+  {
+   "rel": "SO-SUEOP.hwpx",
+   "openMs": 130.10000000009313,
+   "pageCountMs": 0,
+   "pages": 46,
+   "firstPageSvgBytes": 124220,
+   "pageSvgMs": [
+    6.899999999906868,
+    10.600000000093132,
+    10.299999999813735,
+    15.300000000279397,
+    5.2999999998137355,
+    9.899999999906868,
+    10.300000000279397,
+    10.699999999720603,
+    11.5,
+    8.5
+   ],
+   "pageCanvasMs": [
+    24.899999999906868,
+    32.40000000037253,
+    23.899999999906868,
+    17.5,
+    7.7999999998137355,
+    22.200000000186265,
+    45.799999999813735,
+    44.60000000009313,
+    43.89999999990687,
+    16.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 137,
+   "size": 134304
+  },
+  {
+   "rel": "issue1937_rowbreak_footnote_overpagination.hwp",
+   "openMs": 253.6999999997206,
+   "pageCountMs": 0,
+   "pages": 51,
+   "firstPageSvgBytes": 27127,
+   "pageSvgMs": [
+    1,
+    0.20000000018626451,
+    11,
+    7.399999999906868,
+    6,
+    0.3000000002793968,
+    2.3999999999068677,
+    8.399999999906868,
+    10.200000000186265,
+    10.599999999627471
+   ],
+   "pageCanvasMs": [
+    12.5,
+    2.1000000000931323,
+    33.700000000186265,
+    5.699999999720603,
+    11.700000000186265,
+    0.39999999990686774,
+    3.7000000001862645,
+    19.699999999720603,
+    20.899999999906868,
+    8
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 254.6999999997206,
+   "size": 147456
+  },
+  {
+   "rel": "86712_regulatory_analysis.hwp",
+   "openMs": 185.39999999990687,
+   "pageCountMs": 0,
+   "pages": 64,
+   "firstPageSvgBytes": 127580,
+   "pageSvgMs": [
+    3.6000000000931323,
+    13.199999999720603,
+    6.300000000279397,
+    11.299999999813735,
+    6.600000000093132,
+    6.2999999998137355,
+    9.899999999906868,
+    7.7000000001862645,
+    3.6000000000931323,
+    6.699999999720603
+   ],
+   "pageCanvasMs": [
+    30.300000000279397,
+    31.799999999813735,
+    11.5,
+    20.800000000279397,
+    5.2999999998137355,
+    5.600000000093132,
+    10.699999999720603,
+    4.5,
+    2.6000000000931323,
+    23.200000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 189,
+   "size": 151040
+  },
+  {
+   "rel": "hwp-img-001.hwp",
+   "openMs": 4.699999999720603,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 395280,
+   "pageSvgMs": [
+    19.300000000279397
+   ],
+   "pageCanvasMs": [
+    66.10000000009313
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 24,
+   "size": 160256
+  },
+  {
+   "rel": "table-in-tbox.hwp",
+   "openMs": 11.699999999720603,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 794065,
+   "pageSvgMs": [
+    27.5,
+    20.40000000037253
+   ],
+   "pageCanvasMs": [
+    53.3000000002794,
+    38.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 39.1999999997206,
+   "size": 163328
+  },
+  {
+   "rel": "KTX.hwp",
+   "openMs": 84.6999999997206,
+   "pageCountMs": 0,
+   "pages": 27,
+   "firstPageSvgBytes": 119798,
+   "pageSvgMs": [
+    4.600000000093132,
+    5.100000000093132,
+    0.5,
+    5.7999999998137355,
+    8.5,
+    6.300000000279397,
+    5.599999999627471,
+    0.5,
+    6.600000000093132,
+    9.600000000093132
+   ],
+   "pageCanvasMs": [
+    23.100000000093132,
+    14.399999999906868,
+    10.600000000093132,
+    25.299999999813735,
+    43.8000000002794,
+    9.299999999813735,
+    9.100000000093132,
+    1.6999999997206032,
+    19.800000000279397,
+    22.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 89.29999999981374,
+   "size": 163840
+  },
+  {
+   "rel": "투명도0-50-2nd그림글차처럼off.hwpx",
+   "openMs": 1.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 216871,
+   "pageSvgMs": [
+    0.7999999998137355
+   ],
+   "pageCanvasMs": [
+    4.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.3999999999068677,
+   "size": 167581
+  },
+  {
+   "rel": "투명도0-50.hwpx",
+   "openMs": 2,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 216871,
+   "pageSvgMs": [
+    1.1000000000931323
+   ],
+   "pageCanvasMs": [
+    3
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3.1000000000931323,
+   "size": 167774
+  },
+  {
+   "rel": "투명도0-50-2nd그림글차처럼off.hwp",
+   "openMs": 1.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 216871,
+   "pageSvgMs": [
+    0.8999999999068677
+   ],
+   "pageCanvasMs": [
+    2.6999999997206032
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.3999999999068677,
+   "size": 167936
+  },
+  {
+   "rel": "투명도0-50.hwp",
+   "openMs": 1.3999999999068677,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 216871,
+   "pageSvgMs": [
+    0.6999999997206032
+   ],
+   "pageCanvasMs": [
+    2.8000000002793968
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 2.099999999627471,
+   "size": 167936
+  },
+  {
+   "rel": "issue5524_hangul2024_compat_letterhead.hwp",
+   "openMs": 6.899999999906868,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 469762,
+   "pageSvgMs": [
+    12.799999999813735,
+    4.5
+   ],
+   "pageCanvasMs": [
+    54.700000000186265,
+    6
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 19.699999999720603,
+   "size": 172032
+  },
+  {
+   "rel": "pic-in-head-01.hwp",
+   "openMs": 137.29999999981374,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 22,
+   "firstPageSvgBytes": 436744,
+   "pageSvgMs": [
+    23.699999999720603,
+    14.100000000093132,
+    27.399999999906868,
+    17.200000000186265,
+    24.600000000093132,
+    21.299999999813735,
+    7.899999999906868,
+    13,
+    18.899999999906868,
+    23.600000000093132
+   ],
+   "pageCanvasMs": [
+    153.10000000009313,
+    38.39999999990687,
+    72.29999999981374,
+    41,
+    54.8000000002794,
+    32.6999999997206,
+    20.700000000186265,
+    25.5,
+    33.700000000186265,
+    27.09999999962747
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 161.09999999962747,
+   "size": 179200
+  },
+  {
+   "rel": "pic-in-table-01.hwp",
+   "openMs": 109.09999999962747,
+   "pageCountMs": 0,
+   "pages": 22,
+   "firstPageSvgBytes": 436744,
+   "pageSvgMs": [
+    13.100000000093132,
+    8.899999999906868,
+    19.200000000186265,
+    10.299999999813735,
+    15.200000000186265,
+    15,
+    8.299999999813735,
+    14.900000000372529,
+    17.799999999813735,
+    21.799999999813735
+   ],
+   "pageCanvasMs": [
+    75,
+    22.100000000093132,
+    78.70000000018626,
+    36.39999999990687,
+    43.60000000009313,
+    40.59999999962747,
+    26.100000000093132,
+    42.5,
+    27.399999999906868,
+    32
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 122.1999999997206,
+   "size": 179200
+  },
+  {
+   "rel": "hwp-multi-002.hwp",
+   "openMs": 29.699999999720603,
+   "pageCountMs": 0,
+   "pages": 6,
+   "firstPageSvgBytes": 11343,
+   "pageSvgMs": [
+    1.3000000002793968,
+    26.199999999720603,
+    15.600000000093132,
+    17.700000000186265,
+    19,
+    3.5
+   ],
+   "pageCanvasMs": [
+    11.199999999720603,
+    18.899999999906868,
+    23.700000000186265,
+    11,
+    54,
+    11.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 31,
+   "size": 180224
+  },
+  {
+   "rel": "hwp3-sample14-hwp5.hwp",
+   "openMs": 19.699999999720603,
+   "pageCountMs": 0,
+   "pages": 11,
+   "firstPageSvgBytes": 376855,
+   "pageSvgMs": [
+    17.200000000186265,
+    9.5,
+    7.399999999906868,
+    8.100000000093132,
+    6.699999999720603,
+    7.5,
+    7.399999999906868,
+    6.100000000093132,
+    6.300000000279397,
+    5.099999999627471
+   ],
+   "pageCanvasMs": [
+    23.800000000279397,
+    19.100000000093132,
+    6.399999999906868,
+    6.199999999720603,
+    4.600000000093132,
+    6,
+    4.600000000093132,
+    6.100000000093132,
+    9.5,
+    4.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 36.89999999990687,
+   "size": 183296
+  },
+  {
+   "rel": "hwp3-sample14-hwp5.hwpx",
+   "openMs": 37.8000000002794,
+   "pageCountMs": 0,
+   "pages": 11,
+   "firstPageSvgBytes": 376855,
+   "pageSvgMs": [
+    14.899999999906868,
+    17,
+    12.5,
+    14.299999999813735,
+    10.600000000093132,
+    11.5,
+    11.800000000279397,
+    9.699999999720603,
+    10.100000000093132,
+    9.299999999813735
+   ],
+   "pageCanvasMs": [
+    12.700000000186265,
+    13.899999999906868,
+    5.7000000001862645,
+    8.899999999906868,
+    11.799999999813735,
+    6.100000000093132,
+    6.5,
+    12,
+    6.2000000001862645,
+    10.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 52.700000000186265,
+   "size": 195036
+  },
+  {
+   "rel": "76076_regulatory_analysis.hwp",
+   "openMs": 441.60000000009313,
+   "pageCountMs": 0,
+   "pages": 82,
+   "firstPageSvgBytes": 126569,
+   "pageSvgMs": [
+    6.399999999906868,
+    20.600000000093132,
+    10.799999999813735,
+    24.90000000037253,
+    16,
+    7.7999999998137355,
+    4.899999999906868,
+    4,
+    2.6000000000931323,
+    0.7999999998137355
+   ],
+   "pageCanvasMs": [
+    39.90000000037253,
+    38.1999999997206,
+    26.200000000186265,
+    13.699999999720603,
+    4.5,
+    33.3000000002794,
+    5.699999999720603,
+    7.2000000001862645,
+    8.399999999906868,
+    1.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 448,
+   "size": 201216
+  },
+  {
+   "rel": "table_scattered_header_rowbreak.hwp",
+   "openMs": 372.10000000009313,
+   "pageCountMs": 0,
+   "pages": 52,
+   "firstPageSvgBytes": 278067,
+   "pageSvgMs": [
+    7.899999999906868,
+    10,
+    11,
+    11.199999999720603,
+    12.900000000372529,
+    11.899999999906868,
+    11.299999999813735,
+    9,
+    9.700000000186265,
+    12.199999999720603
+   ],
+   "pageCanvasMs": [
+    34,
+    13.600000000093132,
+    12.5,
+    11.699999999720603,
+    7.900000000372529,
+    18.09999999962747,
+    8.400000000372529,
+    12.099999999627471,
+    11.100000000093132,
+    13
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 380,
+   "size": 204800
+  },
+  {
+   "rel": "issue2083_hide_fill_page.hwpx",
+   "openMs": 17,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 4,
+   "firstPageSvgBytes": 213157,
+   "pageSvgMs": [
+    7.7000000001862645,
+    8,
+    5.899999999906868,
+    9.100000000093132
+   ],
+   "pageCanvasMs": [
+    29,
+    62.39999999990687,
+    64.5,
+    47.200000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 24.800000000279397,
+   "size": 208382
+  },
+  {
+   "rel": "hwp3-sample5.hwp",
+   "openMs": 142,
+   "pageCountMs": 0,
+   "pages": 64,
+   "firstPageSvgBytes": 392755,
+   "pageSvgMs": [
+    8.300000000279397,
+    11.5,
+    9.799999999813735,
+    7,
+    9.399999999906868,
+    8.800000000279397,
+    8.899999999906868,
+    8.699999999720603,
+    12.800000000279397,
+    12.299999999813735
+   ],
+   "pageCanvasMs": [
+    57.5,
+    19.799999999813735,
+    19.700000000186265,
+    14.100000000093132,
+    33.89999999990687,
+    17.600000000093132,
+    17.5,
+    21.299999999813735,
+    14.100000000093132,
+    14.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 150.3000000002794,
+   "size": 209533
+  },
+  {
+   "rel": "80168_regulatory_analysis.hwp",
+   "openMs": 376.59999999962747,
+   "pageCountMs": 0,
+   "pages": 157,
+   "firstPageSvgBytes": 153198,
+   "pageSvgMs": [
+    4.2000000001862645,
+    11,
+    3.5,
+    6.2999999998137355,
+    0.7000000001862645,
+    4.899999999906868,
+    1.3000000002793968,
+    2.1999999997206032,
+    1.7000000001862645,
+    2.2999999998137355
+   ],
+   "pageCanvasMs": [
+    49,
+    40.200000000186265,
+    4.899999999906868,
+    18.799999999813735,
+    0.7000000001862645,
+    74.20000000018626,
+    1.599999999627471,
+    14,
+    14.900000000372529,
+    14.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 380.79999999981374,
+   "size": 218624
+  },
+  {
+   "rel": "issue1891_external_bindata_link.hwpx",
+   "openMs": 344.10000000009313,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 74,
+   "firstPageSvgBytes": 118886,
+   "pageSvgMs": [
+    3.6999999997206032,
+    12.399999999906868,
+    34.40000000037253,
+    8,
+    35.59999999962747,
+    11.200000000186265,
+    11.200000000186265,
+    30.899999999906868,
+    22.399999999906868,
+    14.100000000093132
+   ],
+   "pageCanvasMs": [
+    33.89999999990687,
+    24.799999999813735,
+    22,
+    10.400000000372529,
+    23.699999999720603,
+    8.300000000279397,
+    5.399999999906868,
+    24.199999999720603,
+    17.700000000186265,
+    8.200000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 347.89999999990687,
+   "size": 220379
+  },
+  {
+   "rel": "복학원서.hwpx",
+   "openMs": 10.5,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 859329,
+   "pageSvgMs": [
+    15.700000000186265
+   ],
+   "pageCanvasMs": [
+    61.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 26.200000000186265,
+   "size": 222775
+  },
+  {
+   "rel": "issue5169_viewtext_changetracking.hwp",
+   "openMs": 56.799999999813735,
+   "pageCountMs": 0,
+   "pages": 18,
+   "firstPageSvgBytes": 54059,
+   "pageSvgMs": [
+    2,
+    0.20000000018626451,
+    12.899999999906868,
+    2.7999999998137355,
+    6.900000000372529,
+    3.6999999997206032,
+    3,
+    11.800000000279397,
+    6.7999999998137355,
+    10.700000000186265
+   ],
+   "pageCanvasMs": [
+    28.699999999720603,
+    2.8000000002793968,
+    30.899999999906868,
+    5.899999999906868,
+    9.299999999813735,
+    14.800000000279397,
+    3.3999999999068677,
+    31.399999999906868,
+    15.600000000093132,
+    14.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 58.799999999813735,
+   "size": 225280
+  },
+  {
+   "rel": "hwpctl_ParameterSetID_Item_v1.2.hwp",
+   "openMs": 383.20000000018626,
+   "pageCountMs": 0,
+   "pages": 74,
+   "firstPageSvgBytes": 419142,
+   "pageSvgMs": [
+    16,
+    22,
+    14.800000000279397,
+    12.899999999906868,
+    8.100000000093132,
+    11.699999999720603,
+    5.900000000372529,
+    9.399999999906868,
+    8.5,
+    24.100000000093132
+   ],
+   "pageCanvasMs": [
+    32.299999999813735,
+    8.299999999813735,
+    14.200000000186265,
+    4.899999999906868,
+    4.7000000001862645,
+    11.699999999720603,
+    2.2000000001862645,
+    3.6000000000931323,
+    3.1000000000931323,
+    8.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 399.20000000018626,
+   "size": 245760
+  },
+  {
+   "rel": "HWP5-nopassword-123456.hwpx",
+   "openMs": 67.29999999981374,
+   "pageCountMs": 0,
+   "pages": 24,
+   "firstPageSvgBytes": 708621,
+   "pageSvgMs": [
+    16.600000000093132,
+    2,
+    6.7000000001862645,
+    10.299999999813735,
+    10.299999999813735,
+    9.700000000186265,
+    5.7000000001862645,
+    8,
+    7.099999999627471,
+    6.300000000279397
+   ],
+   "pageCanvasMs": [
+    54.299999999813735,
+    1.7999999998137355,
+    48.3000000002794,
+    16,
+    11.899999999906868,
+    7.2999999998137355,
+    5.400000000372529,
+    7.5,
+    9.599999999627471,
+    9.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 83.89999999990687,
+   "size": 246148
+  },
+  {
+   "rel": "HWP5-nopassword-123456.hwp",
+   "openMs": 52.8000000002794,
+   "pageCountMs": 0.09999999962747097,
+   "pages": 24,
+   "firstPageSvgBytes": 697476,
+   "pageSvgMs": [
+    9.900000000372529,
+    2.2999999998137355,
+    7.899999999906868,
+    10.700000000186265,
+    9.600000000093132,
+    9.599999999627471,
+    6,
+    8.200000000186265,
+    7.100000000093132,
+    6
+   ],
+   "pageCanvasMs": [
+    25.40000000037253,
+    2.1999999997206032,
+    13,
+    7.800000000279397,
+    7.5,
+    8.299999999813735,
+    5.2000000001862645,
+    6.399999999906868,
+    5.5,
+    5.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 62.8000000002794,
+   "size": 247808
+  },
+  {
+   "rel": "hwpctl_API_v2.4.hwp",
+   "openMs": 280.70000000018626,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 105,
+   "firstPageSvgBytes": 4896,
+   "pageSvgMs": [
+    1,
+    20.399999999906868,
+    11.600000000093132,
+    7,
+    9.599999999627471,
+    14.800000000279397,
+    15.199999999720603,
+    10.400000000372529,
+    7.699999999720603,
+    8.200000000186265
+   ],
+   "pageCanvasMs": [
+    16.899999999906868,
+    52,
+    17.299999999813735,
+    11.600000000093132,
+    10.799999999813735,
+    24.700000000186265,
+    22.200000000186265,
+    7.599999999627471,
+    18.100000000093132,
+    6.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 281.8000000002794,
+   "size": 262144
+  },
+  {
+   "rel": "ta-pic-cell-center-pos-bottom.hwpx",
+   "openMs": 2.6999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 330217,
+   "pageSvgMs": [
+    63.90000000037253
+   ],
+   "pageCanvasMs": [
+    41.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 66.60000000009313,
+   "size": 264111
+  },
+  {
+   "rel": "ta-pic-cell-top-pos-center.hwpx",
+   "openMs": 1.7000000001862645,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 330217,
+   "pageSvgMs": [
+    9
+   ],
+   "pageCanvasMs": [
+    15.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 10.700000000186265,
+   "size": 264116
+  },
+  {
+   "rel": "issue1949_giant_cell_nested_tables_perf.hwpx",
+   "openMs": 486.5,
+   "pageCountMs": 0,
+   "pages": 115,
+   "firstPageSvgBytes": 442234,
+   "pageSvgMs": [
+    174.60000000009313,
+    9,
+    7.300000000279397,
+    7.699999999720603,
+    7.7000000001862645,
+    7.899999999906868,
+    7.100000000093132,
+    7.7999999998137355,
+    11.300000000279397,
+    7.899999999906868
+   ],
+   "pageCanvasMs": [
+    31.799999999813735,
+    6.800000000279397,
+    6.099999999627471,
+    12.900000000372529,
+    6.899999999906868,
+    13.600000000093132,
+    12.299999999813735,
+    6.2999999998137355,
+    16.100000000093132,
+    5.2000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 661.1000000000931,
+   "size": 266523
+  },
+  {
+   "rel": "hwp3-sample5-hwpx.hwpx",
+   "openMs": 198.90000000037253,
+   "pageCountMs": 0,
+   "pages": 64,
+   "firstPageSvgBytes": 433268,
+   "pageSvgMs": [
+    8.099999999627471,
+    9.700000000186265,
+    9,
+    5.899999999906868,
+    8.700000000186265,
+    9.199999999720603,
+    7.2000000001862645,
+    9.199999999720603,
+    6.600000000093132,
+    7
+   ],
+   "pageCanvasMs": [
+    40.8000000002794,
+    18.399999999906868,
+    20.600000000093132,
+    13.699999999720603,
+    11.5,
+    15.399999999906868,
+    12.300000000279397,
+    10.799999999813735,
+    12.100000000093132,
+    12.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 207,
+   "size": 273071
+  },
+  {
+   "rel": "mel-001.hwp",
+   "openMs": 125.20000000018626,
+   "pageCountMs": 0,
+   "pages": 20,
+   "firstPageSvgBytes": 17184,
+   "pageSvgMs": [
+    1,
+    38.299999999813735,
+    9.399999999906868,
+    9.100000000093132,
+    8.799999999813735,
+    6.900000000372529,
+    9.699999999720603,
+    10.700000000186265,
+    9.199999999720603,
+    9.100000000093132
+   ],
+   "pageCanvasMs": [
+    16.5,
+    128.60000000009313,
+    95.20000000018626,
+    32.09999999962747,
+    38.700000000186265,
+    26.600000000093132,
+    29.799999999813735,
+    16.5,
+    19.300000000279397,
+    15
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 126.20000000018626,
+   "size": 273408
+  },
+  {
+   "rel": "issue1853_caption_precedes_body_split.hwpx",
+   "openMs": 120.10000000009313,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 52,
+   "firstPageSvgBytes": 299411,
+   "pageSvgMs": [
+    5.7999999998137355,
+    3,
+    7.300000000279397,
+    9.199999999720603,
+    5.7999999998137355,
+    6.7000000001862645,
+    6.7000000001862645,
+    8.099999999627471,
+    1.6000000000931323,
+    7.399999999906868
+   ],
+   "pageCanvasMs": [
+    50.700000000186265,
+    11.799999999813735,
+    29.200000000186265,
+    8.299999999813735,
+    13,
+    14.800000000279397,
+    9.799999999813735,
+    10.700000000186265,
+    6.399999999906868,
+    18
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 126,
+   "size": 284908
+  },
+  {
+   "rel": "hwp3-sample5-hwp5-v2024.hwp",
+   "openMs": 216.20000000018626,
+   "pageCountMs": 0,
+   "pages": 64,
+   "firstPageSvgBytes": 393018,
+   "pageSvgMs": [
+    13.200000000186265,
+    15.100000000093132,
+    15.399999999906868,
+    11,
+    14.600000000093132,
+    15.5,
+    10.699999999720603,
+    15.899999999906868,
+    10.100000000093132,
+    12.800000000279397
+   ],
+   "pageCanvasMs": [
+    45.09999999962747,
+    24.100000000093132,
+    21.399999999906868,
+    20,
+    32.10000000009313,
+    20.200000000186265,
+    12.899999999906868,
+    21.100000000093132,
+    11.600000000093132,
+    15.799999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 229.40000000037253,
+   "size": 285184
+  },
+  {
+   "rel": "ta-pic-001-r-쪽영역안제한.hwpx",
+   "openMs": 2.7999999998137355,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 330217,
+   "pageSvgMs": [
+    13.600000000093132
+   ],
+   "pageCanvasMs": [
+    14.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 16.399999999906868,
+   "size": 287127
+  },
+  {
+   "rel": "ta-pic-001-r-쪽영역안제한no.hwpx",
+   "openMs": 2.6999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 330126,
+   "pageSvgMs": [
+    12.400000000372529
+   ],
+   "pageCanvasMs": [
+    9.199999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 15.100000000093132,
+   "size": 292024
+  },
+  {
+   "rel": "hwp3-sample5-hwp5-v2018.hwp",
+   "openMs": 162.29999999981374,
+   "pageCountMs": 0,
+   "pages": 64,
+   "firstPageSvgBytes": 393018,
+   "pageSvgMs": [
+    7.899999999906868,
+    9.100000000093132,
+    8.899999999906868,
+    6.2999999998137355,
+    8,
+    8.899999999906868,
+    6.2000000001862645,
+    9,
+    5.7999999998137355,
+    7.400000000372529
+   ],
+   "pageCanvasMs": [
+    38,
+    14.5,
+    13.600000000093132,
+    9.100000000093132,
+    17,
+    12.299999999813735,
+    8.200000000186265,
+    12.600000000093132,
+    7.399999999906868,
+    9.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 170.1999999997206,
+   "size": 295936
+  },
+  {
+   "rel": "hwp3-sample5-hwp5.hwp",
+   "openMs": 255.59999999962747,
+   "pageCountMs": 0,
+   "pages": 64,
+   "firstPageSvgBytes": 393018,
+   "pageSvgMs": [
+    14.5,
+    16,
+    15.300000000279397,
+    11.199999999720603,
+    14.5,
+    15.5,
+    10.400000000372529,
+    15.399999999906868,
+    9.699999999720603,
+    11.900000000372529
+   ],
+   "pageCanvasMs": [
+    47.90000000037253,
+    23,
+    18.899999999906868,
+    13,
+    30,
+    17.5,
+    11.799999999813735,
+    17.899999999906868,
+    11,
+    13.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 270.09999999962747,
+   "size": 295936
+  },
+  {
+   "rel": "issue1949_giant_cell_nested_tables_perf.hwp",
+   "openMs": 1560.2999999998137,
+   "pageCountMs": 0,
+   "pages": 115,
+   "firstPageSvgBytes": 442326,
+   "pageSvgMs": [
+    176.10000000009313,
+    9,
+    7.5,
+    8.5,
+    10.100000000093132,
+    9.100000000093132,
+    8.899999999906868,
+    8.100000000093132,
+    11.199999999720603,
+    8.5
+   ],
+   "pageCanvasMs": [
+    38.200000000186265,
+    14.5,
+    9.699999999720603,
+    15.400000000372529,
+    5.699999999720603,
+    8.700000000186265,
+    9.100000000093132,
+    5.7999999998137355,
+    19.399999999906868,
+    5.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 1736.3999999999069,
+   "size": 303616
+  },
+  {
+   "rel": "2022년 국립국어원 업무계획.hwp",
+   "openMs": 163,
+   "pageCountMs": 0,
+   "pages": 35,
+   "firstPageSvgBytes": 88403,
+   "pageSvgMs": [
+    7.100000000093132,
+    4.7999999998137355,
+    9.299999999813735,
+    9.100000000093132,
+    6,
+    6.600000000093132,
+    10.100000000093132,
+    9,
+    8.100000000093132,
+    8.899999999906868
+   ],
+   "pageCanvasMs": [
+    20.199999999720603,
+    42.5,
+    38.5,
+    10.5,
+    10.199999999720603,
+    7.7000000001862645,
+    28,
+    32.799999999813735,
+    24.600000000093132,
+    14.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 170.10000000009313,
+   "size": 304640
+  },
+  {
+   "rel": "pic-in-head-02.hwp",
+   "openMs": 30.399999999906868,
+   "pageCountMs": 0,
+   "pages": 6,
+   "firstPageSvgBytes": 563399,
+   "pageSvgMs": [
+    17.600000000093132,
+    15.100000000093132,
+    21.100000000093132,
+    10.199999999720603,
+    14.400000000372529,
+    9.399999999906868
+   ],
+   "pageCanvasMs": [
+    80,
+    16.600000000093132,
+    60.6999999997206,
+    29.5,
+    24.100000000093132,
+    14
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 48,
+   "size": 316416
+  },
+  {
+   "rel": "table-vpos-01.hwp",
+   "openMs": 27.5,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 547846,
+   "pageSvgMs": [
+    54.10000000009313,
+    4.699999999720603,
+    5.2000000001862645,
+    8.799999999813735,
+    8.400000000372529
+   ],
+   "pageCanvasMs": [
+    108.3000000002794,
+    11.899999999906868,
+    5.600000000093132,
+    14.399999999906868,
+    39.10000000009313
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 81.60000000009313,
+   "size": 320512
+  },
+  {
+   "rel": "한글문서파일형식_5.0_revision1.3.hwp",
+   "openMs": 314.5,
+   "pageCountMs": 0,
+   "pages": 70,
+   "firstPageSvgBytes": 69283,
+   "pageSvgMs": [
+    2.8999999999068677,
+    4.399999999906868,
+    6.899999999906868,
+    7.5,
+    1.3000000002793968,
+    6.800000000279397,
+    2.7999999998137355,
+    1.7000000001862645,
+    5.899999999906868,
+    11.799999999813735
+   ],
+   "pageCanvasMs": [
+    19.300000000279397,
+    27.699999999720603,
+    12,
+    6.800000000279397,
+    2.2999999998137355,
+    11.5,
+    2.2999999998137355,
+    10.200000000186265,
+    11.100000000093132,
+    24.799999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 317.39999999990687,
+   "size": 342528
+  },
+  {
+   "rel": "ta-pic-001-r.hwp",
+   "openMs": 2.1999999997206032,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 329434,
+   "pageSvgMs": [
+    14
+   ],
+   "pageCanvasMs": [
+    13.700000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 16.199999999720603,
+   "size": 343552
+  },
+  {
+   "rel": "hwpx_sample2.hwp",
+   "openMs": 192.89999999990687,
+   "pageCountMs": 0,
+   "pages": 29,
+   "firstPageSvgBytes": 552285,
+   "pageSvgMs": [
+    18.600000000093132,
+    12.5,
+    16.100000000093132,
+    11.899999999906868,
+    14.899999999906868,
+    14.800000000279397,
+    10.399999999906868,
+    21.399999999906868,
+    17.300000000279397,
+    31
+   ],
+   "pageCanvasMs": [
+    93.89999999990687,
+    49,
+    24.199999999720603,
+    33.3000000002794,
+    21.699999999720603,
+    28.200000000186265,
+    15.399999999906868,
+    20.700000000186265,
+    24.199999999720603,
+    26.90000000037253
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 211.5,
+   "size": 357376
+  },
+  {
+   "rel": "table-vpos-01.hwpx",
+   "openMs": 11.699999999720603,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 547846,
+   "pageSvgMs": [
+    7.600000000093132,
+    4.300000000279397,
+    4,
+    3.7999999998137355,
+    6.899999999906868
+   ],
+   "pageCanvasMs": [
+    40.10000000009313,
+    7.2000000001862645,
+    8.899999999906868,
+    6.399999999906868,
+    26.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 19.299999999813735,
+   "size": 367634
+  },
+  {
+   "rel": "ta-pic-001-r-쪽영역안제한.hwp",
+   "openMs": 2.1000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 329297,
+   "pageSvgMs": [
+    9.600000000093132
+   ],
+   "pageCanvasMs": [
+    16.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 11.700000000186265,
+   "size": 372224
+  },
+  {
+   "rel": "ta-pic-001-r-쪽영역안제한no.hwp",
+   "openMs": 3.3000000002793968,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 329206,
+   "pageSvgMs": [
+    18.199999999720603
+   ],
+   "pageCanvasMs": [
+    12.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 21.5,
+   "size": 377344
+  },
+  {
+   "rel": "253E164F57A1BC6934-empty.hwp",
+   "openMs": 3.2000000001862645,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 1799690,
+   "pageSvgMs": [
+    286.89999999990687,
+    225.60000000009313
+   ],
+   "pageCanvasMs": [
+    19.199999999720603,
+    12.900000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 290.10000000009313,
+   "size": 378368
+  },
+  {
+   "rel": "hwpx_sample2.hwpx",
+   "openMs": 261.3000000002794,
+   "pageCountMs": 0,
+   "pages": 29,
+   "firstPageSvgBytes": 552829,
+   "pageSvgMs": [
+    31.699999999720603,
+    20.899999999906868,
+    27.200000000186265,
+    20.299999999813735,
+    22,
+    24.90000000037253,
+    17,
+    33,
+    29.199999999720603,
+    20.600000000093132
+   ],
+   "pageCanvasMs": [
+    86,
+    58.299999999813735,
+    40.10000000009313,
+    29.200000000186265,
+    17.799999999813735,
+    17.800000000279397,
+    13.800000000279397,
+    46,
+    25,
+    19
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 293,
+   "size": 388678
+  },
+  {
+   "rel": "hwp3-sample11.hwp",
+   "openMs": 411.89999999990687,
+   "pageCountMs": 0,
+   "pages": 151,
+   "firstPageSvgBytes": 117321,
+   "pageSvgMs": [
+    12.600000000093132,
+    13.800000000279397,
+    12.899999999906868,
+    16.100000000093132,
+    2.6999999997206032,
+    10.600000000093132,
+    15.399999999906868,
+    19.300000000279397,
+    15.699999999720603,
+    13.800000000279397
+   ],
+   "pageCanvasMs": [
+    39.59999999962747,
+    43.700000000186265,
+    9,
+    14.299999999813735,
+    1.7000000001862645,
+    20.100000000093132,
+    17.5,
+    17.699999999720603,
+    13.200000000186265,
+    8.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 424.5,
+   "size": 391507
+  },
+  {
+   "rel": "156457624_210622 7월부터 해외직구 구매대행업체 등록제 시행.hwp",
+   "openMs": 16.799999999813735,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 977505,
+   "pageSvgMs": [
+    42.700000000186265,
+    8.199999999720603,
+    11.100000000093132,
+    10.899999999906868,
+    3.8999999999068677
+   ],
+   "pageCanvasMs": [
+    134.60000000009313,
+    37.5,
+    16.5,
+    19.700000000186265,
+    13.299999999813735
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 59.5,
+   "size": 418304
+  },
+  {
+   "rel": "156636617_240617 2024년 5월 월간 수출입 현황(확정치).hwp",
+   "openMs": 162,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 19,
+   "firstPageSvgBytes": 477792,
+   "pageSvgMs": [
+    16.899999999906868,
+    8.100000000093132,
+    25,
+    20.199999999720603,
+    19.700000000186265,
+    13.399999999906868,
+    14.899999999906868,
+    24.800000000279397,
+    31.799999999813735,
+    24.799999999813735
+   ],
+   "pageCanvasMs": [
+    150.70000000018626,
+    122.60000000009313,
+    95.5,
+    66.6999999997206,
+    49.60000000009313,
+    85.20000000018626,
+    53.10000000009313,
+    25.59999999962747,
+    50.60000000009313,
+    33.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 179,
+   "size": 418816
+  },
+  {
+   "rel": "21_언어_기출_편집가능본.hwp",
+   "openMs": 133,
+   "pageCountMs": 0,
+   "pages": 15,
+   "firstPageSvgBytes": 1147205,
+   "pageSvgMs": [
+    28.600000000093132,
+    26.199999999720603,
+    20.100000000093132,
+    25.299999999813735,
+    21.90000000037253,
+    18.59999999962747,
+    25.200000000186265,
+    21.200000000186265,
+    10.399999999906868,
+    15.699999999720603
+   ],
+   "pageCanvasMs": [
+    65.8000000002794,
+    38.5,
+    11.699999999720603,
+    25.600000000093132,
+    16.300000000279397,
+    9.899999999906868,
+    13.199999999720603,
+    16.100000000093132,
+    9.100000000093132,
+    17.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 161.60000000009313,
+   "size": 435200
+  },
+  {
+   "rel": "exam_science.hwp",
+   "openMs": 48.200000000186265,
+   "pageCountMs": 0,
+   "pages": 4,
+   "firstPageSvgBytes": 942023,
+   "pageSvgMs": [
+    36.799999999813735,
+    28.100000000093132,
+    23.299999999813735,
+    30.300000000279397
+   ],
+   "pageCanvasMs": [
+    78.79999999981374,
+    42.10000000009313,
+    31,
+    30.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 85,
+   "size": 481280
+  },
+  {
+   "rel": "kps-ai.hwp",
+   "openMs": 230.5,
+   "pageCountMs": 0,
+   "pages": 77,
+   "firstPageSvgBytes": 158193,
+   "pageSvgMs": [
+    9.799999999813735,
+    6.399999999906868,
+    3.6000000000931323,
+    6.899999999906868,
+    1.2000000001862645,
+    7.7999999998137355,
+    10.400000000372529,
+    7.899999999906868,
+    7.199999999720603,
+    10.300000000279397
+   ],
+   "pageCanvasMs": [
+    23.59999999962747,
+    21.800000000279397,
+    5.2999999998137355,
+    27.899999999906868,
+    4.100000000093132,
+    20,
+    25.700000000186265,
+    13.899999999906868,
+    33.1999999997206,
+    27.200000000186265
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 240.29999999981374,
+   "size": 485888
+  },
+  {
+   "rel": "pr-1674.hwp",
+   "openMs": 201.39999999990687,
+   "pageCountMs": 0,
+   "pages": 35,
+   "firstPageSvgBytes": 386040,
+   "pageSvgMs": [
+    11.5,
+    9.300000000279397,
+    12.900000000372529,
+    11.299999999813735,
+    17.299999999813735,
+    20.100000000093132,
+    25.399999999906868,
+    11.800000000279397,
+    9.799999999813735,
+    14.800000000279397
+   ],
+   "pageCanvasMs": [
+    79.40000000037253,
+    35.39999999990687,
+    20.299999999813735,
+    65.70000000018626,
+    24.399999999906868,
+    35.700000000186265,
+    38.6999999997206,
+    50.60000000009313,
+    23.600000000093132,
+    28.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 212.89999999990687,
+   "size": 488448
+  },
+  {
+   "rel": "field-01-memo.hwp",
+   "openMs": 4.899999999906868,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 348109,
+   "pageSvgMs": [
+    3.7000000001862645,
+    7.5,
+    2
+   ],
+   "pageCanvasMs": [
+    48.700000000186265,
+    54.1999999997206,
+    1
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 8.600000000093132,
+   "size": 490496
+  },
+  {
+   "rel": "hwp-multi-001.hwp",
+   "openMs": 90.39999999990687,
+   "pageCountMs": 0,
+   "pages": 9,
+   "firstPageSvgBytes": 525423,
+   "pageSvgMs": [
+    19.600000000093132,
+    25.100000000093132,
+    22.100000000093132,
+    19.100000000093132,
+    11.600000000093132,
+    21.700000000186265,
+    19.100000000093132,
+    12,
+    4.899999999906868
+   ],
+   "pageCanvasMs": [
+    94.8000000002794,
+    38.6999999997206,
+    88.60000000009313,
+    30.399999999906868,
+    9,
+    36.90000000037253,
+    17.899999999906868,
+    18.299999999813735,
+    19
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 110,
+   "size": 492032
+  },
+  {
+   "rel": "field-01.hwp",
+   "openMs": 3.3000000002793968,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 348109,
+   "pageSvgMs": [
+    3.1000000000931323,
+    10.199999999720603,
+    2.1000000000931323
+   ],
+   "pageCanvasMs": [
+    10.199999999720603,
+    10.300000000279397,
+    0.8999999999068677
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 6.400000000372529,
+   "size": 514560
+  },
+  {
+   "rel": "table_giant_cell_overfill.hwpx",
+   "openMs": 287,
+   "pageCountMs": 0,
+   "pages": 48,
+   "firstPageSvgBytes": 293686,
+   "pageSvgMs": [
+    79.60000000009313,
+    7.600000000093132,
+    6,
+    6.699999999720603,
+    18.5,
+    9.700000000186265,
+    8.799999999813735,
+    9.5,
+    8.5,
+    8.700000000186265
+   ],
+   "pageCanvasMs": [
+    45.1999999997206,
+    14.200000000186265,
+    11.399999999906868,
+    14.5,
+    12,
+    8.200000000186265,
+    8.899999999906868,
+    10.5,
+    13,
+    15.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 366.60000000009313,
+   "size": 534016
+  },
+  {
+   "rel": "exam_social.hwp",
+   "openMs": 47.5,
+   "pageCountMs": 0,
+   "pages": 4,
+   "firstPageSvgBytes": 1415218,
+   "pageSvgMs": [
+    28.800000000279397,
+    37,
+    29.100000000093132,
+    55
+   ],
+   "pageCanvasMs": [
+    89.70000000018626,
+    51.700000000186265,
+    50,
+    58.39999999990687
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 76.3000000002794,
+   "size": 536064
+  },
+  {
+   "rel": "hwp3-sample11-hwpx.hwpx",
+   "openMs": 343.5,
+   "pageCountMs": 0,
+   "pages": 151,
+   "firstPageSvgBytes": 118147,
+   "pageSvgMs": [
+    1.6000000000931323,
+    8.800000000279397,
+    8.5,
+    15.799999999813735,
+    1.8999999999068677,
+    7.600000000093132,
+    11.200000000186265,
+    11.699999999720603,
+    9.600000000093132,
+    8.299999999813735
+   ],
+   "pageCanvasMs": [
+    22.40000000037253,
+    32,
+    12.300000000279397,
+    11.599999999627471,
+    1.900000000372529,
+    19.199999999720603,
+    20,
+    22.100000000093132,
+    21.5,
+    12
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 345.10000000009313,
+   "size": 548221
+  },
+  {
+   "rel": "rowbreak-problem-pages.hwp",
+   "openMs": 68.29999999981374,
+   "pageCountMs": 0,
+   "pages": 18,
+   "firstPageSvgBytes": 441065,
+   "pageSvgMs": [
+    5.600000000093132,
+    10.200000000186265,
+    8.399999999906868,
+    8.100000000093132,
+    10,
+    8,
+    21.799999999813735,
+    14.600000000093132,
+    2.8999999999068677,
+    2.3999999999068677
+   ],
+   "pageCanvasMs": [
+    112.10000000009313,
+    92.70000000018626,
+    59.5,
+    19.799999999813735,
+    22.600000000093132,
+    24.699999999720603,
+    44.8000000002794,
+    16.5,
+    6,
+    8.5
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 73.89999999990687,
+   "size": 553984
+  },
+  {
+   "rel": "20250130-hongbo_saved.hwp",
+   "openMs": 18.899999999906868,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 133483,
+   "pageSvgMs": [
+    11.700000000186265,
+    4.699999999720603,
+    8.900000000372529,
+    36.09999999962747,
+    26.300000000279397
+   ],
+   "pageCanvasMs": [
+    29.100000000093132,
+    6.399999999906868,
+    11.299999999813735,
+    47.10000000009313,
+    30.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 30.600000000093132,
+   "size": 560640
+  },
+  {
+   "rel": "honbo-save.hwp",
+   "openMs": 18.799999999813735,
+   "pageCountMs": 0,
+   "pages": 5,
+   "firstPageSvgBytes": 133483,
+   "pageSvgMs": [
+    8.300000000279397,
+    4.699999999720603,
+    4.800000000279397,
+    6.199999999720603,
+    7.100000000093132
+   ],
+   "pageCanvasMs": [
+    13.899999999906868,
+    5.300000000279397,
+    8.799999999813735,
+    3.6000000000931323,
+    1.1000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 27.100000000093132,
+   "size": 560640
+  },
+  {
+   "rel": "20250130-hongbo-no.hwp",
+   "openMs": 20.299999999813735,
+   "pageCountMs": 0,
+   "pages": 4,
+   "firstPageSvgBytes": 335541,
+   "pageSvgMs": [
+    8.399999999906868,
+    6.600000000093132,
+    6.5,
+    3.3999999999068677
+   ],
+   "pageCanvasMs": [
+    28.300000000279397,
+    15.5,
+    3.6000000000931323,
+    1.099999999627471
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 28.699999999720603,
+   "size": 587264
+  },
+  {
+   "rel": "hwp3-sample11-hwp5.hwp",
+   "openMs": 519.3999999999069,
+   "pageCountMs": 0,
+   "pages": 151,
+   "firstPageSvgBytes": 117296,
+   "pageSvgMs": [
+    1.7999999998137355,
+    7.5,
+    7.800000000279397,
+    9.299999999813735,
+    3.2000000001862645,
+    6.300000000279397,
+    8.699999999720603,
+    12,
+    9.400000000372529,
+    10.099999999627471
+   ],
+   "pageCanvasMs": [
+    16.200000000186265,
+    27.200000000186265,
+    11.299999999813735,
+    10,
+    1.8999999999068677,
+    14.100000000093132,
+    20.299999999813735,
+    10.200000000186265,
+    18.299999999813735,
+    7.7000000001862645
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 521.1999999997206,
+   "size": 587264
+  },
+  {
+   "rel": "hwp3-sample4.hwp",
+   "openMs": 74.6999999997206,
+   "pageCountMs": 0,
+   "pages": 36,
+   "firstPageSvgBytes": 18108,
+   "pageSvgMs": [
+    1.1000000000931323,
+    15,
+    15.299999999813735,
+    11.700000000186265,
+    5.399999999906868,
+    10.100000000093132,
+    17.299999999813735,
+    11.100000000093132,
+    8.200000000186265,
+    13.5
+   ],
+   "pageCanvasMs": [
+    21.799999999813735,
+    33.10000000009313,
+    31.299999999813735,
+    33.10000000009313,
+    9.5,
+    14.600000000093132,
+    14.399999999906868,
+    13.5,
+    10.699999999720603,
+    12.400000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 75.79999999981374,
+   "size": 635108
+  },
+  {
+   "rel": "20250130-hongbo.hwp",
+   "openMs": 13.100000000093132,
+   "pageCountMs": 0.09999999962747097,
+   "pages": 4,
+   "firstPageSvgBytes": 335541,
+   "pageSvgMs": [
+    5.300000000279397,
+    3.1999999997206032,
+    3.8000000002793968,
+    5.899999999906868
+   ],
+   "pageCanvasMs": [
+    18.100000000093132,
+    4.7999999998137355,
+    5.7000000001862645,
+    0.7999999998137355
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 18.5,
+   "size": 643072
+  },
+  {
+   "rel": "hwp3-sample4-hwp5.hwp",
+   "openMs": 100.40000000037253,
+   "pageCountMs": 0,
+   "pages": 36,
+   "firstPageSvgBytes": 18064,
+   "pageSvgMs": [
+    0.6999999997206032,
+    10.300000000279397,
+    10.299999999813735,
+    8,
+    5,
+    6.7000000001862645,
+    11.299999999813735,
+    7.2000000001862645,
+    5,
+    9.399999999906868
+   ],
+   "pageCanvasMs": [
+    9.799999999813735,
+    20.899999999906868,
+    15.400000000372529,
+    12.899999999906868,
+    5.199999999720603,
+    6.100000000093132,
+    8.899999999906868,
+    15.800000000279397,
+    10.699999999720603,
+    12.300000000279397
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 101.10000000009313,
+   "size": 660480
+  },
+  {
+   "rel": "issue2063_huge_cellbreak_table.hwp",
+   "openMs": 194804.5,
+   "pageCountMs": 0,
+   "pages": 161,
+   "firstPageSvgBytes": 297486,
+   "pageSvgMs": [
+    685.3999999999069,
+    604.7999999998137,
+    588.2000000001863,
+    702.1000000000931,
+    634.5,
+    684.7999999998137,
+    746.1000000000931,
+    638.3999999999069,
+    619,
+    614.7999999998137
+   ],
+   "pageCanvasMs": [
+    53.5,
+    19.100000000093132,
+    12.700000000186265,
+    12.399999999906868,
+    13.699999999720603,
+    14.900000000372529,
+    14.799999999813735,
+    17.899999999906868,
+    16.899999999906868,
+    14.900000000372529
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 195489.8999999999,
+   "size": 694272
+  },
+  {
+   "rel": "[2027] 온새미로 1 본교재.hwp",
+   "openMs": 160.89999999990687,
+   "pageCountMs": 0,
+   "pages": 47,
+   "firstPageSvgBytes": 441255,
+   "pageSvgMs": [
+    552.2999999998137,
+    435,
+    285.20000000018626,
+    13.299999999813735,
+    9.100000000093132,
+    8.399999999906868,
+    8.100000000093132,
+    4.899999999906868,
+    9.200000000186265,
+    4.5
+   ],
+   "pageCanvasMs": [
+    150.29999999981374,
+    102.20000000018626,
+    99.79999999981374,
+    43.10000000009313,
+    18.699999999720603,
+    6,
+    10.100000000093132,
+    5.5,
+    25.100000000093132,
+    8.100000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 713.1999999997206,
+   "size": 734720
+  },
+  {
+   "rel": "exam_math.hwp",
+   "openMs": 69.60000000009313,
+   "pageCountMs": 0,
+   "pages": 20,
+   "firstPageSvgBytes": 107196,
+   "pageSvgMs": [
+    6.399999999906868,
+    4.300000000279397,
+    5.099999999627471,
+    4.900000000372529,
+    11,
+    6.099999999627471,
+    4.7000000001862645,
+    4.7999999998137355,
+    3.900000000372529,
+    6.7999999998137355
+   ],
+   "pageCanvasMs": [
+    47.6999999997206,
+    8.800000000279397,
+    2.1000000000931323,
+    3.099999999627471,
+    8,
+    2.900000000372529,
+    2,
+    3.2999999998137355,
+    7.399999999906868,
+    6.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 76,
+   "size": 770048
+  },
+  {
+   "rel": "exam_math_no.hwp",
+   "openMs": 36.60000000009313,
+   "pageCountMs": 0,
+   "pages": 20,
+   "firstPageSvgBytes": 104276,
+   "pageSvgMs": [
+    3.6000000000931323,
+    2.1999999997206032,
+    2.3000000002793968,
+    2.1999999997206032,
+    5.2000000001862645,
+    2.8999999999068677,
+    2.5,
+    2.1000000000931323,
+    2.1999999997206032,
+    3.3000000002793968
+   ],
+   "pageCanvasMs": [
+    13.199999999720603,
+    3.2000000001862645,
+    2.2999999998137355,
+    5.899999999906868,
+    3.5,
+    2.1000000000931323,
+    2,
+    3.1000000000931323,
+    3.3999999999068677,
+    3.6000000000931323
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 40.200000000186265,
+   "size": 806400
+  },
+  {
+   "rel": "hwp3-sample10-hwpx.hwpx",
+   "openMs": 4976.200000000186,
+   "pageCountMs": 0,
+   "pages": 763,
+   "firstPageSvgBytes": 17254,
+   "pageSvgMs": [
+    1.2000000001862645,
+    18.699999999720603,
+    20.600000000093132,
+    26.399999999906868,
+    21.300000000279397,
+    28.899999999906868,
+    14.799999999813735,
+    15.600000000093132,
+    9.100000000093132,
+    11.199999999720603
+   ],
+   "pageCanvasMs": [
+    17.40000000037253,
+    38.3000000002794,
+    16.799999999813735,
+    18.5,
+    18.799999999813735,
+    23.5,
+    36.10000000009313,
+    22.399999999906868,
+    11.300000000279397,
+    19.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 4977.4000000003725,
+   "size": 847607
+  },
+  {
+   "rel": "[2027] 온새미로 1 본교재.hwpx",
+   "openMs": 141.70000000018626,
+   "pageCountMs": 0,
+   "pages": 47,
+   "firstPageSvgBytes": 442060,
+   "pageSvgMs": [
+    5.100000000093132,
+    4.600000000093132,
+    6.2999999998137355,
+    21.399999999906868,
+    9.300000000279397,
+    7.5,
+    8.600000000093132,
+    4.899999999906868,
+    8.100000000093132,
+    5
+   ],
+   "pageCanvasMs": [
+    24.199999999720603,
+    17.899999999906868,
+    25.100000000093132,
+    47.39999999990687,
+    12.300000000279397,
+    7.2999999998137355,
+    10,
+    3.7999999998137355,
+    14.899999999906868,
+    6.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 146.8000000002794,
+   "size": 862784
+  },
+  {
+   "rel": "hwp3-sample10.hwp",
+   "openMs": 3439.899999999907,
+   "pageCountMs": 0,
+   "pages": 763,
+   "firstPageSvgBytes": 16718,
+   "pageSvgMs": [
+    1,
+    13.799999999813735,
+    14.900000000372529,
+    17.699999999720603,
+    15.600000000093132,
+    18.200000000186265,
+    8.099999999627471,
+    10.400000000372529,
+    7.399999999906868,
+    9.100000000093132
+   ],
+   "pageCanvasMs": [
+    13,
+    31.699999999720603,
+    15.300000000279397,
+    15.699999999720603,
+    17.399999999906868,
+    21.90000000037253,
+    32.89999999990687,
+    26.699999999720603,
+    15,
+    25.600000000093132
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 3440.899999999907,
+   "size": 945360
+  },
+  {
+   "rel": "exam-kor-1p.hwp",
+   "openMs": 16.40000000037253,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 2519458,
+   "pageSvgMs": [
+    264.6999999997206
+   ],
+   "pageCanvasMs": [
+    146.29999999981374
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 281.10000000009313,
+   "size": 976384
+  },
+  {
+   "rel": "exam-kor-2p.hwp",
+   "openMs": 26.59999999962747,
+   "pageCountMs": 0,
+   "pages": 2,
+   "firstPageSvgBytes": 2519458,
+   "pageSvgMs": [
+    74.60000000009313,
+    30.200000000186265
+   ],
+   "pageCanvasMs": [
+    51.6999999997206,
+    50.8000000002794
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 101.1999999997206,
+   "size": 980992
+  },
+  {
+   "rel": "exam-kor-3p.hwp",
+   "openMs": 31.200000000186265,
+   "pageCountMs": 0,
+   "pages": 3,
+   "firstPageSvgBytes": 2519458,
+   "pageSvgMs": [
+    74.79999999981374,
+    30,
+    26.5
+   ],
+   "pageCanvasMs": [
+    32.89999999990687,
+    15.200000000186265,
+    18.399999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 106,
+   "size": 985600
+  },
+  {
+   "rel": "exam-kor-4p.hwp",
+   "openMs": 24.800000000279397,
+   "pageCountMs": 0.10000000009313226,
+   "pages": 4,
+   "firstPageSvgBytes": 2519458,
+   "pageSvgMs": [
+    56.299999999813735,
+    17.100000000093132,
+    14.399999999906868,
+    16.5
+   ],
+   "pageCanvasMs": [
+    52.299999999813735,
+    21.100000000093132,
+    16.200000000186265,
+    19.699999999720603
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 81.20000000018626,
+   "size": 989696
+  },
+  {
+   "rel": "pic-in-table-with-toggle.hwp",
+   "openMs": 2.6000000000931323,
+   "pageCountMs": 0,
+   "pages": 1,
+   "firstPageSvgBytes": 2483978,
+   "pageSvgMs": [
+    6.899999999906868
+   ],
+   "pageCanvasMs": [
+    18.899999999906868
+   ],
+   "measureCalls": 0,
+   "measureMs": 0,
+   "firstPageTotalMs": 9.5,
+   "size": 1020416
+  }
+ ],
+ "usedJSHeapSize": 131000000,
+ "maxPages": 10
+}
