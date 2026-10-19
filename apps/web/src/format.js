@@ -3,7 +3,6 @@
 export const MAX_BYTES = 100 * 1024 * 1024;
 
 const UNSUPPORTED_EXT = {
-  xlsx: 'XLSX', xls: 'XLS', pptx: 'PPTX', ppt: 'PPT',
   pdf: 'PDF', odt: 'ODT', ods: 'ODS', odp: 'ODP', txt: '텍스트',
 };
 
@@ -25,27 +24,33 @@ export function precheck(file, head) {
 }
 
 /**
- * 열 엔진 종류: 'hwp' | 'docx' | 'doc' | 'rtf'. 'hwp' 외에는 모두 DOCX 엔진 Worker가 연다.
+ * 열 엔진 종류: 'hwp' | 'docx' | 'doc' | 'rtf' | 'xlsx' | 'xls' | 'pptx' | 'ppt'. 'hwp' 외에는 모두 DOCX 엔진 Worker가 연다.
  * 확장자보다 앞 바이트를 믿는다(.doc로 저장된 RTF·DOCX가 흔하다). OLE(D0 CF 11 E0)는 HWP 5.x도 같은 껍데기라 확장자로 가른다.
  */
+const OOXML_PARTS = [['word/document.xml', 'docx'], ['xl/workbook.xml', 'xlsx'], ['ppt/presentation.xml', 'pptx']];
+const BY_EXT = { docx: 'docx', xlsx: 'xlsx', pptx: 'pptx', doc: 'doc', xls: 'xls', ppt: 'ppt', rtf: 'rtf', hwp: 'hwp', hwpx: 'hwp' };
+
 export async function kindOf(file) {
   const ext = extOf(file.name);
   let head = new Uint8Array(0);
   try { head = new Uint8Array(await file.slice(0, 16).arrayBuffer()); } catch { /* 판별 실패는 확장자로 */ }
   const at = (s) => [...s].every((c, i) => head[i] === c.charCodeAt(0));
   if (at('{\\rtf')) return 'rtf';
+  if (head.length >= 4 && head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0) return ['doc', 'xls', 'ppt'].includes(ext) ? ext : ext === 'docx' || ext === 'xlsx' || ext === 'pptx' ? ext : 'hwp';
   if (ext === 'hwp' || ext === 'hwpx') return 'hwp';
-  if (ext === 'docx') return 'docx';
-  const ole = head.length >= 4 && head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0;
-  if (ole) return ext === 'doc' ? 'doc' : 'hwp';
-  if (ext === 'rtf') return 'rtf';
-  try {
-    const tail = new Uint8Array(await file.slice(Math.max(0, file.size - 262144)).arrayBuffer());
-    const needle = new TextEncoder().encode('word/document.xml');
-    outer: for (let i = 0; i + needle.length <= tail.length; i++) {
-      for (let k = 0; k < needle.length; k++) if (tail[i + k] !== needle[k]) continue outer;
-      return 'docx';
-    }
-  } catch { /* 판별 실패는 기본 엔진으로 */ }
-  return 'hwp';
+  if (at('PK')) {
+    // ZIP: 끝(중앙 디렉터리)에서 부품 이름으로 종류를 안다. 확장자가 틀려도 따른다.
+    try {
+      const tail = new Uint8Array(await file.slice(Math.max(0, file.size - 262144)).arrayBuffer());
+      const enc = new TextEncoder();
+      for (const [name, kind] of OOXML_PARTS) {
+        const needle = enc.encode(name);
+        outer: for (let i = 0; i + needle.length <= tail.length; i++) {
+          for (let k = 0; k < needle.length; k++) if (tail[i + k] !== needle[k]) continue outer;
+          return kind;
+        }
+      }
+    } catch { /* 아래로 */ }
+  }
+  return BY_EXT[ext] ?? 'hwp';
 }

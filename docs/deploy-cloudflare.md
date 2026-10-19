@@ -87,6 +87,6 @@
 - 실제 전송 크기: 로컬 wrangler 런타임에서는 WASM이 약 3.8MB로 내려왔다(우리 측정 3.13MB는 brotli 최고 수준). Cloudflare 실제 값으로 예산을 다시 본다.
 
 ## 3단계(DOCX) 추가 사항 (2026-10-19)
-- 빌드 스크립트(`scripts/cloudflare-build.sh`)가 `office_oxide` 받기(약 9MB)와 DOCX WASM 빌드(`scripts/build-docx-wasm.sh`)를 추가로 한다. **클린 환경 시뮬레이션: 총 9분 53초**(rhwp 8분 08초 + DOCX 1분 16초 + 기타, `WASM_OPT=0`). Cloudflare 실제 빌드 시간: PR #6 머지 후 첫 프로덕션 빌드(DOCX 단계 포함, office_oxide 포크에서 받음) **12분 42초, 성공**(오너 측정; 비교: 첫 빌드 11분 49초, PR #3 빌드 17분 41초는 Initializing 지연 약 5분 포함).
+- 빌드 스크립트(`scripts/cloudflare-build.sh`)가 `office_oxide` 받기(약 9MB)와 DOCX WASM 빌드(`scripts/build-docx-wasm.sh`)를 추가로 한다. **클린 환경 시뮬레이션: 총 9분 53초**(rhwp 8분 08초 + DOCX 1분 16초 + 기타, `WASM_OPT=0`). Cloudflare 실제 빌드 시간: PR #6 머지 후 첫 프로덕션 빌드(DOCX 단계 포함, office_oxide 포크에서 받음) **12분 42초, 성공**(PR #7 머지 후 빌드는 9분 34초 — 편차가 큼; 오너 측정; 비교: 첫 빌드 11분 49초, PR #3 빌드 17분 41초는 Initializing 지연 약 5분 포함).
 - Cloudflare가 서브모듈을 자동으로 받는지는 확인하지 못했다. 스크립트가 서브모듈이 비어 있으면 직접 받으므로 어느 쪽이든 동작한다(`scripts/fetch-office-oxide.sh`).
 - 예산: `npm run budget`이 첫 화면(3,340,000B)과 지연 로딩 DOCX(720,000B)를 따로 검사한다. 이 빌드 명령은 `npm run budget`을 돌리지 않는다.

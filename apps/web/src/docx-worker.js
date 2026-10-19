@@ -1,7 +1,7 @@
 // DOCX 엔진 Worker: office_oxide(fmt-docx 어댑터, WASM)로 문서를 IR로 읽고, 우리 조판 엔진(docx/)으로 쪽을 나눈다.
 // 메시지 계약은 worker.js(HWP)와 같다: init / open / render / search / close / warmup.
 import init, { SheetflyDoc } from './wasm/fmt_docx.js';
-import { layoutDocument, pageToSvg, createCanvasMeasurer, parseRtf } from './docx/index.js';
+import { layoutDocument, pageToSvg, createCanvasMeasurer, parseRtf, adaptSheets, adaptSlides } from './docx/index.js';
 
 let pages = null;
 let measure = null;
@@ -20,13 +20,18 @@ function classify(e) {
 const isOle = (b) => b.length >= 4 && b[0] === 0xd0 && b[1] === 0xcf && b[2] === 0x11 && b[3] === 0xe0;
 const isRtf = (b) => b.length >= 5 && b[0] === 0x7b && b[1] === 0x5c && b[2] === 0x72 && b[3] === 0x74 && b[4] === 0x66;
 
+const OLE_KINDS = new Set(['doc', 'xls', 'ppt']);          // OLE로 저장되는 구형 형식
+const ENGINE_KINDS = new Set(['docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt']);
+
 function readIr(bytes, kind) {
   if (isRtf(bytes)) { try { return { ir: parseRtf(bytes).ir }; } catch (e) { throw classify(e); } }
-  // OLE(CFB)는 구형 Word(.doc)거나, 암호화된 DOCX가 담기는 껍데기다. DOCX로 온 OLE는 암호화로 본다. 복호는 지원하지 않는다.
-  if (isOle(bytes) && kind !== 'doc') throw { code: 'docx_encrypted', message: 'OLE container' };
+  // OLE(CFB)는 구형 Office(.doc/.xls/.ppt)거나, 암호화된 OOXML이 담기는 껍데기다. OOXML로 온 OLE는 암호화로 본다. 복호는 지원하지 않는다.
+  if (isOle(bytes) && !OLE_KINDS.has(kind)) throw { code: 'docx_encrypted', message: 'OLE container' };
+  const fmt = ENGINE_KINDS.has(kind) ? kind : 'docx';
+  const engineFmt = OLE_KINDS.has(fmt) && !isOle(bytes) ? { doc: 'docx', xls: 'xlsx', ppt: 'pptx' }[fmt] : fmt;   // 이름만 구형인 OOXML
   try {
-    const doc = new SheetflyDoc(bytes, kind === 'doc' && isOle(bytes) ? 'doc' : 'docx');
-    try { return JSON.parse(doc.toJson()); } finally { doc.free(); }
+    const doc = new SheetflyDoc(bytes, engineFmt);
+    try { return { ...JSON.parse(doc.toJson()), kind: engineFmt }; } finally { doc.free(); }
   } catch (e) { throw classify(e); }
 }
 
@@ -34,7 +39,12 @@ function openDocument({ buffer, kind }) {
   const full = readIr(new Uint8Array(buffer), kind);
   try {
     if (!measure) measure = createCanvasMeasurer();
-    const res = layoutDocument(full.ir, measure, { headingRuns: full.heading_runs });
+    const adaptWarnings = [];
+    let ir = full.ir;
+    if (full.kind === 'xlsx' || full.kind === 'xls') ir = adaptSheets(ir, (m) => adaptWarnings.push(m));
+    else if (full.kind === 'pptx' || full.kind === 'ppt') ir = adaptSlides(ir);
+    const res = layoutDocument(ir, measure, { headingRuns: full.heading_runs });
+    res.warnings.push(...adaptWarnings);
     if (!res.pages.length) throw { code: 'no_pages', message: 'no pages' };
     pages = res.pages;
     const sizes = new Float32Array(pages.length * 2);

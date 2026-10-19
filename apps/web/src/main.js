@@ -91,6 +91,7 @@ async function openFile(file, password) {
     docName = file.name;
     document.title = `${docName} – ${S.appName}`;
     $('doc-note').hidden = !lazy;
+    $('doc-note').textContent = /^xls/.test(kind) ? S.docNotes.sheet : /^ppt/.test(kind) ? S.docNotes.slide : S.docxNote;
     $('file-name').textContent = docName;
     $('file-name').title = docName;
     $('page-total').textContent = S.pageOf(res.pageCount);

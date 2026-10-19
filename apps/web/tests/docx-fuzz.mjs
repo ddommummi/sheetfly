@@ -104,6 +104,20 @@ for (let i = 0; i < N; i++) cases.push(makeCase(i));
 for (let i = 0; i < Math.ceil(N * 0.5); i++) cases.push(makeRtfCase(i));
 for (let i = 0; i < Math.ceil(N * 0.25); i++) cases.push(makeDocCase(i));
 cases.push({ label: 'doc-seed', kind: 'doc', buf: DOC_SEED });
+// ── XLSX·XLS·PPTX: 파일 바이트 변형(업스트림 파서) + 정상 문서의 IR 숫자 변형(우리 어댑터·조판) ──
+const OFFICE_SEEDS = [['xlsx', 'sample.xlsx'], ['xls', 'sample.xls'], ['pptx', 'sample.pptx']].map(([kind, f]) => ({ kind, buf: readFileSync(join(here, 'fixtures', f)) }));
+for (let i = 0; i < Math.ceil(N * 0.3); i++) {
+  const rand = rng(SEED * 5000011 + i);
+  const seed = OFFICE_SEEDS[Math.floor(rand() * OFFICE_SEEDS.length)];
+  const k = KINDS[Math.floor(rand() * KINDS.length)];
+  cases.push({ label: `${seed.kind}-${k}#${i}`, kind: seed.kind, buf: mutate(seed.buf, rand, k) });
+}
+for (let i = 0; i < Math.ceil(N * 0.3); i++) {
+  const rand = rng(SEED * 6000011 + i);
+  const seed = OFFICE_SEEDS[Math.floor(rand() * OFFICE_SEEDS.length)];
+  cases.push({ label: `ir-${seed.kind}#${i}`, kind: `ir-${seed.kind}`, buf: seed.buf, seed: Math.floor(rand() * 2 ** 31) });
+}
+for (const s of OFFICE_SEEDS) cases.push({ label: `${s.kind}-seed`, kind: s.kind, buf: s.buf });
 if (SEEDS_DIR) {
   for (const f of readdirSync(SEEDS_DIR).filter((x) => /\.(docx|doc|rtf)$/i.test(x)).sort()) {
     const buf = readFileSync(join(SEEDS_DIR, f));
@@ -126,14 +140,14 @@ async function freshPage() {
   await page.evaluate(async (w) => { const b = Uint8Array.from(atob(w), (c) => c.charCodeAt(0)); await SheetflyFuzz.initEngine(b); }, wasm);
   return page;
 }
-const runBatch = (page, items) => page.evaluate((arr) => arr.map(([b64, kind]) => SheetflyFuzz.run(b64, 60, kind)), items);
+const runBatch = (page, items) => page.evaluate((arr) => arr.map(([b64, kind, seed]) => SheetflyFuzz.run(b64, 60, kind, seed)), items);
 
 const results = [];
 let page = await freshPage();
 const t0 = Date.now();
 for (let i = 0; i < cases.length; i += BATCH) {
   const slice = cases.slice(i, i + BATCH);
-  const items = slice.map((c) => [c.buf.toString('base64'), c.kind ?? 'docx']);
+  const items = slice.map((c) => [c.buf.toString('base64'), c.kind ?? 'docx', c.seed ?? 0]);
   let res;
   try {
     res = await Promise.race([runBatch(page, items), new Promise((_, rej) => setTimeout(() => rej(new Error('hang')), HANG_MS))]);
@@ -165,7 +179,7 @@ const pct = (q) => ms[Math.min(ms.length - 1, Math.floor(ms.length * q))].toFixe
 console.log(`입력 ${results.length}개 (${((Date.now() - t0) / 1000).toFixed(0)}초) 상태:`, count);
 console.log(`시간 ms: p50 ${pct(0.5)} p95 ${pct(0.95)} p99 ${pct(0.99)} 최대 ${ms.at(-1).toFixed(0)}, 최대 쪽 수 ${Math.max(...results.map((r) => r.pages))}`);
 // DOC 읽기는 office_oxide 코드뿐이라(우리 어댑터는 그대로 넘긴다) DOC 변형에서 나온 trap은 업스트림 결함으로 따로 센다 (docs/phase3/doc-rtf.md).
-const isUpstream = (r) => r.status === 'trap' && r.label.startsWith('doc-');
+const isUpstream = (r) => r.status === 'trap' && /^(doc|xls|xlsx|ppt|pptx)-/.test(r.label);
 const upstream = results.filter(isUpstream);
 const bad = results.filter((r) => ['trap', 'js_error', 'hang'].includes(r.status) && !isUpstream(r));
 for (const r of upstream) console.log('업스트림(DOC) trap:', r.label, r.detail);

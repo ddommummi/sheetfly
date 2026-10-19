@@ -87,7 +87,9 @@ impl SheetflyDoc {
             "docx" => DocumentFormat::Docx,
             "doc" => DocumentFormat::Doc, // 바이너리 Word(OLE). office_oxide가 IR로 읽는다
             "xlsx" => DocumentFormat::Xlsx,
+            "xls" => DocumentFormat::Xls, // 구형 Excel(OLE)
             "pptx" => DocumentFormat::Pptx,
+            "ppt" => DocumentFormat::Ppt, // 구형 PowerPoint(OLE)
             other => return Err(JsValue::from_str(&format!("지원하지 않는 형식: {other}"))),
         };
         // DOCX는 머리글/바닥글의 쪽 번호 필드를 표식으로 바꿔 넘긴다(fields.rs). 실패하면 원본을 그대로 쓴다.
