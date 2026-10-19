@@ -201,6 +201,15 @@ test('RTF: 열기, 한글(\\uN과 \\\'hh 코드페이지), 쪽 나누기, 표, �
   await done(page);
 });
 
+test('RTF: 문서 끝의 \\sect가 머리글·바닥글만 있는 빈 쪽을 만들지 않는다 (실제 헌법 RTF에서 발견된 회귀 시험)', async () => {
+  const page = await newPage();
+  const footer = u('쪽 ') + pageField('1');
+  await openDocx(page, 'trail.rtf', makeRtf(rp('첫 구역') + '\\sect\n' + rp('둘째 구역') + '\\sect\n', { footer }));
+  assert.equal(await pageCount(page), 2);                          // 구역 둘 → 쪽 둘 (끝의 \\sect는 쪽을 더하지 않는다)
+  assert.match(await hitsOf(page, '쪽 2'), /\/ 1$/);
+  await done(page);
+});
+
 test('RTF 판별: .doc 확장자로 저장된 RTF도, 확장자 없는 RTF도 앞 바이트로 알아본다', async () => {
   const page = await newPage();
   const rtf = makeRtf(rp('이름만 doc 인 RTF 문서'));
