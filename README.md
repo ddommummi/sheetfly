@@ -6,7 +6,7 @@
 
 ## 상태
 
-**1단계(저장소 구성·측정·감사) 완료, 2단계(웹 뷰어 MVP: HWP/HWPX 읽기 전용) 구현·검증 완료.** 아직 공개 배포는 하지 않았다.
+**1단계(저장소 구성·측정·감사) 완료, 2단계(웹 뷰어 MVP: HWP/HWPX 읽기 전용) 구현·검증 완료, 3단계(DOCX 뷰어) 진행 중: DOCX 열기·쪽 단위 보기 구현(자체 조판 엔진, 정확도·한계는 `docs/phase3/report.md`).** 아직 공개 배포는 하지 않았다.
 측정값과 결정은 [`docs/phase1/report.md`](docs/phase1/report.md), [`docs/phase2/report.md`](docs/phase2/report.md), [`docs/decisions.md`](docs/decisions.md)에 있다.
 
 ## 저장소 구성
@@ -14,6 +14,8 @@
 | 경로 | 내용 |
 |---|---|
 | `third_party/rhwp/` | HWP/HWPX 엔진. 고정 커밋 서브모듈 (아래 Acknowledgements) |
+| `third_party/office_oxide/` | DOCX 읽기(IR). 고정 커밋 서브모듈, 수정 없음 |
+| `crates/fmt-docx/` | office_oxide 어댑터(WASM): IR + 제목 스타일 보완 |
 | `apps/web/` | 웹 뷰어 (바닐라 JS, Worker + WASM). 배포 설정(`wrangler.jsonc`, `public/_headers`) 포함 |
 | `scripts/` | WASM 빌드 스크립트 (`build-wasm.sh`) |
 | `tools/measure/` | 측정 하네스·용량 예산 검사 (헤드리스 Chromium에서 WASM 열기·렌더 시간 측정) |
@@ -47,6 +49,7 @@ Sheetfly 자체 코드는 **MIT License**이다 ([`LICENSE`](LICENSE), Copyright
 
 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
+- DOCX 읽기는 [office_oxide](https://github.com/yfedoseev/office_oxide) (Copyright (c) 2026 Yury Fedoseev, MIT OR Apache-2.0 중 MIT로 사용)를 수정 없이 쓴다. "OfficeOxide"는 해당 저자의 상표이며 본 프로젝트와 제휴 관계가 없다. 쪽 나눔은 Sheetfly가 직접 한다.
 - HWP/HWPX 처리는 [rhwp](https://github.com/edwardkim/rhwp) (Copyright (c) 2025-2026 Edward Kim, MIT License)를 고정 버전 의존성으로 사용한다. 원 저작권 문구는 `licenses/rhwp-LICENSE-MIT.txt`에 원문 그대로 있다.
 - 업스트림 하위 코드(예: `vendor/svg2pdf`)의 라이선스도 `licenses/`와 `NOTICE`에 수록한다.
 
