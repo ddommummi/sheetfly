@@ -21,6 +21,8 @@ const SEED = Number(arg('seed', 1));
 const FILES = Number(arg('files', 12));
 const STEPS = Number(arg('steps', 40));
 const MAX_KB = Number(arg('max-kb', 400));
+const OBJP = Number(arg('obj', 0)) > 0;       // 개체(그림·도형·수식) 편집을 섞는다
+const OBJR = Number(arg('obj', 0));
 const TBLP = Number(arg('tbl', 0));        // 편집 한 번이 표 구조 편집일 확률(0이면 기본 비율)
 
 function* walk(dir) {
@@ -80,7 +82,37 @@ function tableOp(doc, m, T, rand) {
   }
 }
 
-let failures = 0, totalOps = 0, noRect = 0, tblOps = 0, rejected = 0, apiOps = 0;
+const PNG = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64'));
+/** 문서의 최상위 개체(그림·도형·수식…) 목록 [{type,s,p,ctrl}] */
+function findObjects(doc) {
+  const out = [], seen = new Set();
+  for (let pg = 0; pg < Math.min(doc.pageCount(), 60); pg++) {
+    let list; try { list = JSON.parse(doc.getPageControlLayout(pg)).controls; } catch { continue; }
+    for (const c of list) { if (c.type === 'table' || c.cellIdx !== undefined) continue; const k = `${c.secIdx}/${c.paraIdx}/${c.controlIdx}`; if (!seen.has(k)) { seen.add(k); out.push({ type: c.type, s: c.secIdx, p: c.paraIdx, ctrl: c.controlIdx }); } }
+  }
+  return out;
+}
+const rejectOk = (e) => {
+  const msg = String(e && (e.message || e) || e);
+  if (/RuntimeError|unreachable|memory access|stack/i.test(msg) && !/범위|index|인덱스|찾을 수 없|없습니다|invalid|잘못|그림이 아닙니다|도형|컨트롤/i.test(msg)) throw e;
+  return 'rejected';
+};
+function objectOp(doc, m, rand, pos) {
+  const ri = (n) => Math.floor(rand() * n);
+  const objs = findObjects(doc);
+  const O = objs.length ? objs[ri(objs.length)] : null;
+  const kinds = [
+    () => m('api', { fn: 'insertPicture', args: [0, pos.p, pos.o, '', PNG, 3000 + ri(9000), 2000 + ri(6000), 1, 1, 'png', 'f'] }),
+    () => m('api', { fn: 'createShapeControl', args: [JSON.stringify({ sectionIdx: 0, paraIdx: pos.p, charOffset: pos.o, shapeType: ['rectangle', 'ellipse', 'line', 'arc', 'textbox', 'polygon'][ri(6)], width: 3000 + ri(9000), height: 2000 + ri(6000), treatAsChar: rand() < 0.3, textWrap: 'InFrontOfText', horzOffset: ri(20000), vertOffset: ri(20000), polygonPoints: [{ x: 100, y: 0 }, { x: 200, y: 200 }, { x: 0, y: 200 }] })] }),
+    () => m('api', { fn: 'insertEquation', args: [0, pos.p, pos.o, ['a over b', 'sqrt{x}', 'x ^2 + y ^2'][ri(3)], 1000, 0] }),
+    () => O && m('api', { fn: O.type === 'image' ? 'setPictureProperties' : 'setShapeProperties', args: [O.s, O.p, O.ctrl, JSON.stringify({ width: 2000 + ri(9000), height: 2000 + ri(9000), treatAsChar: rand() < 0.4, textWrap: ['Square', 'InFrontOfText', 'TopAndBottom', 'BehindText'][ri(4)], horzFlip: rand() < 0.3, rotationAngle: ri(360), description: 'd' })] }),
+    () => O && m('api', { fn: 'changeShapeZOrder', args: [O.s, O.p, O.ctrl, ['front', 'back', 'forward', 'backward'][ri(4)]] }),
+    () => O && rand() < 0.4 && m('api', { fn: O.type === 'image' ? 'deletePictureControl' : O.type === 'equation' ? 'deleteEquationControl' : 'deleteShapeControl', args: [O.s, O.p, O.ctrl] }),
+    () => O && O.type === 'group' && m('api', { fn: 'ungroupShape', args: [O.s, O.p, O.ctrl] }),
+  ];
+  try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) { return rejectOk(e); }
+}
+let failures = 0, totalOps = 0, noRect = 0, objOps = 0, tblOps = 0, rejected = 0, apiOps = 0;
 const fail = (f, msg) => { failures++; console.log('  ✗', f.rel, msg); };
 
 for (const f of files) {
@@ -100,7 +132,7 @@ for (const f of files) {
   let pos = randPos(), muts = 0, ok = true, lastOp = '';
   try {
     for (let i = 0; i < STEPS && ok; i++) {
-      const k = TBLP && rand() < TBLP ? 0.95 : rand();
+      const k = TBLP && rand() < TBLP ? 0.95 : (OBJR && rand() < OBJR ? 0.98 : rand());
       let r = null, op = ''; lastOp = '';
       if (k < 0.34) { op = lastOp = 'insert'; r = m('insert', { pos, text: POOL[Math.floor(rand() * POOL.length)], group: rand() < 0.5 }); }
       else if (k < 0.44) { op = lastOp = 'enter'; r = m('enter', { pos }); }
@@ -126,6 +158,15 @@ for (const f of files) {
         pos = { s: 0, p: Math.min(doc.getParagraphCount(0) - 1, T.p), o: 0, path: null };
         continue;
       }
+      else if (OBJP && k >= 0.97) {
+        op = 'object';
+        const before = JSON.stringify(paras(doc));
+        const res = objectOp(doc, m, rand, { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: 0 });
+        if (res === 'rejected') { rejected++; if (JSON.stringify(paras(doc)) !== before) { fail(f, `step ${i}: 엔진이 거부한 개체 편집 뒤 문서가 바뀌어 있다`); ok = false; break; } }
+        else { muts++; objOps++; }
+        pos = { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: 0, path: null };
+        continue;
+      }
       else { op = 'jump'; pos = randPos(); continue; }
       if (op !== 'undo' && op !== 'redo') muts++;
       if (r?.pos) pos = r.pos;
@@ -145,7 +186,11 @@ for (const f of files) {
     const hwpx = /\.hwpx$/i.test(f.p);
     const s = m('save', { format: hwpx ? 'hwpx' : 'hwp' });
     if (s.verify.reopenError) fail(f, `저장본을 다시 열지 못함: ${s.verify.reopenError}`);
-    else if (!s.verify.ok && !/^3\./.test(info.version || '')) fail(f, `저장 점검 불일치 ${s.verify.diffs}곳`);   // HWP 3.0은 변환 경고 대상이라 제외
+    else if (!s.verify.ok && !/^3\./.test(info.version || '')) {
+      const a = paras(doc), b = paras(new HwpDocument(new Uint8Array(s.bytes))), dd = [];
+      for (let i = 0; i < Math.max(a.length, b.length) && dd.length < 3; i++) if (JSON.stringify(a[i]) !== JSON.stringify(b[i])) dd.push(`#${i} ${JSON.stringify(a[i])} → ${JSON.stringify(b[i])}`);
+      fail(f, `저장 점검 불일치 ${s.verify.diffs}곳 ${dd.join(' | ')}`);
+    }   // HWP 3.0은 변환 경고 대상이라 제외
   } catch (e) { fail(f, `저장 예외: ${String(e && (e.message || e.code) || e).slice(0, 140)}`); }
   // 전부 되돌리면 원래 구조
   try {
@@ -156,5 +201,5 @@ for (const f of files) {
   } catch (e) { fail(f, `되돌리기 예외: ${String(e && (e.message || e.code) || e).slice(0, 140)}`); }
   try { doc.free(); } catch {}
 }
-console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
+console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·개체 편집 ${objOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
 process.exit(failures ? 1 : 0);

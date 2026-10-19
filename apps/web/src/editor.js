@@ -5,9 +5,10 @@
 // 빠르게 이어 치는 글자나 조합 입력의 연속 갱신이 서로 엇갈리지 않는다.
 import { askForm } from './ed-ui.js';
 import { installTable } from './ed-table.js';
+import { installObjects } from './ed-objects.js';
 
 const T = {
-  tabs: { format: '서식', insert: '입력', table: '표', page: '쪽', view: '보기' }, ok: '확인', cancel: '취소',
+  tabs: { format: '서식', insert: '입력', table: '표', object: '개체', page: '쪽', view: '보기' }, ok: '확인', cancel: '취소',
   undo: '실행 취소 (Ctrl+Z)', redo: '다시 실행 (Ctrl+Y)', bold: '굵게 (Ctrl+B)', italic: '기울임 (Ctrl+I)', underline: '밑줄 (Ctrl+U)',
   sizeDown: '글자 작게', sizeUp: '글자 크게', color: '글자 색', left: '왼쪽 맞춤', center: '가운데 맞춤', right: '오른쪽 맞춤', justify: '양쪽 맞춤',
   font: '글꼴', strike: '취소선', highlight: '형광펜 색', highlightOff: '형광펜 지우기', highlightOffLabel: '지움',
@@ -57,7 +58,7 @@ export class Editor {
     this.comp = null;                 // { start, len, fmt } 한글 조합 중
     this.pending = {};                // 서식 단추를 먼저 눌렀을 때 다음 입력에 적용할 서식
     this.cur = {};                    // 캐럿 위치의 글자·문단 서식
-    this.tbl = null; this.cellBlock = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
+    this.tbl = null; this.cellBlock = null; this.obj = null; this.objListeners = []; this.objKey = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
     this.cleanups = [];
     this.lastTyped = 0; this.selText = ''; this.dragging = false; this.hitBusy = false; this.hitNext = null; this.keyHandled = false;
     this.#buildToolbar();
@@ -151,6 +152,7 @@ export class Editor {
     if (extend) { if (!this.anchor) this.anchor = this.pos; }
     else if (!keepSel) this.anchor = null;
     this.pos = pos; this.rect = rect;
+    if (this.obj) this.#clearObj();
     if (!keepPx) this.px = -1;
     this.#draw(scroll);
     this.#syncSelection();
@@ -288,8 +290,9 @@ export class Editor {
     if (this.hitBusy) { this.hitNext = [h, extend]; return; }
     this.hitBusy = true;
     this.#enqueue(async () => {
-      const r = await this.#req('hit', h);
-      if (r.pos) { this.#flushGroup(); this.pending = {}; this.#set(r.pos, r.rect, { extend }); }
+      const r = await this.#req('hit', { ...h, objs: !extend });
+      if (r.obj) { this.#flushGroup(); this.#selectObj(r.obj); return; }
+      if (r.pos) { this.#clearObj(); this.#flushGroup(); this.pending = {}; this.#set(r.pos, r.rect, { extend }); }
       else if (!extend) this.status(T.readonlyHere);
     }).finally(() => {
       this.hitBusy = false;
@@ -318,6 +321,7 @@ export class Editor {
 
   #onKey(e) {
     if (!this.active || e.isComposing || e.keyCode === 229) return;
+    if (this.obj && this.objKey && this.objKey(e)) { e.preventDefault(); this.keyHandled = true; return; }
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key;
     this.keyHandled = true;
@@ -367,6 +371,7 @@ export class Editor {
     if (!text) return null;
     return this.#enqueue(async () => {
       if (!this.pos) return;
+      this.#clearObj();
       if (!(await this.#deleteSelNow())) return;
       const fmt = Object.keys(this.pending).length ? { ...this.pending } : undefined;
       await this.#doMutate('insert', { pos: this.pos, text, group: this.#group(), fmt });
@@ -515,6 +520,7 @@ export class Editor {
     // 나머지 탭의 기능(표·개체·쪽 …)은 모듈이 자기 탭에 단추를 채운다
     this.api = this.#makeApi();
     installTable(this.api);
+    installObjects(this.api);
     this.#showTab('format');
   }
   #showTab(k) {
@@ -562,6 +568,17 @@ export class Editor {
     g.append(this.btn.marks);
   }
 
+  /** 그림·도형·수식을 골랐다: 글 캐럿·선택은 걷고, 틀은 개체 모듈이 그린다. */
+  #selectObj(o) {
+    this.obj = o;
+    this.anchor = null; this.cellBlock = null; this.selText = '';
+    for (const l of this.viewer.pagesEl.querySelectorAll('.sel-layer')) l.replaceChildren();
+    this.caretEl?.remove(); this.caretEl = null;
+    for (const f of this.objListeners) f(o);
+    for (const f of this.ctx ?? []) f();
+  }
+  #clearObj() { if (!this.obj) return; this.obj = null; for (const f of this.objListeners) f(null); for (const f of this.ctx ?? []) f(); }
+
   /** 기능 모듈(ed-*.js)이 쓰는 창구. 모듈은 이 객체로만 편집기와 통신한다. */
   #makeApi() {
     const ed = this;
@@ -583,6 +600,11 @@ export class Editor {
       /** 대기열 안에서: 캐럿을 pos로(없으면 가까운 곳으로) 옮긴다. */
       placeCaret: (pos) => ed.#revalidate(pos),
       onContext: (fn) => ed.ctx.push(fn),
+      get obj() { return ed.obj; }, get zoom() { return ed.viewer.zoom; }, get viewer() { return ed.viewer; },
+      selectObj: (o) => ed.#selectObj(o), clearObj: () => ed.#clearObj(),
+      onObject: (fn) => ed.objListeners.push(fn),
+      setObjKeyHandler: (fn) => { ed.objKey = fn; },
+      setDirty: (d) => ed.#setDirty(d),
       focus: () => ed.#focus(true),
     };
   }

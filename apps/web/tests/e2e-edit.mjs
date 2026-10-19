@@ -61,13 +61,23 @@ async function settle(page) {
     setTimeout(() => res(idle()), 250);
   }), null, { timeout: 30000, polling: 100 });
 }
-async function saveAndParse(page) {
-  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click('#edit-bar .btn.primary')]);
-  const bytes = new Uint8Array(readFileSync(await dl.path()));
+async function saveAndParse(page, { warn = false } = {}) {
+  const dl = page.waitForEvent('download', { timeout: 30000 });
+  await page.click('#edit-bar .btn.primary');
+  // 저장 점검 경고창이 뜨면(warn:true) 내용을 돌려주고 "그래도 저장"을 누른다. 아니면 시험 실패.
+  let warning = null;
+  const dlg = await Promise.race([dl.then(() => null), page.waitForSelector('dialog[open]', { timeout: 30000 }).then(() => 'dialog')]);
+  if (dlg === 'dialog') {
+    warning = await page.locator('dialog[open]').innerText();
+    if (!warn) throw new Error(`저장 전 경고창: ${warning}`);
+    await page.click('dialog[open] [data-yes]');
+  }
+  const d = await dl;
+  const bytes = new Uint8Array(readFileSync(await d.path()));
   // 헤드리스 Chromium은 한글이 든 다운로드 이름을 'download'로 돌려주므로(앱 문제가 아님) 이름은 상태 안내문에서 읽는다.
   await page.waitForFunction(() => /저장했습니다/.test(document.getElementById('status').textContent), null, { timeout: 10000 });
   const name = (await page.locator('#status').innerText()).replace(/ 저장했습니다\.$/, '');
-  return { name, bytes, doc: new HwpDocument(bytes) };
+  return { name, bytes, doc: new HwpDocument(bytes), warning };
 }
 const find = (doc, t) => JSON.parse(doc.searchText(t, 0, 0, 0, true, true, true));
 const comp = async (cdp, page, t) => { await cdp.send('Input.imeSetComposition', { text: t, selectionStart: t.length, selectionEnd: t.length }); await page.waitForTimeout(40); };
@@ -273,6 +283,82 @@ test('표: 새 표 만들기(본문에서) 후 칸에 글 입력', async () => {
   const f = find(r.doc, 'NEWT'); assert.ok(f.found && f.cellContext, '새 표의 첫 칸에 들어갔다');
   const d = dims(r.doc, f.cellContext.parentPara, f.cellContext.ctrlIdx);
   assert.deepEqual([d.rowCount, d.colCount], [2, 3]);
+  await done(page);
+});
+
+// ── 개체(그림·도형·수식) ──
+const controlsOf = (doc, type) => {
+  const out = [];
+  for (let pg = 0; pg < doc.pageCount(); pg++) for (const c of JSON.parse(doc.getPageControlLayout(pg)).controls) if (c.type === type) out.push({ ...c, page: pg });
+  return out;
+};
+const IMG = resolve(samples, 'images/younghi.jpg');
+async function insertPictureUI(page) {
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await tbtn(page, '그림…').click();
+  await page.waitForSelector('dialog[open]');
+  await page.setInputFiles('dialog[open] input[type=file]', IMG);
+  await page.click('dialog[open] button[type=submit]');
+  await page.waitForSelector('.obj-frame', { timeout: 15000 }); await settle(page);
+}
+
+test('개체: 그림 넣기·속성·옮기기·크기·지우기', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  const before = (await saveAndParse(page)).doc;
+  const n0 = controlsOf(before, 'image').length;
+  await insertPictureUI(page);
+  let r = await saveAndParse(page);
+  assert.equal(controlsOf(r.doc, 'image').length, n0 + 1, '그림이 들어갔다');
+  // 속성: 너비를 40mm로, 글 앞으로(떠 있는 개체로)
+  await tab(page, 'object'); await page.waitForTimeout(200);
+  await tbtn(page, '속성…').click(); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=number]').nth(0).fill('40');
+  await page.selectOption('dialog[open] select >> nth=0', 'InFrontOfText');
+  await page.click('dialog[open] button[type=submit]'); await settle(page);
+  await page.waitForSelector('.obj-frame');
+  r = await saveAndParse(page);
+  const mine = () => controlsOf(r.doc, 'image').filter((c) => c.page === 2).at(-1);   // 넣은 그림은 3쪽(인덱스 2)에 있다
+  const pic = mine();
+  assert.ok(Math.abs(pic.w - (40 * 283.465) / 75) < 3, `너비 ${pic.w}px`);
+  // 끌어서 옮기기: 틀을 오른쪽 아래로 60px
+  const fb = await page.locator('.obj-frame').boundingBox();
+  await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+  await page.mouse.down(); await page.mouse.move(fb.x + fb.width / 2 + 60, fb.y + fb.height / 2 + 40, { steps: 6 }); await page.mouse.up(); await settle(page);
+  r = await saveAndParse(page);
+  const moved = mine();
+  assert.ok(Math.abs(moved.x - pic.x) > 20 || Math.abs(moved.y - pic.y) > 20, `옮겨졌다 (${pic.x},${pic.y}) → (${moved.x},${moved.y})`);
+  // 크기 조절: 오른쪽 아래 손잡이를 80px 늘린다
+  const fb2 = await page.locator('.obj-frame').boundingBox();
+  await page.mouse.move(fb2.x + fb2.width - 2, fb2.y + fb2.height - 2);
+  await page.mouse.down(); await page.mouse.move(fb2.x + fb2.width + 78, fb2.y + fb2.height + 78, { steps: 6 }); await page.mouse.up(); await settle(page);
+  r = await saveAndParse(page);
+  assert.ok(mine().w > moved.w + 20, '커졌다');
+  // 지우기(Delete)
+  await page.keyboard.press('Delete'); await settle(page);
+  r = await saveAndParse(page);
+  assert.equal(controlsOf(r.doc, 'image').length, n0, '그림이 지워졌다');
+  await done(page);
+});
+
+test('개체: 도형(타원)·글상자·수식 넣기, 앞뒤 순서', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-shape', 'ellipse'); await page.waitForSelector('.obj-frame'); await settle(page);
+  await tab(page, 'object'); await page.waitForTimeout(200);
+  await tbtn(page, '맨 앞으로').click(); await settle(page);
+  await tbtn(page, '맨 뒤로').click(); await settle(page);
+  await page.keyboard.press('Escape'); await settle(page);
+  await tab(page, 'insert');
+  await tbtn(page, '수식…').click(); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=text]').fill('a over b');
+  await page.click('dialog[open] button[type=submit]'); await page.waitForSelector('.obj-frame'); await settle(page);
+  await page.keyboard.press('Escape'); await settle(page);
+  await tbtn(page, '글상자').click(); await page.waitForSelector('.obj-frame'); await settle(page);
+  const r = await saveAndParse(page);
+  assert.ok(controlsOf(r.doc, 'shape').length >= 2, '타원·글상자');
+  assert.ok(controlsOf(r.doc, 'equation').length >= 1, '수식');
   await done(page);
 });
 

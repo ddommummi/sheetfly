@@ -10,7 +10,7 @@ export function askForm(title, fields, labels) {
     const dlg = document.createElement('dialog');
     dlg.className = 'dialog';
     const form = document.createElement('form');
-    form.method = 'dialog';
+    form.method = 'dialog'; form.noValidate = true;   // 범위·간격은 제출 때 우리가 맞춘다(브라우저 검증이 제출을 막지 않게)
     const h = document.createElement('h2'); h.textContent = title;
     const body = document.createElement('div'); body.className = 'dialog-fields';
     const inputs = {};

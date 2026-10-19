@@ -185,3 +185,12 @@ body[data-dirty] .file-name::after { content: " ●"; color: var(--accent); }
 .dialog-field:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
 .dialog-label { color: var(--muted); font-size: 13px; }
 .dialog-hint { color: var(--muted); font-size: 12px; }
+
+/* 개체 선택 틀 */
+.obj-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.obj-frame { position: absolute; border: 1.5px solid var(--accent); box-sizing: border-box; pointer-events: auto; cursor: move; touch-action: none; }
+.obj-handle { position: absolute; width: 9px; height: 9px; background: var(--surface); border: 1.5px solid var(--accent); border-radius: 2px; box-sizing: border-box; }
+.obj-handle.h-nw { left: -5px; top: -5px; cursor: nwse-resize; } .obj-handle.h-n { left: calc(50% - 4px); top: -5px; cursor: ns-resize; }
+.obj-handle.h-ne { right: -5px; top: -5px; cursor: nesw-resize; } .obj-handle.h-e { right: -5px; top: calc(50% - 4px); cursor: ew-resize; }
+.obj-handle.h-se { right: -5px; bottom: -5px; cursor: nwse-resize; } .obj-handle.h-s { left: calc(50% - 4px); bottom: -5px; cursor: ns-resize; }
+.obj-handle.h-sw { left: -5px; bottom: -5px; cursor: nesw-resize; } .obj-handle.h-w { left: -5px; top: calc(50% - 4px); cursor: ew-resize; }

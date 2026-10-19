@@ -3,7 +3,7 @@
 // 위치(pos): { s: 구역, p: 본문 문단(칸 안이면 그 칸을 가진 문단), o: 문단 안 글자 위치, path: null | [{controlIndex, cellIndex, cellParaIndex}…] }
 //   · 글자 위치·개수는 UTF-16이 아니라 유니코드 글자(code point) 단위다(rhwp 계약) — 이모지 등을 위해 [...s].length로 센다.
 //   · 표 칸 안이면 path의 마지막 항목의 cellParaIndex가 칸 안 문단 번호다.
-import { ext, tableAt, cellRange } from './hwp-ops.js';
+import { ext, tableAt, cellRange, pickObject } from './hwp-ops.js';
 const states = new WeakMap();
 const J = JSON.parse;
 const len = (s) => [...s].length;
@@ -222,6 +222,8 @@ export function run(doc, HwpDocument, m) {
   switch (m.op) {
     case 'hit': {
       const h = J(doc.hitTest(m.page, m.x, m.y));
+      // 글상자 글 안이 아니면, 클릭한 자리의 그림·도형·수식을 먼저 고른다(개체 선택)
+      if (m.objs && !(h && h.isTextBox)) { const obj = pickObject(doc, m.page, m.x, m.y); if (obj) return { obj }; }
       const pos = toPos(h);
       return { pos, rect: pos ? rectOf(doc, pos) : null };
     }

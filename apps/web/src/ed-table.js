@@ -22,11 +22,14 @@ export function installTable(api) {
   const mk = (key, label, title, fn) => { const b = api.btn('', label, title ?? label, fn); b.setAttribute('aria-label', label); btns[key] = b; return b; };
   const run = (fn) => api.enqueue(fn);
 
-  /** 지금 고른 칸(들)의 표 좌표. 칸 블록이면 그 사각형, 아니면 캐럿이 든 한 칸. */
-  const sel = () => {
-    const b = api.cellBlock;
-    if (b) return { s: b.s, p: b.p, ctrl: b.ctrl, r1: b.r1, c1: b.c1, r2: b.r2, c2: b.c2, rows: b.rows, cols: b.cols, block: true, cells: b.cells };
-    const t = api.tbl;
+  /** 지금 고른 칸(들)의 표 좌표. 칸 블록이면 그 사각형, 아니면 캐럿이 든 한 칸. 도구줄 상태는 한 박자 늦게 갱신되므로 실행 시점에 Worker에서 새로 읽는다. */
+  const sel = async () => {
+    const a = api.anchor, p = api.pos;
+    if (a && p && a.path && p.path) {
+      const cr = await api.req('cellrange', { a, b: p });
+      if (cr.range) { const b = cr.range; return { s: b.s, p: b.p, ctrl: b.ctrl, r1: b.r1, c1: b.c1, r2: b.r2, c2: b.c2, rows: b.rows, cols: b.cols, block: true, cells: cr.cells }; }
+    }
+    const t = p ? (await api.req('tableAt', { pos: p })).table : null;
     if (!t) return null;
     return { s: t.s, p: t.p, ctrl: t.ctrl, r1: t.row, c1: t.col, r2: t.row + t.rowSpan - 1, c2: t.col + t.colSpan - 1, rows: t.rows, cols: t.cols, block: false, cells: [t.cell] };
   };
@@ -53,19 +56,19 @@ export function installTable(api) {
   // ── 줄·칸 ──
   gp = g();
   const rowOp = (below) => run(async () => {
-    const t = sel(); if (!t) return;
+    const t = await sel(); if (!t) return;
     await api.mutateApi('insertTableRow', [t.s, t.p, t.ctrl, below ? t.r2 : t.r1, below]);
     await placeIn(t, below ? t.r2 + 1 : t.r1, t.c1);
   });
   const colOp = (right) => run(async () => {
-    const t = sel(); if (!t) return;
+    const t = await sel(); if (!t) return;
     await api.mutateApi('insertTableColumn', [t.s, t.p, t.ctrl, right ? t.c2 : t.c1, right]);
     await placeIn(t, t.r1, right ? t.c2 + 1 : t.c1);
   });
   gp.append(
     mk('rowAbove', TT.rowAbove, TT.rowAbove, () => rowOp(false)), mk('rowBelow', TT.rowBelow, TT.rowBelow, () => rowOp(true)),
     mk('rowDel', TT.rowDel, TT.rowDel, () => run(async () => {
-      const t = sel(); if (!t) return;
+      const t = await sel(); if (!t) return;
       if (t.r2 - t.r1 + 1 >= t.rows) { api.status(TT.lastRow); return; }
       for (let r = t.r2; r >= t.r1; r--) await api.mutateApi('deleteTableRow', [t.s, t.p, t.ctrl, r], { pos: api.pos });
       await placeIn(t, Math.min(t.r1, t.rows - (t.r2 - t.r1 + 1) - 1), t.c1);
@@ -75,7 +78,7 @@ export function installTable(api) {
   gp.append(
     mk('colLeft', TT.colLeft, TT.colLeft, () => colOp(false)), mk('colRight', TT.colRight, TT.colRight, () => colOp(true)),
     mk('colDel', TT.colDel, TT.colDel, () => run(async () => {
-      const t = sel(); if (!t) return;
+      const t = await sel(); if (!t) return;
       if (t.c2 - t.c1 + 1 >= t.cols) { api.status(TT.lastCol); return; }
       for (let c = t.c2; c >= t.c1; c--) await api.mutateApi('deleteTableColumn', [t.s, t.p, t.ctrl, c], { pos: api.pos });
       await placeIn(t, t.r1, Math.min(t.c1, t.cols - (t.c2 - t.c1 + 1) - 1));
@@ -86,13 +89,13 @@ export function installTable(api) {
   gp = g();
   gp.append(
     mk('merge', TT.merge, TT.merge, () => run(async () => {
-      const t = sel();
+      const t = await sel();
       if (!t || (t.r1 === t.r2 && t.c1 === t.c2)) { api.status(TT.needBlock); return; }
       await api.mutateApi('mergeTableCells', [t.s, t.p, t.ctrl, t.r1, t.c1, t.r2, t.c2]);
       await placeIn(t, t.r1, t.c1);
     })),
     mk('split', TT.split, TT.split, () => run(async () => {
-      const t = sel(); if (!t) return;
+      const t = await sel(); if (!t) return;
       const v = await api.form(TT.split, [
         { key: 'n', label: TT.nRows, type: 'number', value: 1, min: 1, max: 50 }, { key: 'm', label: TT.mCols, type: 'number', value: 2, min: 1, max: 50 },
         { key: 'equal', label: TT.equal, type: 'checkbox', value: true },
@@ -108,7 +111,7 @@ export function installTable(api) {
   );
 
   async function cellProps() {
-    const t = sel(); if (!t) return;
+    const t = await sel(); if (!t) return;
     const first = (await api.req('q', { fn: 'getCellProperties', args: [t.s, t.p, t.ctrl, t.cells[0]] })).result ?? {};
     const bl = first.borderLeft ?? {};
     const v = await api.form(TT.cellProps, [
@@ -139,7 +142,7 @@ export function installTable(api) {
 
   /** 고른 칸들의 너비(또는 높이)를 평균으로 맞춘다. */
   async function equalize(axis) {
-    const t = sel(); if (!t) return;
+    const t = await sel(); if (!t) return;
     const cells = t.block ? t.cells : Array.from({ length: t.rows * t.cols }, (_, i) => i);   // 한 칸만 골랐으면 표 전체
     const info = [];
     for (const c of cells) {
@@ -160,7 +163,7 @@ export function installTable(api) {
   gp = g();
   gp.append(
     mk('tblProps', TT.tblProps, TT.tblProps, () => run(async () => {
-      const t = sel(); if (!t) return;
+      const t = await sel(); if (!t) return;
       const first = (await api.req('q', { fn: 'getTableProperties', args: [t.s, t.p, t.ctrl] })).result ?? {};
       const v = await api.form(TT.tblProps, [
         { key: 'pageBreak', label: TT.pageBreak, type: 'select', value: String(first.pageBreak ?? 1), options: Object.entries(TT.pb) },
@@ -175,20 +178,20 @@ export function installTable(api) {
       await api.mutateApi('setTableProperties', [t.s, t.p, t.ctrl, JSON.stringify({ pageBreak: Number(v.pageBreak), repeatHeader: v.repeatHeader, cellSpacing: v.cellSpacing, paddingLeft: v.pl, paddingRight: v.pr, paddingTop: v.pt, paddingBottom: v.pb2 })]);
     })),
     mk('tblSplit', TT.tblSplit, TT.tblSplit, () => run(async () => {
-      const t = sel(); if (!t || t.r1 === 0) { api.status('표를 나눌 줄(둘째 줄 이후)에 캐럿을 두세요'); return; }
+      const t = await sel(); if (!t || t.r1 === 0) { api.status('표를 나눌 줄(둘째 줄 이후)에 캐럿을 두세요'); return; }
       await api.mutateApi('splitTable', [t.s, t.p, t.ctrl, t.r1]);
     })),
     mk('tblMerge', TT.tblMerge, TT.tblMerge, () => run(async () => {
-      const t = sel(); if (!t) return;
+      const t = await sel(); if (!t) return;
       await api.mutateApi('mergeTableWithNext', [t.s, t.p, t.ctrl]);
     })),
     mk('transpose', TT.transpose, TT.transpose, () => run(async () => {
-      const t = sel(); if (!t) return;
+      const t = await sel(); if (!t) return;
       await api.mutateApi('transposeTableCellsInPlace', [t.s, t.p, t.ctrl]);
       await placeIn(t, 0, 0);
     })),
     mk('tblDel', TT.tblDel, TT.tblDel, () => run(async () => {
-      const t = sel(); if (!t) return;
+      const t = await sel(); if (!t) return;
       if (!(await api.ask(TT.tblDelAsk, [TT.tblDelBody], TT.yesDel, TT.no))) return;
       await api.mutateApi('deleteTableControl', [t.s, t.p, t.ctrl], { pos: { s: t.s, p: t.p, o: 0, path: null } });
     })),

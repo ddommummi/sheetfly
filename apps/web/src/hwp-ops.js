@@ -9,9 +9,13 @@ export const MUT = new Set([
   'createTable', 'createTableEx', 'insertTableRow', 'insertTableColumn', 'deleteTableRow', 'deleteTableColumn', 'mergeTableCells', 'splitTableCell', 'splitTableCellInto',
   'splitTableCellsInRange', 'deleteTableControl', 'setTableProperties', 'setCellProperties', 'setCellZoneProperties', 'resizeTableCells', 'splitTable', 'mergeTableWithNext',
   'transposeTableCellsInPlace', 'moveTableOffset', 'deleteCellTableControlByPath', 'evaluateTableFormula',
+  // 개체(그림·도형·수식). 개체 앞뒤 순서는 changeShapeZOrder를 쓴다(…ControlAt 계열 중 setControlZOrderAt은 wasm이 죽는다).
+  'insertPicture', 'setPictureProperties', 'deletePictureControl', 'assignPictureImage', 'createShapeControl', 'setShapeProperties', 'deleteShapeControl', 'changeShapeZOrder',
+  'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt',
 ]);
 /** 문서를 바꾸지 않는 조회 API. */
 export const QRY = new Set([
+  'copyControl', 'clipboardHasControl', 'getPictureProperties', 'getShapeProperties', 'getEquationProperties', 'getShapeBBox', 'getPageControlLayout', 'getObjects',
   'getTableDimensions', 'getCellInfo', 'getCellProperties', 'getCellOwnProperties', 'getTableProperties', 'getTableBBox', 'getTableCellBboxes', 'getControls',
 ]);
 
@@ -36,6 +40,8 @@ export function ext(c, m) {
       let out; try { out = typeof r === 'string' ? J(r) : r; } catch { out = r; }
       return { result: out };
     }
+    case 'objfind': return { obj: findObject(doc, J, m.page, m.s, m.p, m.ctrl) };
+    case 'objprops': return { props: objProps(doc, J, m.obj) };
     case 'tableAt': return { table: tableAt(c, m.pos) };
     case 'cellrange': return cellRange(c, m.a, m.b);
     case 'cellfmt': return cellFmt(c, m);
@@ -127,3 +133,39 @@ function cellClear(c, m) {
 }
 
 export { NOOP_MSG };
+
+// ── 개체(그림·도형·수식) ──
+const OBJ_TYPES = new Set(['image', 'shape', 'line', 'group', 'equation', 'ole', 'chart', 'textbox', 'form']);
+const toObj = (c, page) => ({ type: c.type, s: c.secIdx, p: c.paraIdx, ctrl: c.controlIdx, page, x: c.x, y: c.y, w: c.w, h: c.h, wrap: c.wrap ?? null, plane: c.plane, z: c.zOrder });
+/** 쪽 좌표 (x, y)에 놓인 개체(표 제외, 칸 안 개체 제외). 겹치면 앞(zOrder 큰 것). 선은 얇아서 3px 여유를 준다. */
+export function pickObject(doc, page, x, y) {
+  let list;
+  try { list = JSON.parse(doc.getPageControlLayout(page)).controls; } catch { return null; }
+  let best = null;
+  for (const c of list) {
+    if (!OBJ_TYPES.has(c.type) || c.cellIdx !== undefined) continue;
+    const pad = c.type === 'line' ? 3 : 0;
+    if (x >= c.x - pad && x <= c.x + c.w + pad && y >= c.y - pad && y <= c.y + c.h + pad) {
+      if (!best || (c.plane ?? 0) > (best.plane ?? 0) || ((c.plane ?? 0) === (best.plane ?? 0) && (c.zOrder ?? 0) >= (best.zOrder ?? 0))) best = c;
+    }
+  }
+  return best ? toObj(best, page) : null;
+}
+/** 개체의 최신 위치·크기(편집 뒤 틀을 다시 그릴 때). 쪽을 모르면 처음부터 찾는다. */
+export function findObject(doc, J, page, s, p, ctrl) {
+  const n = doc.pageCount();
+  const order = page != null ? [page, ...Array.from({ length: n }, (_, i) => i).filter((i) => i !== page)] : Array.from({ length: n }, (_, i) => i);
+  for (const pg of order) {
+    let list; try { list = J(doc.getPageControlLayout(pg)).controls; } catch { continue; }
+    const c = list.find((x) => x.secIdx === s && x.paraIdx === p && x.controlIdx === ctrl && x.cellIdx === undefined && OBJ_TYPES.has(x.type));
+    if (c) return toObj(c, pg);
+  }
+  return null;
+}
+function objProps(doc, J, o) {
+  try {
+    if (o.type === 'image') return { kind: 'picture', ...J(doc.getPictureProperties(o.s, o.p, o.ctrl)) };
+    if (o.type === 'equation') return { kind: 'equation', ...J(doc.getEquationProperties(o.s, o.p, o.ctrl, -1, -1)) };
+    return { kind: 'shape', ...J(doc.getShapeProperties(o.s, o.p, o.ctrl)) };
+  } catch { return null; }
+}
