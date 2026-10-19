@@ -622,7 +622,9 @@ export function parseRtf(input, opts = {}) {
   try { st = st; if (curCell == null) { endParagraph(st.para, false); flushTable(); } } catch { /* 상한 초과 */ }
   finishSection(true);
   if (footnotes.length) sections[sections.length - 1].elements.push(...footnotes);
-  // 빈 구역(내용 없음)이 앞에 생기면 제거
-  const out = sections.filter((s, i) => s.elements.length || i === sections.length - 1);
+  // 내용 없는 구역은 뺀다. 문서가 \sect로 끝나면 빈 마지막 구역이 생기는데, 남기면 머리글·바닥글만 있는 빈 쪽이 하나 더 붙는다.
+  // 머리글·바닥글은 다음 구역으로 이어지므로 뺀 구역 때문에 잃는 것은 없다. 전부 비었으면 마지막 하나는 남긴다.
+  const kept = sections.filter((s) => s.elements.length);
+  const out = kept.length ? kept : sections.slice(-1);
   return { ir: { metadata: { format: 'rtf' }, sections: out }, warnings: [...warn] };
 }
