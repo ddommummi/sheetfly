@@ -301,7 +301,7 @@ function placeTable(tbl, flow, st, ctx) {
   const byRow = rows.map(() => []);
   for (const cc of cells) if (cc.r < rows.length) byRow[cc.r].push(cc);
   const reach = rows.map((_, i) => i + 1);                           // reach[r]: r에서 시작하는 묶음이 걸치는 마지막 행 + 1 (병합이 이어지는 만큼)
-  for (const cc of cells) if (cc.rs > 1) for (let r2 = cc.r; r2 < Math.min(rows.length, cc.r + cc.rs - 1); r2++) reach[r2] = Math.max(reach[r2], cc.r + cc.rs);
+  for (const cc of cells) if (cc.rs > 1) for (let r2 = cc.r; r2 < Math.min(rows.length, cc.r + cc.rs - 1); r2++) reach[r2] = Math.max(reach[r2], Math.min(rows.length, cc.r + cc.rs));
 
   const hdrRows = []; for (let r = 0; r < rows.length; r++) { if (rows[r].is_header || rows[r].repeat_as_header) hdrRows.push(r); else break; }
   const tb = tbl.border ?? {};
