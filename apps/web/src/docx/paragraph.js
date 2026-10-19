@@ -113,6 +113,7 @@ export function breakLines(tokens, o) {
     const ls = o.lineSpacing;
     let height, base;
     if (ls && ls.exact != null) { height = twipsToPx(ls.exact); base = height * 0.8; }
+    else if (ls && ls.at_least != null) { height = Math.max(natural, twipsToPx(ls.at_least)); base = height - descent; } // "최소": 글자가 더 크면 글자에 맞춘다
     else { const f = ls && ls.auto ? ls.auto / 240 : 1; height = natural * f; base = height - descent; }
     lines.push({ items: body, trailing: items.slice(end), w, ascent, descent, height, base, forced, lineStart, limit });
     items = []; x = lineStart = o.left; hasContent = false; prevTok = null;

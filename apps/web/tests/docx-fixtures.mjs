@@ -25,9 +25,9 @@ function zip(files) {
 const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-export const p = (text, { bold, italic, size, align, heading, spaceAfter } = {}) => {
+export const p = (text, { bold, italic, size, align, heading, spaceAfter, line } = {}) => {
   const rpr = `${bold ? '<w:b/>' : ''}${italic ? '<w:i/>' : ''}${size ? `<w:sz w:val="${size}"/>` : ''}`;
-  const ppr = `${heading ? `<w:pStyle w:val="Heading${heading}"/>` : ''}${align ? `<w:jc w:val="${align}"/>` : ''}${spaceAfter != null ? `<w:spacing w:after="${spaceAfter}"/>` : ''}`;
+  const ppr = `${heading ? `<w:pStyle w:val="Heading${heading}"/>` : ''}${align ? `<w:jc w:val="${align}"/>` : ''}${spaceAfter != null || line ? `<w:spacing${spaceAfter != null ? ` w:after="${spaceAfter}"` : ''}${line ? ` w:line="${line.value}" w:lineRule="${line.rule}"` : ''}/>` : ''}`;
   return `<w:p>${ppr ? `<w:pPr>${ppr}</w:pPr>` : ''}<w:r>${rpr ? `<w:rPr>${rpr}</w:rPr>` : ''}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
 };
 export const pageBreak = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';

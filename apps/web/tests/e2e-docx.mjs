@@ -32,6 +32,7 @@ const send = (page, name, buffer) => page.setInputFiles('#file-input', { name, m
 async function openDocx(page, name, buffer) {
   await send(page, name, buffer);
   await waitState(page, 'ready', 60000);
+  await page.waitForFunction((n) => document.getElementById('file-name').textContent === n, name, { timeout: 60000 });   // 이전 문서가 아니라 이 문서가 열렸는지
   await page.waitForFunction(() => document.querySelector('.page[data-rendered="1"]'), null, { timeout: 30000 });
 }
 const errorText = (page) => page.evaluate(() => (document.getElementById('error').hidden ? null : document.getElementById('error-text').textContent));
@@ -66,6 +67,17 @@ test('DOCX 여러 쪽: 쪽 나눔, 쪽 이동, 가상화(렌더 쪽 수 제한)'
   await page.waitForFunction((last) => document.querySelectorAll('.page')[last - 1]?.dataset.rendered === '1', n, { timeout: 15000 });
   const rendered = await page.evaluate(() => document.querySelectorAll('.page[data-rendered="1"]').length);
   assert.ok(rendered <= 14, `렌더된 쪽 ${rendered}`);
+  await done(page);
+});
+
+test('줄 간격 "최소(atLeast)"가 쪽 나눔에 반영된다 (실제 법령 문서에서 발견된 누락의 회귀 시험)', async () => {
+  const page = await newPage();
+  const lines = (line) => Array.from({ length: 60 }, (_, i) => p(`${i}번째 줄`, { line, spaceAfter: 0 })).join('');
+  await openDocx(page, 'normal.docx', makeDocx(lines(null)));
+  const plain = await pageCount(page);
+  await openDocx(page, 'atleast.docx', makeDocx(lines({ value: 800, rule: 'atLeast' })));   // 최소 40pt
+  const atLeast = await pageCount(page);
+  assert.ok(atLeast >= plain * 2, `최소 줄 간격이 무시됨: ${plain}쪽 → ${atLeast}쪽`);
   await done(page);
 });
 
