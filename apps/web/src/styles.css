@@ -133,6 +133,7 @@ body[data-drag="1"] .drop-overlay { display: grid; }
 }
 .footer a { color: var(--muted); text-decoration: underline; }
 .footer .notice { margin-left: auto; }
+.footer .doc-note { color: var(--text); }
 
 @media (max-width: 900px) {
   /* 좁은 화면: 상단 바를 두 줄로 접어 모든 조작이 보이게 한다 */

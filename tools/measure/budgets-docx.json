@@ -1,0 +1,8 @@
+{
+  "_note": "지연 로딩(DOCX를 열 때만 받는) 자산의 예산 — 잠정값, 오너 승인 전 (docs/decisions.md D-033). 첫 화면 전송량에는 들어가지 않는다. 실측(2026-10-19, 쪽 번호 필드 지원 후): docxwasm 647,131 B, docxworker 12,463 B (brotli q11).",
+  "brotliBytes": {
+    "docxwasm": 700000,
+    "docxworker": 20000,
+    "total": 720000
+  }
+}

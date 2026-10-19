@@ -9,6 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <meta name="sheetfly-worker" content="%WORKER%">
   <meta name="sheetfly-wasm" content="%WASM%">
+  <meta name="sheetfly-docx-worker" content="%DOCX_WORKER%">
+  <meta name="sheetfly-docx-wasm" content="%DOCX_WASM%">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="%CSS%">
 </head>
@@ -106,13 +108,14 @@
   </dialog>
 
   <footer class="footer">
+    <span id="doc-note" class="doc-note" hidden data-s="docxNote"></span>
     <span data-s="privacy"></span>
     <a href="/licenses" data-s="licenses">오픈소스 라이선스</a>
     <span class="notice" data-s="hancomNotice"></span>
   </footer>
 
   <p id="status" class="sr-only" role="status" aria-live="polite"></p>
-  <input id="file-input" type="file" accept=".hwp,.hwpx" hidden>
+  <input id="file-input" type="file" accept=".hwp,.hwpx,.docx" hidden>
   <script type="module" src="%MAIN%"></script>
 </body>
 </html>

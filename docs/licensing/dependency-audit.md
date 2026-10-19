@@ -77,3 +77,18 @@ licensing/build-third-party.sh > THIRD_PARTY_LICENSES
 - **오너 결정(2026-10-19): 허용.** 배포물에 들어가지 않는지는 `apps/web/scripts/check-dist.mjs`가 빌드마다 검사한다(D-028).
 - 이 패키지들을 아예 설치하지 않으려면 `npm ci --omit=optional`을 쓰면 된다(Workers Builds 빌드 명령에는 쓰지 않았다 — esbuild도 플랫폼 바이너리를 optional로 받으므로 함께 빠진다).
 
+## 3단계: DOCX 엔진 감사 (office_oxide, 2026-10-19)
+
+대상: `third_party/office_oxide`(v0.1.15, `5d183f4`, **수정 없음**)와 우리 어댑터 `crates/fmt-docx`의 WASM 의존성 그래프(52개 크레이트). 도구: `cargo-deny 0.20.2`(`licensing/deny.toml`), `cargo-about 0.9.2`, Rust 1.93.1.
+
+| 검사 | 결과 |
+|---|---|
+| 라이선스(`licenses`) | **통과** — 금지 라이선스 0건 |
+| 출처(`sources`), `bans` | 통과 |
+| 라이선스 선택 | office_oxide는 `MIT OR Apache-2.0`. **MIT 사용으로 가정**(오너 확인 필요, D-032·D-033) |
+| 상표 | "OfficeOxide"/"office_oxide"는 저자의 상표(`TRADEMARKS.md`). 허용: "uses OfficeOxide" 같은 서술적 사용. 금지: 자기 제품·도메인·계정 이름으로 사용, 수정본을 같은 이름으로 배포. **우리는 수정하지 않고 제품 이름에 쓰지 않는다**(`/licenses`·`NOTICE`·README에 서술적으로만 언급, 비제휴 문구 포함). PRD 11-5(PR마다 상표 단어 점검) 대상에 추가 |
+| 고지 | `THIRD_PARTY_LICENSES` 5·6절(office_oxide MIT 전문·upstream NOTICE 원문·크레이트 목록), `NOTICE`, `licenses/office_oxide-{LICENSE-MIT,NOTICE}.txt` |
+| 보안 권고(`advisories`) | **통과(0건)** — RustSec DB 기준(같은 실행에서 rhwp 그래프는 기존 6건이 나와 DB가 동작함을 확인). DOCX 그래프는 `zip 9.0.5`를 쓰고 `rustybuzz`·`ttf-parser`·`paste`를 포함하지 않아 rhwp의 권고가 해당하지 않는다 |
+
+- 첨부된 `docs/phase3/spike/`의 BetterOffice(Apache-2.0) 스파이크 코드는 **참고용**이며 배포물·의존성에 포함되지 않는다. BetterOffice 소스/바이너리는 우리 산출물에 들어가지 않는다(정확도 비교 도구 `tools/docx-compare/`가 로컬에서만 쓴다).
+- 재현: `licensing/build-third-party.sh > THIRD_PARTY_LICENSES`, `cargo deny --locked --manifest-path crates/fmt-docx/Cargo.toml --config licensing/deny.toml check licenses bans sources`.

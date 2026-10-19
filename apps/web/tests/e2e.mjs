@@ -254,8 +254,8 @@ test('오류: 빈 파일, 가짜 확장자, 손상 파일, 미지원 형식, 너
   assert.match(await waitError(page), /손상되었거나 지원하지 않는 형식/);
   await page.click('#error-close');
 
-  await openBuffer(page, 'report.docx', Buffer.from('PK\x03\x04dummy'));
-  assert.match(await waitError(page), /DOCX 형식은 아직 지원하지 않습니다/);
+  await openBuffer(page, 'report.xlsx', Buffer.from('PK\x03\x04dummy'));
+  assert.match(await waitError(page), /XLSX 형식은 아직 지원하지 않습니다/);
   await page.click('#error-close');
 
   await openBuffer(page, 'noext', Buffer.from('%PDF-1.7\n' + 'x'.repeat(100)));

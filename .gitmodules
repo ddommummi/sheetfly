@@ -1,3 +1,6 @@
 [submodule "third_party/rhwp"]
 	path = third_party/rhwp
 	url = https://github.com/ddommummi/rhwp
+[submodule "third_party/office_oxide"]
+	path = third_party/office_oxide
+	url = https://github.com/yfedoseev/office_oxide

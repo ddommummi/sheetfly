@@ -1,0 +1,24 @@
+[package]
+name = "fmt-docx"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+description = "Sheetfly DOCX/XLSX/PPTX 읽기 어댑터: office_oxide(고정 서브모듈, 수정 없음)를 감싸 IR과 IR이 빠뜨리는 스타일 정보를 JSON으로 낸다."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+office_oxide = { path = "../../third_party/office_oxide", default-features = false }
+wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# office_oxide가 이미 쓰는 버전과 같다(새 크레이트 추가 없음). zip은 읽기에만 쓴다(쓰기 코드는 WASM이 64KB 커져서 직접 구현, fields.rs).
+zip = { version = "9.0", default-features = false, features = ["deflate"] }
+quick-xml = "0.42"
+crc32fast = "1"
+
+[dev-dependencies]
+# 시험에서 시험용 ZIP을 만들 때만 쓴다(배포 WASM에는 들어가지 않는다)
+zip = { version = "9.0", features = ["deflate"] }

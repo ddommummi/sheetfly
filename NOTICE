@@ -8,6 +8,12 @@ This product includes software from:
   Included as a pinned git submodule at third_party/rhwp/.
   Full license text: licenses/rhwp-LICENSE-MIT.txt (verbatim copy of third_party/rhwp/LICENSE)
 
+- office_oxide — Copyright (c) 2026 Yury Fedoseev — MIT OR Apache-2.0 (used under the MIT License)
+  https://github.com/yfedoseev/office_oxide
+  Included as a pinned git submodule at third_party/office_oxide/, used unmodified (reads DOCX).
+  Full license text: licenses/office_oxide-LICENSE-MIT.txt; upstream NOTICE: licenses/office_oxide-NOTICE.txt
+  "OfficeOxide" and "office_oxide" are trademarks of Yury Fedoseev; Sheetfly is not affiliated with or endorsed by its author.
+
 - svg2pdf (vendored inside rhwp at third_party/rhwp/vendor/svg2pdf, with rhwp patches) — MIT OR Apache-2.0
   Full license texts: licenses/svg2pdf-LICENSE-MIT.txt, licenses/svg2pdf-LICENSE-APACHE.txt,
   licenses/svg2pdf-NOTICE.txt (verbatim copies of the upstream files)

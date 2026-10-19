@@ -3,7 +3,7 @@
 export const MAX_BYTES = 100 * 1024 * 1024;
 
 const UNSUPPORTED_EXT = {
-  docx: 'DOCX', doc: 'DOC', xlsx: 'XLSX', xls: 'XLS', pptx: 'PPTX', ppt: 'PPT',
+  doc: 'DOC', xlsx: 'XLSX', xls: 'XLS', pptx: 'PPTX', ppt: 'PPT',
   pdf: 'PDF', odt: 'ODT', ods: 'ODS', odp: 'ODP', rtf: 'RTF', txt: '텍스트',
 };
 
@@ -22,4 +22,20 @@ export function precheck(file, head) {
     return { code: 'unsupported_format', arg: 'PDF' };
   }
   return null;
+}
+
+/** 열 엔진 종류: 'docx' | 'hwp'. 확장자가 분명하면 그것을, 아니면 ZIP 끝(중앙 디렉터리)에서 word/document.xml을 찾는다. */
+export async function kindOf(file) {
+  const ext = extOf(file.name);
+  if (ext === 'docx') return 'docx';
+  if (ext === 'hwp' || ext === 'hwpx') return 'hwp';
+  try {
+    const tail = new Uint8Array(await file.slice(Math.max(0, file.size - 262144)).arrayBuffer());
+    const needle = new TextEncoder().encode('word/document.xml');
+    outer: for (let i = 0; i + needle.length <= tail.length; i++) {
+      for (let k = 0; k < needle.length; k++) if (tail[i + k] !== needle[k]) continue outer;
+      return 'docx';
+    }
+  } catch { /* 판별 실패는 기본 엔진으로 */ }
+  return 'hwp';
 }
