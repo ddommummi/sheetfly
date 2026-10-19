@@ -182,6 +182,14 @@
 - **원인은 확정하지 못했다**(가설은 `docs/deploy-cloudflare.md` 6절). 이 환경에서 Cloudflare 상태를 볼 수 없다.
 - **결정**: 비프로덕션 빌드는 끈 채로 운영한다. 검증은 GitHub Actions(수동 실행)가, 배포는 `main`만 한다. 이전 문서의 Preview command(`wrangler versions upload`)는 쓰이지 않는다.
 
+## 2026-10-19 · 3단계 (DOCX 뷰어)
+
+### D-030 DOCX 엔진 평가 결과와 선택지 — 오너 결정 대기
+- **무엇**: BetterOffice(Apache-2.0, 쪽 조판·`DisplayList`)와 office_oxide(MIT OR Apache-2.0, 텍스트·IR·HTML, 조판 없음)를 소스 읽기·wasm32 빌드·`cargo deny`로 비교했다. 상세와 한계: `docs/phase3/engine-evaluation.md`.
+- **측정**: brotli q11 — BetterOffice docx-edit 4.69MB(원본 30.1MB), office_oxide 0.77MB(원본 2.8MB). rhwp는 3.13MB. BetterOffice는 Rust 1.97 필요(rhwp 고정 1.93.1에서는 `yrs`가 컴파일 실패).
+- **권고**: 단계적(office_oxide 읽기 보기 먼저, 쪽 단위 렌더는 이후 선택). **어느 엔진도 의존성에 추가하지 않았다.** 엔진 선택·라이선스 추가·지연 로딩 용량 예산은 오너 승인 후.
+- **미확인**: 실제 DOCX 출력·시간, 한국어 글꼴 정확도.
+
 ## 오너 결정/확인 요청 목록 (1단계 종료 시점)
 
 | # | 항목 | 시급도 |
@@ -209,3 +217,4 @@
 | 17 | `frame-ancestors`(임베드)·100MB 한도 (D-017, D-020) | 공개 전 |
 | 18 | ~~Cloudflare 연결과 첫 빌드 시간 확인~~ — 완료: 오너가 연결, 첫 빌드 11분 50초 성공(D-025, `docs/deploy-cloudflare.md` 4절). 남은 일: 공개 URL의 공개 범위와 법률 검토(항목 10) | 공개 전 |
 | 19 | ~~wrangler 개발 의존성의 선택적 LGPL 패키지 허용 여부~~ — 완료: 허용 + 배포물 검사(D-028) | 완료 |
+| 20 | DOCX 엔진 선택(A BetterOffice / B office_oxide / C 단계적), 지연 로딩 모듈 용량 예산 (D-030) | 3단계 진행 전 |
