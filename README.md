@@ -14,7 +14,7 @@
 | 경로 | 내용 |
 |---|---|
 | `third_party/rhwp/` | HWP/HWPX 엔진. 고정 커밋 서브모듈 (아래 Acknowledgements) |
-| `third_party/office_oxide/` | DOCX 읽기(IR). 고정 커밋 서브모듈, 수정 없음 |
+| `third_party/office_oxide/` | DOCX·DOC 읽기(IR). 포크(`ddommummi/office_oxide`)의 고정 커밋 서브모듈, 수정 없음 |
 | `crates/fmt-docx/` | office_oxide 어댑터(WASM): IR + 제목 스타일 보완 |
 | `apps/web/` | 웹 뷰어 (바닐라 JS, Worker + WASM). 배포 설정(`wrangler.jsonc`, `public/_headers`) 포함 |
 | `scripts/` | WASM 빌드 스크립트 (`build-wasm.sh`) |
