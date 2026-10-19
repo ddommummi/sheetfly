@@ -1,10 +1,11 @@
 // 문서 조판: IR(sections) → 쪽 목록. 각 쪽은 { width, height, items } (좌표는 쪽 좌상단 기준 px).
 import { twipsToPx } from './units.js';
-import { placeBlocks, scratchFlow } from './flow.js';
+import { placeBlocks, scratchFlow, naturalTableWidth } from './flow.js';
 import { formatNumber } from './text.js';
 
 const MAX_PAGES = 5000;
 // 쪽 설정이 없는 구역(DOC 등)의 기본값: A4. 이 사용처는 한국어 문서가 많고 office_oxide가 DOC의 구역 설정을 읽지 못한다.
+const MAX_FIT_PX = 8000;   // 시트를 키울 수 있는 쪽 너비 상한(약 83인치)
 const DEFAULT_PAGE = { width_twips: 11906, height_twips: 16838, margin_top_twips: 1440, margin_bottom_twips: 1440, margin_left_twips: 1440, margin_right_twips: 1440, header_distance_twips: 720, footer_distance_twips: 720 };
 
 function makeNotes() {
@@ -112,12 +113,17 @@ export function layoutDocument(ir, measure, opts = {}) {
     return true;
   }
 
-  const geoOf = (ps) => {
+  const geoOf = (ps, sec) => {
     const g = { ...DEFAULT_PAGE, ...(ps ?? {}) };
     const geo = {
       W: twipsToPx(g.width_twips), H: twipsToPx(g.height_twips), ml: twipsToPx(g.margin_left_twips), mr: twipsToPx(g.margin_right_twips),
       mt: twipsToPx(g.margin_top_twips), mb: twipsToPx(g.margin_bottom_twips), hd: twipsToPx(g.header_distance_twips), fd: twipsToPx(g.footer_distance_twips),
     };
+    // 시트(스프레드시트)는 열이 쪽 밖으로 잘리지 않게 표를 펴서 한 줄 너비만큼 쪽을 넓힌다
+    if (sec?.fit_width) {
+      const tbl = (sec.elements ?? []).find((e) => e.type === 'table');
+      if (tbl) geo.W = Math.min(MAX_FIT_PX, Math.max(geo.W, naturalTableWidth(tbl, ctx) + geo.ml + geo.mr + 2));
+    }
     geo.textW = Math.max(24, geo.W - geo.ml - geo.mr);
     geo.start = g.page_number_start;
     geo.pnFmt = g.page_number_format;
@@ -128,7 +134,7 @@ export function layoutDocument(ir, measure, opts = {}) {
   let firstSection = true;
   for (let si = 0; si < sections.length && !truncated; si++) {
     const sec = sections[si];
-    const geo = geoOf(sec.page_setup);
+    const geo = geoOf(sec.page_setup, sec);
     const type = String(sec.break_type || 'next_page').toLowerCase();
     const sameSize = cur && Math.abs(cur.geo.W - geo.W) < 0.5 && Math.abs(cur.geo.H - geo.H) < 0.5;
     const continuous = !firstSection && type === 'continuous' && sameSize;
@@ -157,7 +163,7 @@ export function layoutDocument(ir, measure, opts = {}) {
       placeBlocks(blocks, flow, { ...ctx, notesOut: [] });
     }
   }
-  if (!pages.length) { startPage(sections[0], geoOf(sections[0].page_setup), true); }
+  if (!pages.length) { startPage(sections[0], geoOf(sections[0].page_setup, sections[0]), true); }
   // 필드(쪽 번호·전체 쪽 수)를 실제 값으로 다시 채운다. 높이는 처음 조판과 같다고 보고 항목만 바꾼다.
   for (const fp of fieldPages) {
     const { page, sec, geo } = fp;

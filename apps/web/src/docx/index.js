@@ -4,3 +4,4 @@ export { pageToSvg } from './svg.js';
 export { createCanvasMeasurer, createFakeMeasurer } from './measure.js';
 export { setFontOverride } from './fonts.js';
 export { parseRtf } from './rtf.js';
+export { adaptSheets, adaptSlides } from './office.js';

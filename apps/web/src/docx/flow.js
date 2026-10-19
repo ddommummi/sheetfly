@@ -228,7 +228,28 @@ function gridOf(tbl, width) {
   return cols;
 }
 
+const MAX_SPAN = 1000;
+/** 칸 병합 값이 터무니없으면(손상·악의적 문서) 반복문이 사실상 끝나지 않으므로 행·열 수 안으로 줄인다. */
+function normalizeTable(tbl) {
+  const rows = tbl.rows ?? [];
+  const sane = (c) => (c.col_span ?? 1) >= 1 && (c.col_span ?? 1) <= MAX_SPAN && (c.row_span ?? 1) >= 1 && (c.row_span ?? 1) <= rows.length;
+  if (rows.every((r) => (r.cells ?? []).every(sane))) return tbl;
+  const clamp = (v, hi) => (Number.isFinite(v) ? Math.max(1, Math.min(hi, Math.floor(v))) : 1);
+  return { ...tbl, rows: rows.map((r) => ({ ...r, cells: (r.cells ?? []).map((c) => (sane(c) ? c : { ...c, col_span: clamp(c.col_span ?? 1, MAX_SPAN), row_span: clamp(c.row_span ?? 1, Math.max(1, rows.length)) })) })) };
+}
+
+/** 자동 맞춤 표가 한 줄씩 다 펴졌을 때의 너비(px). 시트를 쪽 너비에 맞춰 키울 때 쓴다. */
+export function naturalTableWidth(tbl, ctx) {
+  tbl = normalizeTable(tbl);
+  const grid = gridOf(tbl, Infinity);
+  if (!grid.length) return 0;
+  const cpx = tbl.cell_padding_twips;
+  const lr = typeof cpx === 'number' ? twipsToPx(cpx) * 2 : twipsToPx((cpx?.left_twips ?? 108) + (cpx?.right_twips ?? 108));
+  return autofitGrid(tbl, Infinity, grid, lr, ctx).reduce((a, b) => a + b, 0);
+}
+
 function placeTable(tbl, flow, st, ctx) {
+  tbl = normalizeTable(tbl);
   let grid = gridOf(tbl, flow.width);
   const autoWidth = !(tbl.rows ?? []).some((r) => (r.cells ?? []).some((c) => c.width_twips));
   if (autoWidth && grid.length) {
@@ -276,6 +297,11 @@ function placeTable(tbl, flow, st, ctx) {
     if (cc.h > have) rh[Math.min(cc.r + cc.rs - 1, rows.length - 1)] += cc.h - have;
   }
   const rowTop = [0]; for (const h of rh) rowTop.push(rowTop[rowTop.length - 1] + h);
+  // 행별 색인: 큰 표(수천 행)에서 쪽마다 모든 셀을 훑으면 제곱으로 느려진다
+  const byRow = rows.map(() => []);
+  for (const cc of cells) if (cc.r < rows.length) byRow[cc.r].push(cc);
+  const reach = rows.map((_, i) => i + 1);                           // reach[r]: r에서 시작하는 묶음이 걸치는 마지막 행 + 1 (병합이 이어지는 만큼)
+  for (const cc of cells) if (cc.rs > 1) for (let r2 = cc.r; r2 < Math.min(rows.length, cc.r + cc.rs - 1); r2++) reach[r2] = Math.max(reach[r2], cc.r + cc.rs);
 
   const hdrRows = []; for (let r = 0; r < rows.length; r++) { if (rows[r].is_header || rows[r].repeat_as_header) hdrRows.push(r); else break; }
   const tb = tbl.border ?? {};
@@ -284,8 +310,7 @@ function placeTable(tbl, flow, st, ctx) {
   const drawRows = (from, to, y) => {
     // from..to-1 행을 y에서 그린다
     const off = y - rowTop[from];
-    for (const cc of cells) {
-      if (cc.r < from || cc.r >= to) continue;
+    for (let r2 = from; r2 < to; r2++) for (const cc of byRow[r2]) {
       const top = off + rowTop[cc.r];
       const h = Math.min(rowTop[Math.min(cc.r + cc.rs, rows.length)], rowTop[to]) - rowTop[cc.r];
       const bg = rgb(cc.cell.background_color);
@@ -320,7 +345,7 @@ function placeTable(tbl, flow, st, ctx) {
     const rowH = rh[r];
     // 병합으로 걸친 행 묶음은 쪼개지 않는다
     let end = r + 1;
-    for (const cc of cells) if (cc.r <= r && cc.r + cc.rs > end && cc.r + cc.rs > r + 1) end = Math.max(end, cc.r + cc.rs);
+    end = Math.max(end, reach[r]);
     const blockH = rowTop[end] - rowTop[r];
     if (flow.paginated && flow.y + blockH > flow.bottom + EPS && !firstOnPage) {
       flow.newPage(); st.atTop = true; firstOnPage = true;
@@ -408,7 +433,11 @@ export function placeBlocks(elements, flow, ctx) {
         placeParagraph(layoutParagraph(p, paragraphCtx(flow, ctx)), flow, st);
         break;
       }
-      case 'text_box': placeBlocks(el.content ?? [], flow, ctx); break;
+      case 'text_box':
+        // 슬라이드처럼 위치가 정해진 상자는 흐름과 무관하게 쪽 좌표에 놓는다
+        if (flow.paginated && el.x_emu != null && el.y_emu != null && el.width_emu > 0) placeAbsolute(el, flow, ctx);
+        else placeBlocks(el.content ?? [], flow, ctx);
+        break;
       case 'page_break':
         if (flow.paginated) { flow.newPage(); st.atTop = true; }
         break;
@@ -419,6 +448,15 @@ export function placeBlocks(elements, flow, ctx) {
       default: break;
     }
   }
+}
+
+/** x_emu/y_emu가 있는 상자: 내용을 상자 너비로 조판해 그 위치에 얹는다(높이는 제한하지 않는다). */
+function placeAbsolute(el, flow, ctx) {
+  const f = scratchFlow(Math.max(1, emuToPx(el.width_emu)));
+  placeBlocks(el.content ?? [], f, { ...ctx, notesOut: [] });
+  const ox = emuToPx(el.x_emu), oy = emuToPx(el.y_emu);
+  const dx = el.h_anchor === 'page' ? ox : flow.x0 + ox, dy = el.v_anchor === 'page' ? oy : flow.top + oy;
+  for (const it of f.items) flow.items.push(shiftItem(it, dx, dy));
 }
 
 export { pushRect, pushLine, shiftItem, MAX_ITEMS_PER_PAGE };

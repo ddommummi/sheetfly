@@ -142,7 +142,7 @@ test('DOCX 오류: 손상(잘린 ZIP), 암호(OLE), 가짜 DOCX 뒤에도 정상
 
   const ole = Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(600)]);
   await send(page, 'locked.docx', ole);
-  assert.match(await waitError(page), /암호가 걸린 DOCX/);
+  assert.match(await waitError(page), /암호가 걸린 Office 문서/);
   await page.click('#error-close');
 
   await send(page, 'fake.docx', Buffer.from('docx가 아닌 글자 '.repeat(200)));
@@ -252,6 +252,62 @@ test('DOC 파서가 패닉해도(업스트림 결함, 바이트 손상 DOC) 앱�
   assert.match(await waitError(page), /엔진 오류가 발생해|손상되었거나/);
   await openDocx(page, 'after.rtf', makeRtf(rp('패닉 뒤에도 열린다')));
   assert.match(await hitsOf(page, '패닉 뒤에도'), /\/ 1$/);
+  await done(page);
+});
+
+const fixture = (name) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url));
+const pageRatios = (page) => page.evaluate(() => [...document.querySelectorAll('.page')].map((p) => { const r = p.getBoundingClientRect(); return r.width / r.height; }));
+
+test('XLSX: 시트별 쪽, 병합·숫자 서식, 넓은 시트는 쪽 너비를 키워 열이 잘리지 않고 머리 행이 반복된다', async () => {
+  const page = await newPage();
+  await openDocx(page, 'sample.xlsx', fixture('sample.xlsx'));
+  assert.ok((await pageCount(page)) >= 3);                                                  // 시트 3개 이상 → 쪽 3개 이상(넓은 시트는 행이 많아 여러 쪽)
+  assert.match(await page.locator('#doc-note').innerText(), /시트를 쪽으로 나눠 보여 줍니다/);
+  assert.match(await hitsOf(page, '병합된 셀'), /\/ 1$/);
+  assert.match(await hitsOf(page, '100.00'), /\/ 1$/);                                     // 숫자 서식(#,##0.00)
+  assert.match(await hitsOf(page, '25.6%'), /\/ 1$/);                                      // 백분율 서식
+  assert.match(await hitsOf(page, '열40'), /\/ [2-9]$/);                                    // 40번째 열이 쪽 안에 있다(여러 쪽의 머리 행에서 반복)
+  assert.match(await hitsOf(page, 'third sheet'), /\/ 1$/);
+  const ratios = await pageRatios(page);
+  assert.ok(ratios.some((r) => r > 16838 / 11906 * 1.5), `넓은 시트 쪽이 가로로 커져야 한다: ${ratios.map((r) => r.toFixed(2))}`);
+  await done(page);
+});
+
+test('XLS(구형 Excel)와 이름만 .xls인 XLSX를 연다, OLE 껍데기의 .xlsx는 암호화로 본다', async () => {
+  const page = await newPage();
+  await openDocx(page, 'old.xls', fixture('sample.xls'));
+  assert.match(await hitsOf(page, '병합된 셀'), /\/ 1$/);
+  await openDocx(page, 'renamed.xls', fixture('sample.xlsx'));                                // 확장자가 틀려도 ZIP 안의 부품 이름으로 알아본다
+  assert.match(await hitsOf(page, 'third sheet'), /\/ 1$/);
+  await send(page, 'locked.xlsx', fixture('sample.xls'));                                     // OLE인데 OOXML 이름 = 암호화된 문서의 모양
+  assert.match(await waitError(page), /암호가 걸린 Office 문서/);
+  await done(page);
+});
+
+test('PPTX: 슬라이드마다 한 쪽(16:9), 제목·목록·표·도형 글자, 그림, 안내 문구', async () => {
+  const page = await newPage();
+  await openDocx(page, 'sample.pptx', fixture('sample.pptx'));
+  assert.equal(await pageCount(page), 3);
+  assert.match(await page.locator('#doc-note').innerText(), /슬라이드의 글·표·그림을 배치해 보여 줍니다/);
+  const ratios = await pageRatios(page);
+  assert.ok(ratios.every((r) => Math.abs(r - 13.333 / 7.5) < 0.02), `슬라이드 비율: ${ratios}`);
+  assert.match(await hitsOf(page, '둘째 항목'), /\/ 1$/);
+  assert.match(await hitsOf(page, '1,2 값'), /\/ 1$/);                                      // 상자 속 표
+  assert.match(await hitsOf(page, '도형 텍스트'), /\/ 1$/);                                  // 절대 위치 상자
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.page img').length >= 0), true);
+  await done(page);
+});
+
+test('XLSX·PPTX 오류: 잘린 파일은 오류를 보이고 다음 문서를 연다', async () => {
+  const page = await newPage();
+  const x = fixture('sample.xlsx');
+  await send(page, 'cut.xlsx', x.subarray(0, Math.floor(x.length / 2)));
+  assert.match(await waitError(page), /손상되었거나 지원하지 않는 형식/);
+  const pp = fixture('sample.pptx');
+  await send(page, 'cut.pptx', pp.subarray(0, 1000));
+  assert.match(await waitError(page), /손상되었거나 지원하지 않는 형식/);
+  await openDocx(page, 'ok.pptx', pp);
+  assert.equal(await pageCount(page), 3);
   await done(page);
 });
 
