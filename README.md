@@ -6,7 +6,7 @@
 
 ## 상태
 
-**1단계(저장소 구성·측정·감사) 완료, 2단계(웹 뷰어 MVP: HWP/HWPX 읽기 전용) 구현·검증 완료, 3단계(DOCX 뷰어) 진행 중: DOCX 열기·쪽 단위 보기 구현(자체 조판 엔진, 정확도·한계는 `docs/phase3/report.md`).** 아직 공개 배포는 하지 않았다.
+**1단계(저장소 구성·측정·감사) 완료, 2단계(웹 뷰어 MVP: HWP/HWPX 읽기 전용) 구현·검증 완료, 3단계(DOCX 뷰어) 진행 중: DOCX·RTF·DOC 열기·쪽 단위 보기 구현(자체 조판 엔진, 정확도·한계는 `docs/phase3/report.md`, RTF·DOC는 `docs/decisions.md` D-035).** 아직 공개 배포는 하지 않았다.
 측정값과 결정은 [`docs/phase1/report.md`](docs/phase1/report.md), [`docs/phase2/report.md`](docs/phase2/report.md), [`docs/decisions.md`](docs/decisions.md)에 있다.
 
 ## 저장소 구성
@@ -49,7 +49,7 @@ Sheetfly 자체 코드는 **MIT License**이다 ([`LICENSE`](LICENSE), Copyright
 
 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
-- DOCX 읽기는 [office_oxide](https://github.com/yfedoseev/office_oxide) (Copyright (c) 2026 Yury Fedoseev, MIT OR Apache-2.0 중 MIT로 사용)를 수정 없이 쓴다. "OfficeOxide"는 해당 저자의 상표이며 본 프로젝트와 제휴 관계가 없다. 쪽 나눔은 Sheetfly가 직접 한다.
+- DOC(구형 Word) 읽기와 DOCX 읽기는 [office_oxide](https://github.com/yfedoseev/office_oxide) (Copyright (c) 2026 Yury Fedoseev, MIT OR Apache-2.0 중 MIT로 사용)를 수정 없이 쓴다. "OfficeOxide"는 해당 저자의 상표이며 본 프로젝트와 제휴 관계가 없다. 쪽 나눔은 Sheetfly가 직접 하며, RTF는 Sheetfly가 직접 만든 변환기(`apps/web/src/docx/rtf.js`)로 읽는다.
 - HWP/HWPX 처리는 [rhwp](https://github.com/edwardkim/rhwp) (Copyright (c) 2025-2026 Edward Kim, MIT License)를 고정 버전 의존성으로 사용한다. 원 저작권 문구는 `licenses/rhwp-LICENSE-MIT.txt`에 원문 그대로 있다.
 - 업스트림 하위 코드(예: `vendor/svg2pdf`)의 라이선스도 `licenses/`와 `NOTICE`에 수록한다.
 

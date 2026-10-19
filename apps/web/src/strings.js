@@ -6,7 +6,7 @@ export const S = {
   open: '파일 열기',
   openTitle: '파일 열기 (Ctrl+O)',
   dropTitle: '문서를 여기로 끌어다 놓으세요',
-  dropHint: 'HWP, HWPX, DOCX 문서를 열 수 있습니다. 문서는 이 기기 안에서만 처리되며 서버로 전송되지 않습니다.',
+  dropHint: 'HWP, HWPX, DOCX, DOC, RTF 문서를 열 수 있습니다. 문서는 이 기기 안에서만 처리되며 서버로 전송되지 않습니다.',
   dropActive: '놓으면 문서를 엽니다',
   prevPage: '이전 쪽',
   nextPage: '다음 쪽',
@@ -38,8 +38,8 @@ export const S = {
   errors: {
     too_large: (mb) => `파일이 너무 큽니다 (${mb}MB). ${100}MB 이하의 문서만 열 수 있습니다.`,
     empty_file: '빈 파일입니다.',
-    unsupported_format: (kind) => `${kind} 형식은 아직 지원하지 않습니다. 지금은 HWP, HWPX, DOCX 문서만 열 수 있습니다.`,
-    corrupt: '문서가 손상되었거나 지원하지 않는 형식입니다. HWP, HWPX, DOCX 문서가 맞는지 확인해 주세요.',
+    unsupported_format: (kind) => `${kind} 형식은 아직 지원하지 않습니다. 지금은 HWP, HWPX, DOCX, DOC, RTF 문서만 열 수 있습니다.`,
+    corrupt: '문서가 손상되었거나 지원하지 않는 형식입니다. HWP, HWPX, DOCX, DOC, RTF 문서가 맞는지 확인해 주세요.',
     drm: '배포용 보호(DRM)가 걸린 문서는 열 수 없습니다.',
     no_pages: '표시할 쪽이 없는 문서입니다.',
     docx_encrypted: '암호가 걸린 DOCX 문서는 아직 열 수 없습니다.',
@@ -54,7 +54,7 @@ export const S = {
   passwordLabel: '비밀번호',
   passwordSubmit: '열기',
   passwordCancel: '취소',
-  docxNote: 'DOCX는 이 기기의 글꼴로 쪽을 나눕니다. Word와 쪽 경계가 다를 수 있습니다.',
+  docxNote: 'DOCX·DOC·RTF는 이 기기의 글꼴로 쪽을 나눕니다. Word와 쪽 경계가 다를 수 있습니다.',
   privacy: '문서는 이 기기 안에서만 처리되며 서버로 전송되지 않습니다.',
   licenses: '오픈소스 라이선스',
   // 한컴이 요구한 고지 문장 (docs/licensing/hwp-spec-terms.md). 한 글자도 바꾸지 않는다.

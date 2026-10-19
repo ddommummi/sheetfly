@@ -9,6 +9,7 @@ import { build } from 'esbuild';
 import { chromium } from 'playwright-core';
 import { rng, mutate, KINDS } from './mutate.mjs';
 import { makeDocx, p, pageBreak, table, fieldSimple, fieldComplex, run, footerPara } from './docx-fixtures.mjs';
+import { makeRtf, rp, rpage, rtable, pageField, numPagesField, u } from './rtf-fixtures.mjs';
 import { chromiumPath } from './helpers.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -59,14 +60,57 @@ function makeCase(i) {
   return { label: `${k}#${i}`, buf: mutate(buf, rand, k) };
 }
 
+// ── RTF·DOC ──
+const RTF_BODIES = [
+  rp('제목', '\\qc\\b\\fs36') + rp('본문 ' + KO.repeat(6), '\\qj\\fi360\\li720\\sb120\\sa120\\sl360\\slmult1') + rp('Hello '.repeat(40), '\\cf2\\fs28\\i'),
+  rtable([['가', '나', '다'], ['1', '2', '3'], ['긴 내용 '.repeat(20), 'b', 'c']], [2000, 2000, 2000]) + rp('표 아래') + rpage + rp('다음 쪽'),
+  Array.from({ length: 80 }, (_, i) => rp(`${i}번째 문단 ${KO}`)).join(''),
+  '{\\footnote ' + u('각주 내용') + '}' + rp('각주가 있는 문단') + '\\pard\\tqr\\tldot\\tx9000 Label\\tab 12\\par\n' + '\\pard\\f1 \\\'b0\\\'a1\\\'b3\\\'aa\\par\n',
+];
+const RTF_HF = { footer: u('쪽 ') + pageField('1') + ' / ' + numPagesField('9'), header: u('머리글') };
+// 의미 변형: 제어어의 숫자를 극단값으로 바꾸고, 괄호를 지우거나 늘리고, 그룹을 복제한다
+function rtfSemantic(buf, rand) {
+  let s = buf.toString('latin1');
+  const nums = [...s.matchAll(/\\[a-z]+(-?\d+)/g)];
+  const n = 1 + Math.floor(rand() * 5);
+  for (let i = 0; i < n && nums.length; i++) {
+    const m = nums[Math.floor(rand() * nums.length)];
+    s = s.replace(m[0], m[0].replace(/-?\d+$/, EDGE[Math.floor(rand() * EDGE.length)]));
+  }
+  const r = rand();
+  if (r < 0.2) { const k = s.indexOf('}'); if (k > 0) s = s.slice(0, k) + s.slice(k + 1); }
+  else if (r < 0.4) { const k = Math.floor(rand() * s.length); s = s.slice(0, k) + '{'.repeat(1 + Math.floor(rand() * 400)) + s.slice(k); }
+  else if (r < 0.5) { const k = Math.floor(rand() * s.length); s = s.slice(0, k) + '\\bin99999999 ' + s.slice(k); }
+  else if (r < 0.6) { s = s.replace('\\trowd', '\\trowd\\cellx0\\cellx0\\cellx-5\\cellx99999999'); }
+  return Buffer.from(s, 'latin1');
+}
+const DOC_SEED = readFileSync(join(here, 'fixtures/sample.doc'));
+function makeRtfCase(i) {
+  const rand = rng(SEED * 7000019 + i);
+  const body = RTF_BODIES[Math.floor(rand() * RTF_BODIES.length)];
+  const base = makeRtf(body, rand() < 0.5 ? RTF_HF : {});
+  if (rand() < 0.5) return { label: `rtf-semantic#${i}`, kind: 'rtf', buf: rtfSemantic(base, rand) };
+  const k = KINDS[Math.floor(rand() * KINDS.length)];
+  return { label: `rtf-${k}#${i}`, kind: 'rtf', buf: mutate(base, rand, k) };
+}
+function makeDocCase(i) {
+  const rand = rng(SEED * 9000011 + i);
+  const k = KINDS[Math.floor(rand() * KINDS.length)];
+  return { label: `doc-${k}#${i}`, kind: 'doc', buf: mutate(DOC_SEED, rand, k) };
+}
+
 const cases = [];
 for (let i = 0; i < N; i++) cases.push(makeCase(i));
+for (let i = 0; i < Math.ceil(N * 0.5); i++) cases.push(makeRtfCase(i));
+for (let i = 0; i < Math.ceil(N * 0.25); i++) cases.push(makeDocCase(i));
+cases.push({ label: 'doc-seed', kind: 'doc', buf: DOC_SEED });
 if (SEEDS_DIR) {
-  for (const f of readdirSync(SEEDS_DIR).filter((x) => /\.docx$/i.test(x)).sort()) {
+  for (const f of readdirSync(SEEDS_DIR).filter((x) => /\.(docx|doc|rtf)$/i.test(x)).sort()) {
     const buf = readFileSync(join(SEEDS_DIR, f));
-    cases.push({ label: `seed:${f}`, buf });
+    const kind = /\.rtf$/i.test(f) || buf.subarray(0, 5).toString() === '{\\rtf' ? 'rtf' : /\.doc$/i.test(f) && buf[0] === 0xd0 ? 'doc' : 'docx';
+    cases.push({ label: `seed:${f}`, kind, buf });
     const rand = rng(SEED + cases.length);
-    for (let k = 0; k < 6; k++) cases.push({ label: `${KINDS[k % KINDS.length]}:${f}`, buf: mutate(buf, rand, KINDS[k % KINDS.length]) });
+    for (let k = 0; k < 6; k++) cases.push({ label: `${KINDS[k % KINDS.length]}:${f}`, kind, buf: mutate(buf, rand, KINDS[k % KINDS.length]) });
   }
 }
 
@@ -82,14 +126,14 @@ async function freshPage() {
   await page.evaluate(async (w) => { const b = Uint8Array.from(atob(w), (c) => c.charCodeAt(0)); await SheetflyFuzz.initEngine(b); }, wasm);
   return page;
 }
-const runBatch = (page, items) => page.evaluate((arr) => arr.map((b64) => SheetflyFuzz.run(b64)), items);
+const runBatch = (page, items) => page.evaluate((arr) => arr.map(([b64, kind]) => SheetflyFuzz.run(b64, 60, kind)), items);
 
 const results = [];
 let page = await freshPage();
 const t0 = Date.now();
 for (let i = 0; i < cases.length; i += BATCH) {
   const slice = cases.slice(i, i + BATCH);
-  const items = slice.map((c) => c.buf.toString('base64'));
+  const items = slice.map((c) => [c.buf.toString('base64'), c.kind ?? 'docx']);
   let res;
   try {
     res = await Promise.race([runBatch(page, items), new Promise((_, rej) => setTimeout(() => rej(new Error('hang')), HANG_MS))]);
@@ -120,10 +164,14 @@ const ms = results.map((r) => r.ms).sort((a, b) => a - b);
 const pct = (q) => ms[Math.min(ms.length - 1, Math.floor(ms.length * q))].toFixed(0);
 console.log(`입력 ${results.length}개 (${((Date.now() - t0) / 1000).toFixed(0)}초) 상태:`, count);
 console.log(`시간 ms: p50 ${pct(0.5)} p95 ${pct(0.95)} p99 ${pct(0.99)} 최대 ${ms.at(-1).toFixed(0)}, 최대 쪽 수 ${Math.max(...results.map((r) => r.pages))}`);
-const bad = results.filter((r) => ['trap', 'js_error', 'hang'].includes(r.status));
+// DOC 읽기는 office_oxide 코드뿐이라(우리 어댑터는 그대로 넘긴다) DOC 변형에서 나온 trap은 업스트림 결함으로 따로 센다 (docs/phase3/doc-rtf.md).
+const isUpstream = (r) => r.status === 'trap' && r.label.startsWith('doc-');
+const upstream = results.filter(isUpstream);
+const bad = results.filter((r) => ['trap', 'js_error', 'hang'].includes(r.status) && !isUpstream(r));
+for (const r of upstream) console.log('업스트림(DOC) trap:', r.label, r.detail);
 const slow = results.filter((r) => r.ms > 3000 && r.status !== 'hang');
 for (const r of bad) console.log('문제:', r.status, r.label, r.detail);
 for (const r of slow.slice(0, 10)) console.log('느림:', Math.round(r.ms), 'ms', r.label, r.status, `${r.pages}쪽`);
 mkdirSync(join(here, '../node_modules/.cache/sheetfly-e2e/'), { recursive: true });
-writeFileSync(join(here, '../node_modules/.cache/sheetfly-e2e/docx-fuzz.json'), JSON.stringify({ seed: SEED, n: N, count, bad, slow }, null, 1));
+writeFileSync(join(here, '../node_modules/.cache/sheetfly-e2e/docx-fuzz.json'), JSON.stringify({ seed: SEED, n: N, count, bad, upstream, slow }, null, 1));
 process.exit(bad.length ? 1 : 0);

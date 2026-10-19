@@ -4,7 +4,8 @@ import { placeBlocks, scratchFlow } from './flow.js';
 import { formatNumber } from './text.js';
 
 const MAX_PAGES = 5000;
-const DEFAULT_PAGE = { width_twips: 12240, height_twips: 15840, margin_top_twips: 1440, margin_bottom_twips: 1440, margin_left_twips: 1440, margin_right_twips: 1440, header_distance_twips: 720, footer_distance_twips: 720 };
+// 쪽 설정이 없는 구역(DOC 등)의 기본값: A4. 이 사용처는 한국어 문서가 많고 office_oxide가 DOC의 구역 설정을 읽지 못한다.
+const DEFAULT_PAGE = { width_twips: 11906, height_twips: 16838, margin_top_twips: 1440, margin_bottom_twips: 1440, margin_left_twips: 1440, margin_right_twips: 1440, header_distance_twips: 720, footer_distance_twips: 720 };
 
 function makeNotes() {
   const maps = { footnote_ref: new Map(), endnote_ref: new Map() };

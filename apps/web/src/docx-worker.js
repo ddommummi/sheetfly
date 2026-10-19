@@ -1,7 +1,7 @@
 // DOCX 엔진 Worker: office_oxide(fmt-docx 어댑터, WASM)로 문서를 IR로 읽고, 우리 조판 엔진(docx/)으로 쪽을 나눈다.
 // 메시지 계약은 worker.js(HWP)와 같다: init / open / render / search / close / warmup.
 import init, { SheetflyDoc } from './wasm/fmt_docx.js';
-import { layoutDocument, pageToSvg, createCanvasMeasurer } from './docx/index.js';
+import { layoutDocument, pageToSvg, createCanvasMeasurer, parseRtf } from './docx/index.js';
 
 let pages = null;
 let measure = null;
@@ -17,17 +17,21 @@ function classify(e) {
   return { code: 'corrupt', message };
 }
 
-function openDocument({ buffer }) {
-  const bytes = new Uint8Array(buffer);
-  // 암호화된 DOCX는 OLE(CFB) 컨테이너로 저장된다(D0 CF 11 E0). 복호는 지원하지 않는다.
-  if (bytes.length >= 4 && bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0) {
-    throw { code: 'docx_encrypted', message: 'OLE container' };
-  }
-  let full;
+const isOle = (b) => b.length >= 4 && b[0] === 0xd0 && b[1] === 0xcf && b[2] === 0x11 && b[3] === 0xe0;
+const isRtf = (b) => b.length >= 5 && b[0] === 0x7b && b[1] === 0x5c && b[2] === 0x72 && b[3] === 0x74 && b[4] === 0x66;
+
+function readIr(bytes, kind) {
+  if (isRtf(bytes)) { try { return { ir: parseRtf(bytes).ir }; } catch (e) { throw classify(e); } }
+  // OLE(CFB)는 구형 Word(.doc)거나, 암호화된 DOCX가 담기는 껍데기다. DOCX로 온 OLE는 암호화로 본다. 복호는 지원하지 않는다.
+  if (isOle(bytes) && kind !== 'doc') throw { code: 'docx_encrypted', message: 'OLE container' };
   try {
-    const doc = new SheetflyDoc(bytes, 'docx');
-    try { full = JSON.parse(doc.toJson()); } finally { doc.free(); }
+    const doc = new SheetflyDoc(bytes, kind === 'doc' && isOle(bytes) ? 'doc' : 'docx');
+    try { return JSON.parse(doc.toJson()); } finally { doc.free(); }
   } catch (e) { throw classify(e); }
+}
+
+function openDocument({ buffer, kind }) {
+  const full = readIr(new Uint8Array(buffer), kind);
   try {
     if (!measure) measure = createCanvasMeasurer();
     const res = layoutDocument(full.ir, measure, { headingRuns: full.heading_runs });

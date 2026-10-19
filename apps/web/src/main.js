@@ -69,15 +69,16 @@ async function openFile(file, password) {
   const token = ++openToken;
   const kind = await kindOf(file);
   if (token !== openToken) return;
-  const worker = kind === 'docx' ? new DocWorker(docxCfg) : (warm ?? spawn());
-  if (kind !== 'docx') warm = null;
+  const lazy = kind !== 'hwp';   // docx·doc·rtf는 DOCX 엔진 Worker
+  const worker = lazy ? new DocWorker(docxCfg) : (warm ?? spawn());
+  if (!lazy) warm = null;
   opening = { worker, token };
   setLoading(true, file.name);
   try {
     const buffer = await file.arrayBuffer();
     if (token !== openToken) return;
     await worker.ready;
-    const res = await worker.request('open', { buffer, password }, [buffer]);
+    const res = await worker.request('open', { buffer, password, kind }, [buffer]);
     if (token !== openToken) { worker.terminate(); return; }
 
     const old = docWorker;
@@ -89,7 +90,7 @@ async function openFile(file, password) {
     old?.terminate();
     docName = file.name;
     document.title = `${docName} – ${S.appName}`;
-    $('doc-note').hidden = kind !== 'docx';
+    $('doc-note').hidden = !lazy;
     $('file-name').textContent = docName;
     $('file-name').title = docName;
     $('page-total').textContent = S.pageOf(res.pageCount);
