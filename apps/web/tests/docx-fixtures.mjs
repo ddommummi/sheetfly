@@ -1,7 +1,7 @@
 // 시험용 DOCX를 직접 만든다(저장하지 않는 최소 ZIP). 외부 샘플 파일의 저작권·용량 문제를 피하고, 구조를 시험이 통제한다.
 import { crc32 } from 'node:zlib';
 
-function zip(files) {
+export function zip(files) {
   const enc = new TextEncoder();
   const chunks = [];
   const central = [];

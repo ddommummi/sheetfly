@@ -1,5 +1,5 @@
 // 문서 조판: IR(sections) → 쪽 목록. 각 쪽은 { width, height, items } (좌표는 쪽 좌상단 기준 px).
-import { twipsToPx } from './units.js';
+import { twipsToPx, rgb } from './units.js';
 import { placeBlocks, scratchFlow, naturalTableWidth } from './flow.js';
 import { formatNumber } from './text.js';
 
@@ -89,6 +89,7 @@ export function layoutDocument(ir, measure, opts = {}) {
     if (pages.length >= maxPages) { truncated = true; ctx.warn(`쪽 수가 상한(${maxPages})을 넘어 이후는 생략했다`); return false; }
     pageNo++;
     const items = [];
+    if (sec.background_color) items.push({ k: 'r', x: 0, y: 0, w: geo.W, h: geo.H, fill: rgb(sec.background_color) ?? '#ffffff' });   // 슬라이드 배경
     const page = { width: geo.W, height: geo.H, items, no: pageNo };
     pages.push(page);
     const first = firstInSection && sec.first_page_header;

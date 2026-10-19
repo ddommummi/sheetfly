@@ -1,6 +1,6 @@
 // 변이 시험용 번들 진입점: 브라우저 한 페이지에서 파싱(WASM) → 조판 → SVG까지 Worker와 같은 경로를 돌린다.
 import init, { SheetflyDoc } from '../src/wasm/fmt_docx.js';
-import { layoutDocument, pageToSvg, createCanvasMeasurer, parseRtf, adaptSheets, adaptSlides } from '../src/docx/index.js';
+import { layoutDocument, pageToSvg, createCanvasMeasurer, parseRtf, parsePptx, adaptSheets, adaptSlides } from '../src/docx/index.js';
 
 let measure = null;
 export async function initEngine(wasmBytes) { await init({ module_or_path: wasmBytes }); measure = createCanvasMeasurer(); }
@@ -22,20 +22,21 @@ function mutateIr(ir, seed) {
   return ir;
 }
 
-function parseKind(bytes, kind) {
+async function parseKind(bytes, kind) {
   if (kind === 'rtf') return { ir: parseRtf(bytes).ir, kind };
+  if (kind === 'pptx-own') return { ir: (await parsePptx(bytes)).ir, kind: 'pptx-own' };
   const doc = new SheetflyDoc(bytes, kind);
   try { return { ...JSON.parse(doc.toJson()), kind }; } finally { doc.free(); }
 }
 
-export function run(b64, maxPages = 60, kind = 'docx', seed = 0) {
+export async function run(b64, maxPages = 60, kind = 'docx', seed = 0) {
   const bin = atob(b64); const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   const t = performance.now();
   let status = 'ok', pages = 0, detail = '';
   try {
     const mutant = kind.startsWith('ir-');            // 'ir-xlsx' 등: 정상 파일을 읽은 IR을 바꿔서 조판에 넣는다
-    const full = parseKind(bytes, mutant ? kind.slice(3) : kind);
+    const full = await parseKind(bytes, mutant ? kind.slice(3) : kind);
     if (mutant) mutateIr(full.ir, seed);
     let ir = full.ir;
     if (full.kind === 'xlsx' || full.kind === 'xls') ir = adaptSheets(ir);

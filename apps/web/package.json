@@ -10,7 +10,7 @@
     "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
     "dev": "node scripts/build.mjs && node scripts/serve.mjs",
-    "test:e2e": "node tests/e2e.mjs && node tests/e2e-docx.mjs",
+    "test:e2e": "node tests/pptx-unit.mjs && node tests/e2e.mjs && node tests/e2e-docx.mjs",
     "test:corpus": "node tests/corpus.mjs",
     "test:docx-fuzz": "node tests/docx-fuzz.mjs",
     "budget": "node scripts/budget.mjs",
