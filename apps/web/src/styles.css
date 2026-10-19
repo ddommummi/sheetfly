@@ -155,7 +155,7 @@ body.doc-page { display: block; height: auto; min-height: 100%; }
 .license-text { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; font: 12px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; }
 
 /* 편집 (4단계): 도구줄은 상단바와 같은 .btn(모서리 둥근 사각형)을 그대로 쓴다 */
-.editbar { grid-row: 2; display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.editbar { grid-row: 2; display: flex; flex-direction: column; gap: 6px; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
 .btn.primary[aria-pressed="true"] { color: var(--accent-text); }
 .btn.fmt-b { font-weight: 800; } .btn.fmt-i { font-style: italic; } .btn.fmt-u { text-decoration: underline; }
@@ -174,3 +174,14 @@ body[data-editing] .page > img { user-select: none; }
 body[data-dirty] .file-name::after { content: " ●"; color: var(--accent); }
 .dialog-list { margin: 0 0 4px; padding-left: 18px; display: grid; gap: 6px; max-width: 46ch; }
 @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+
+/* 편집 도구줄: 첫 줄(탭·저장)과 탭별 패널 */
+.edit-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.edit-panel { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.edit-panel[hidden] { display: none; }
+.btn.tab[aria-selected="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); font-weight: 600; }
+.dialog-fields { display: grid; gap: 10px; margin: 10px 0 14px; min-width: min(360px, 80vw); }
+.dialog-field { display: grid; gap: 4px; }
+.dialog-field:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.dialog-label { color: var(--muted); font-size: 13px; }
+.dialog-hint { color: var(--muted); font-size: 12px; }

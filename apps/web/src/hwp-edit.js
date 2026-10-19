@@ -3,6 +3,7 @@
 // 위치(pos): { s: 구역, p: 본문 문단(칸 안이면 그 칸을 가진 문단), o: 문단 안 글자 위치, path: null | [{controlIndex, cellIndex, cellParaIndex}…] }
 //   · 글자 위치·개수는 UTF-16이 아니라 유니코드 글자(code point) 단위다(rhwp 계약) — 이모지 등을 위해 [...s].length로 센다.
 //   · 표 칸 안이면 path의 마지막 항목의 cellParaIndex가 칸 안 문단 번호다.
+import { ext, tableAt, cellRange } from './hwp-ops.js';
 const states = new WeakMap();
 const J = JSON.parse;
 const len = (s) => [...s].length;
@@ -66,13 +67,19 @@ function opSplit(doc, pos) {
   if (!ctrls) r = rawSplit(doc, pos, pos.o);
   else {
     const snap = doc.saveSnapshot();
+    const len0 = paraLen(doc, pos), cnt0 = paraCount(doc, pos);
     try {
+      const tried = [];
       for (let k = 0; k <= ctrls + 1; k++) {
         r = rawSplit(doc, pos, pos.o + k);
-        if (paraLen(doc, pos) === pos.o) break;
+        const got = paraLen(doc, pos);
+        tried.push(got);
+        if (got === pos.o) break;
+        // 표만 있는 문단의 맨 앞에서 Enter: 엔진은 문단을 나누지 않고 표 뒤에 빈 문단을 만든다(한컴과 같은 동작). 글자 수가 그대로이고 문단이 하나 늘었으면 그것으로 본다.
+        if (k === 0 && pos.o === 0 && got === len0 && paraCount(doc, pos) === cnt0 + 1) break;
         doc.restoreSnapshot(snap); r = null;
       }
-      if (!r) throw { code: 'split_failed', message: 'split offset not found' };
+      if (!r) throw { code: 'split_failed', message: `split offset not found (o=${pos.o}, 첫 문단 글자 수 ${tried.join(',')}, 개체 ${ctrls})` };
     } finally { try { doc.discardSnapshot(snap); } catch { /* ignore */ } }
   }
   return inCellP ? { ...withCellPara(pos, cellPara(pos) + 1), o: 0 } : { ...pos, p: r.paraIdx ?? pos.p + 1, o: 0 };
@@ -164,7 +171,14 @@ function signature(doc) {
   for (let s = 0; s < doc.getSectionCount(); s++) {
     const n = doc.getParagraphCount(s);
     out.push(`S${n}`);
-    for (let p = 0; p < Math.min(n, SIG_CAP); p++) { const l = doc.getParagraphLength(s, p); out.push(l, l ? doc.getTextRange(s, p, 0, Math.min(l, 40)) : ''); }
+    for (let p = 0; p < Math.min(n, SIG_CAP); p++) {
+      const l = doc.getParagraphLength(s, p);
+      out.push(l, l ? doc.getTextRange(s, p, 0, Math.min(l, 40)) : '');
+      // 표가 든 문단은 표의 줄·칸 수와 칸 수도 서명에 넣는다(칸 안 글이 아니라 구조 변화를 잡는다)
+      let k = 0;
+      try { k = J(doc.getControlTextPositions(s, p)).length; } catch { k = 0; }
+      for (let c = 0; c < k; c++) { try { const d = J(doc.getTableDimensions(s, p, c)); out.push(`T${d.rowCount}x${d.colCount}/${d.cellCount}`); } catch { /* 표가 아닌 개체 */ } }
+    }
   }
   return out;
 }
@@ -187,7 +201,17 @@ export function run(doc, HwpDocument, m) {
     const pushed = !(group && st.groupOpen);
     if (pushed) pushUndo(doc, st, m.pos ?? m.a ?? null);
     st.groupOpen = !!group;
-    const r = fn();
+    let r;
+    try { r = fn(); } catch (e) {
+      // 엔진이 거부했거나 중간에 실패했다: 문서를 직전 상태로 되돌리고(방금 만든 스냅샷으로) 그 항목을 버린다
+      if (pushed && st.undo.length) {
+        const top = st.undo.pop();
+        try { doc.restoreSnapshot(top.id); } catch { /* 복원 실패는 원래 오류를 우선 */ }
+        try { doc.discardSnapshot(top.id); } catch { /* ignore */ }
+        st.groupOpen = false;
+      }
+      throw e;
+    }
     if (r === NOOP) {
       if (pushed) { const e = st.undo.pop(); try { doc.discardSnapshot(e.id); } catch { /* ignore */ } }
       return null;
@@ -202,7 +226,7 @@ export function run(doc, HwpDocument, m) {
       return { pos, rect: pos ? rectOf(doc, pos) : null };
     }
     case 'caret': return { rect: rectOf(doc, m.pos) };
-    case 'props': return { char: charProps(doc, m.pos), para: paraProps(doc, m.pos) };
+    case 'props': return { char: charProps(doc, m.pos), para: paraProps(doc, m.pos), table: tableAt({ doc, J }, m.pos) };
     case 'text': return { text: selectionText(doc, m.a, m.b) };
     case 'mark': st.groupOpen = false; return {};
     case 'endOf': {
@@ -338,6 +362,6 @@ export function run(doc, HwpDocument, m) {
       } catch (e) { verify = { checked: true, ok: false, reopenError: String(e && e.message || e).slice(0, 120) }; }
       return { bytes: bytes.buffer ? bytes : new Uint8Array(bytes), verify, exportMs: Math.round(tExport), totalMs: Math.round(performance.now() - t0) };
     }
-    default: throw { code: 'unknown', message: `unknown edit op ${m.op}` };
+    default: return ext({ doc, HwpDocument, st, J, mutate, viewInfo, rectOf, inCell, pj, cellPara, paraNo, paraLen, withCellPara, charJson }, m);
   }
 }

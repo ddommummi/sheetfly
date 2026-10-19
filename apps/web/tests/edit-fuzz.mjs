@@ -21,6 +21,7 @@ const SEED = Number(arg('seed', 1));
 const FILES = Number(arg('files', 12));
 const STEPS = Number(arg('steps', 40));
 const MAX_KB = Number(arg('max-kb', 400));
+const TBLP = Number(arg('tbl', 0));        // 편집 한 번이 표 구조 편집일 확률(0이면 기본 비율)
 
 function* walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -39,7 +40,47 @@ const files = pick.slice(0, FILES);
 const POOL = ['a', 'Z', '한', '글', ' ', 'Hello', '세계', '😀', 'ab\ncd', '\n', '𠮷', '가나다라마바사', 'x'.repeat(200)];
 const paras = (d) => { const out = []; for (let s = 0; s < d.getSectionCount(); s++) { const n = d.getParagraphCount(s); out.push(`S${n}`); for (let p = 0; p < Math.min(n, 20000); p++) { const l = d.getParagraphLength(s, p); out.push(l, l ? d.getTextRange(s, p, 0, Math.min(l, 40)) : ''); } } return out; };
 
-let failures = 0, totalOps = 0, noRect = 0;
+/** 문서의 최상위 표 목록 [{p, ctrl, rows, cols}] */
+function findTables(doc) {
+  const out = [];
+  const n = doc.getParagraphCount(0);
+  for (let p = 0; p < Math.min(n, 3000); p++) {
+    let k = 0;
+    try { k = JSON.parse(doc.getControlTextPositions(0, p)).length; } catch { k = 0; }
+    for (let c = 0; c < k; c++) { try { const d = JSON.parse(doc.getTableDimensions(0, p, c)); out.push({ p, ctrl: c, rows: d.rowCount, cols: d.colCount }); } catch { /* 표 아님 */ } }
+  }
+  return out;
+}
+const checkPos = (doc, pos) => pos.p < doc.getParagraphCount(0);
+/** 표 하나에 무작위 구조 편집. 엔진이 거부하면 'rejected'(문서는 그대로여야 한다), 로직 오류(wasm trap)면 예외를 그대로 던진다. */
+function tableOp(doc, m, T, rand) {
+  const ri = (n) => Math.floor(rand() * n);
+  const row = ri(T.rows), col = ri(T.cols);
+  const a = [0, T.p, T.ctrl];
+  const kinds = [
+    () => m('api', { fn: 'insertTableRow', args: [...a, row, rand() < 0.5] }),
+    () => m('api', { fn: 'insertTableColumn', args: [...a, col, rand() < 0.5] }),
+    () => T.rows > 1 && m('api', { fn: 'deleteTableRow', args: [...a, row] }),
+    () => T.cols > 1 && m('api', { fn: 'deleteTableColumn', args: [...a, col] }),
+    () => { const r2 = Math.min(T.rows - 1, row + ri(2)), c2 = Math.min(T.cols - 1, col + ri(2)); return m('api', { fn: 'mergeTableCells', args: [...a, row, col, r2, c2] }); },
+    () => m('api', { fn: 'splitTableCellInto', args: [...a, row, col, 1 + ri(2), 1 + ri(3), rand() < 0.5, false] }),
+    () => m('api', { fn: 'setCellProperties', args: [...a, ri(Math.max(1, T.rows * T.cols)), JSON.stringify({ fillType: 'solid', fillColor: '#aabbcc', verticalAlign: ri(3), borderLeft: { type: 1 + ri(3), width: ri(8), color: '#112233' } })] }),
+    () => m('api', { fn: 'setCellZoneProperties', args: [...a, row, col, Math.min(T.rows - 1, row + 1), Math.min(T.cols - 1, col + 1), JSON.stringify({ borderTop: { type: 1, width: 2, color: '#ff0000' } })] }),
+    () => m('api', { fn: 'setTableProperties', args: [...a, JSON.stringify({ repeatHeader: rand() < 0.5, pageBreak: ri(3), cellSpacing: ri(3) * 50 })] }),
+    () => m('api', { fn: 'resizeTableCells', args: [...a, JSON.stringify([{ cellIdx: 0, widthDelta: ri(300) - 150 }])] }),
+    () => m('api', { fn: 'transposeTableCellsInPlace', args: a }),
+    () => T.rows > 1 && m('api', { fn: 'splitTable', args: [...a, 1 + ri(T.rows - 1)] }),
+    () => m('api', { fn: 'mergeTableWithNext', args: a }),
+    () => rand() < 0.15 && m('api', { fn: 'deleteTableControl', args: a }),
+  ];
+  try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) {
+    const msg = String(e && (e.message || e) || e);
+    if (/RuntimeError|unreachable|memory access|out of bounds|stack/i.test(msg) && !/범위|index|인덱스|찾을 수 없|없습니다|invalid|잘못/i.test(msg)) throw e;
+    return 'rejected';
+  }
+}
+
+let failures = 0, totalOps = 0, noRect = 0, tblOps = 0, rejected = 0, apiOps = 0;
 const fail = (f, msg) => { failures++; console.log('  ✗', f.rel, msg); };
 
 for (const f of files) {
@@ -56,13 +97,13 @@ for (const f of files) {
     const l = doc.getParagraphLength(0, p);
     return { s: 0, p, o: Math.floor(rand() * (l + 1)), path: null };
   };
-  let pos = randPos(), muts = 0, ok = true;
+  let pos = randPos(), muts = 0, ok = true, lastOp = '';
   try {
     for (let i = 0; i < STEPS && ok; i++) {
-      const k = rand();
-      let r = null, op = '';
-      if (k < 0.34) { op = 'insert'; r = m('insert', { pos, text: POOL[Math.floor(rand() * POOL.length)], group: rand() < 0.5 }); }
-      else if (k < 0.44) { op = 'enter'; r = m('enter', { pos }); }
+      const k = TBLP && rand() < TBLP ? 0.95 : rand();
+      let r = null, op = ''; lastOp = '';
+      if (k < 0.34) { op = lastOp = 'insert'; r = m('insert', { pos, text: POOL[Math.floor(rand() * POOL.length)], group: rand() < 0.5 }); }
+      else if (k < 0.44) { op = lastOp = 'enter'; r = m('enter', { pos }); }
       else if (k < 0.58) { op = 'del'; r = m('del', { pos, dir: rand() < 0.5 ? 'back' : 'fwd', group: false }); }
       else if (k < 0.66) { op = 'delrange'; const b = { ...pos, o: Math.min(doc.getParagraphLength(0, pos.p), pos.o + 1 + Math.floor(rand() * 8)) }; r = m('delrange', { a: pos, b }); }
       else if (k < 0.74) { op = 'fmt'; const b = { ...pos, o: Math.min(doc.getParagraphLength(0, pos.p), pos.o + 1 + Math.floor(rand() * 8)) }; const FMTS = [{ bold: rand() < 0.5, italic: rand() < 0.5 }, { fontName: ['맑은 고딕', '바탕', 'Arial', '새글꼴'][Math.floor(rand() * 4)] }, { strikethrough: rand() < 0.5, underline: rand() < 0.5 },
@@ -73,6 +114,18 @@ for (const f of files) {
       else if (k < 0.80) { op = 'paste'; r = m('paste', { pos, text: ['한 줄', '두\n줄', 'a\n\nb\n'][Math.floor(rand() * 3)] }); }
       else if (k < 0.88) { op = 'undo'; r = m('undo', { pos }); }
       else if (k < 0.92) { op = 'redo'; r = m('redo', { pos }); }
+      else if (k < 0.97) {
+        op = 'table';
+        const t = findTables(doc);
+        if (!t.length) { const pp = randPos(); m('api', { fn: 'createTable', args: [0, pp.p, pp.o, 2 + Math.floor(rand() * 3), 2 + Math.floor(rand() * 3)] }); pos = { s: 0, p: pp.p, o: 0, path: null }; r = null; muts++; apiOps++; tblOps++; if (!checkPos(doc, pos)) { pos = randPos(); } continue; }
+        const T = t[Math.floor(rand() * t.length)];
+        const before = JSON.stringify(paras(doc));
+        const res = tableOp(doc, m, T, rand);
+        if (res === 'rejected') { rejected++; if (JSON.stringify(paras(doc)) !== before) { fail(f, `step ${i}: 엔진이 거부한 표 편집 뒤 문서가 바뀌어 있다`); ok = false; break; } }
+        else { muts++; tblOps++; }
+        pos = { s: 0, p: Math.min(doc.getParagraphCount(0) - 1, T.p), o: 0, path: null };
+        continue;
+      }
       else { op = 'jump'; pos = randPos(); continue; }
       if (op !== 'undo' && op !== 'redo') muts++;
       if (r?.pos) pos = r.pos;
@@ -85,7 +138,7 @@ for (const f of files) {
       if (!m('caret', { pos }).rect) noRect++;
       totalOps++;
     }
-  } catch (e) { fail(f, `예외: ${String(e && (e.message || e.code) || e).slice(0, 140)}`); ok = false; }
+  } catch (e) { fail(f, `예외(${lastOp} ${JSON.stringify(pos)} len=${(() => { try { return doc.getParagraphLength(0, pos.p); } catch { return '?'; } })()}): ${String(e && (e.message || e.code) || e).slice(0, 140)}`); ok = false; }
   if (!ok) { try { doc.free(); } catch {} continue; }
   // 저장 → 다시 열기 → 자체 점검
   try {
@@ -103,5 +156,5 @@ for (const f of files) {
   } catch (e) { fail(f, `되돌리기 예외: ${String(e && (e.message || e.code) || e).slice(0, 140)}`); }
   try { doc.free(); } catch {}
 }
-console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}), 실패 ${failures}`);
+console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
 process.exit(failures ? 1 : 0);

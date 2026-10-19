@@ -3,7 +3,11 @@
 // 캐럿·선택 영역을 쪽 위의 겹침층으로 그리고, 도구줄과 저장을 맡는다. 화면의 쪽은 <img>(SVG)라 글자 입력은 숨은 textarea가 받는다.
 // 사용자 동작은 모두 하나의 대기열에서 한 작업씩 순서대로 실행한다. 작업은 "실행되는 시점의" 위치·선택을 읽으므로
 // 빠르게 이어 치는 글자나 조합 입력의 연속 갱신이 서로 엇갈리지 않는다.
+import { askForm } from './ed-ui.js';
+import { installTable } from './ed-table.js';
+
 const T = {
+  tabs: { format: '서식', insert: '입력', table: '표', page: '쪽', view: '보기' }, ok: '확인', cancel: '취소',
   undo: '실행 취소 (Ctrl+Z)', redo: '다시 실행 (Ctrl+Y)', bold: '굵게 (Ctrl+B)', italic: '기울임 (Ctrl+I)', underline: '밑줄 (Ctrl+U)',
   sizeDown: '글자 작게', sizeUp: '글자 크게', color: '글자 색', left: '왼쪽 맞춤', center: '가운데 맞춤', right: '오른쪽 맞춤', justify: '양쪽 맞춤',
   font: '글꼴', strike: '취소선', highlight: '형광펜 색', highlightOff: '형광펜 지우기', highlightOffLabel: '지움',
@@ -53,6 +57,7 @@ export class Editor {
     this.comp = null;                 // { start, len, fmt } 한글 조합 중
     this.pending = {};                // 서식 단추를 먼저 눌렀을 때 다음 입력에 적용할 서식
     this.cur = {};                    // 캐럿 위치의 글자·문단 서식
+    this.tbl = null; this.cellBlock = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
     this.cleanups = [];
     this.lastTyped = 0; this.selText = ''; this.dragging = false; this.hitBusy = false; this.hitNext = null; this.keyHandled = false;
     this.#buildToolbar();
@@ -129,6 +134,13 @@ export class Editor {
   /** (작업 안에서) 선택 영역이 있으면 지운다. */
   async #deleteSelNow() {
     if (!this.#hasSel()) return true;
+    if (this.cellBlock) {   // 칸 블록: 글만 지운다(칸 구조는 그대로)
+      const r = await this.#req('cellclear', { a: this.anchor, b: this.pos });
+      this.#setDirty(true); this.viewer.refresh(r.sizes, {});
+      this.anchor = null; this.cellBlock = null;
+      this.#set(this.pos, this.rect, {});
+      return true;
+    }
     const r = await this.#doMutate('delrange', { a: this.anchor, b: this.pos });
     return !r.skipped;
   }
@@ -181,20 +193,34 @@ export class Editor {
   async #syncSelection() {
     const ver = this.selVer = (this.selVer ?? 0) + 1;
     for (const l of this.viewer.pagesEl.querySelectorAll('.sel-layer')) l.replaceChildren();
-    if (!this.#hasSel()) { this.selText = ''; return; }
+    this.cellBlock = null;
+    if (!this.#hasSel()) { this.selText = ''; for (const f of this.ctx ?? []) f(); return; }
     const [a, b] = [this.anchor, this.pos];
+    // 서로 다른 표 칸에 걸친 선택이면 "칸 블록"(병합된 칸을 포함하도록 넓힌 사각형)으로 그린다
+    if (a.path && b.path) {
+      const cr = await this.#call('cellrange', { a, b });
+      if (ver !== this.selVer) return;
+      if (cr?.range) {
+        this.cellBlock = { ...cr.range, cells: cr.cells };
+        this.selText = '';
+        for (const q of cr.rects) this.#drawSel(q);
+        for (const f of this.ctx ?? []) f();
+        return;
+      }
+    }
     const r = await this.#call('selrects', { a, b });
     if (ver !== this.selVer || !r) return;
-    for (const q of r.rects) {
-      const layer = this.#layer(q.page, 'sel-layer');
-      if (!layer) continue;
-      const d = document.createElement('div');
-      d.className = 'sel';
-      d.style.cssText = this.#pct(q.page, q.x, q.y, q.w, q.h);
-      layer.append(d);
-    }
+    for (const q of r.rects) this.#drawSel(q);
     const t = await this.#call('text', { a, b });
     if (ver === this.selVer && t) this.selText = t.text.length > 2_000_000 ? '' : t.text;
+  }
+  #drawSel(q) {
+    const layer = this.#layer(q.page, 'sel-layer');
+    if (!layer) return;
+    const d = document.createElement('div');
+    d.className = 'sel';
+    d.style.cssText = this.#pct(q.page, q.x, q.y, q.w, q.h);
+    layer.append(d);
   }
 
   // ── 숨은 입력창 ───────────────────────────────────────────────────
@@ -206,6 +232,8 @@ export class Editor {
     document.body.append(ta);
     this.input = ta;
   }
+  /** 모달 대화상자가 닫힌 뒤: 입력창이 포커스를 갖고 있어도 글자가 들어가지 않는 상태가 남으므로 한 번 뺐다가 다시 준다. */
+  #refocus() { if (!this.active) return; this.input.blur(); this.#focus(true); }
   #focus(force = false) {
     if (!this.active) return;
     if (this.rect) {
@@ -465,12 +493,44 @@ export class Editor {
     const bar = this.bar;
     bar.replaceChildren();
     bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', T.toolbar);
-    const grp = () => { const g = document.createElement('div'); g.className = 'group'; g.setAttribute('role', 'group'); bar.append(g); return g; };
-    this.btn = {};
-    let g = grp();
-    g.append(this.btn.undo = this.#btn('icon', '', T.undo, () => this.#undoRedo('undo'), ICON.undo), this.btn.redo = this.#btn('icon', '', T.redo, () => this.#undoRedo('redo'), ICON.redo));
+    this.btn = {}; this.panels = {}; this.tabBtns = {}; this.ctx = [];
+    // 첫 줄: 되돌리기·다시 하기 · 탭 · 저장
+    const head = document.createElement('div'); head.className = 'edit-tabs'; head.setAttribute('role', 'tablist');
+    const hg = document.createElement('div'); hg.className = 'group'; hg.setAttribute('role', 'group');
+    hg.append(this.btn.undo = this.#btn('icon', '', T.undo, () => this.#undoRedo('undo'), ICON.undo), this.btn.redo = this.#btn('icon', '', T.redo, () => this.#undoRedo('redo'), ICON.redo));
     this.btn.undo.disabled = true; this.btn.redo.disabled = true;
-    g = grp();
+    head.append(hg);
+    for (const [k, label] of Object.entries(T.tabs)) {
+      const b = this.#btn('tab', label, label, () => this.#showTab(k));
+      b.setAttribute('role', 'tab'); b.dataset.tab = k;
+      this.tabBtns[k] = b; head.append(b);
+      const pn = document.createElement('div'); pn.className = 'edit-panel'; pn.dataset.panel = k; pn.setAttribute('role', 'tabpanel'); pn.hidden = true;
+      this.panels[k] = pn;
+    }
+    const sp = document.createElement('span'); sp.className = 'spacer'; head.append(sp);
+    this.btn.save = this.#btn('primary', T.save, T.saveTitle, () => this.save());
+    head.append(this.btn.save);
+    bar.append(head, ...Object.values(this.panels));
+    this.#buildFormatPanel();
+    // 나머지 탭의 기능(표·개체·쪽 …)은 모듈이 자기 탭에 단추를 채운다
+    this.api = this.#makeApi();
+    installTable(this.api);
+    this.#showTab('format');
+  }
+  #showTab(k) {
+    this.tab = k;
+    for (const [name, pn] of Object.entries(this.panels)) pn.hidden = name !== k;
+    for (const [name, b] of Object.entries(this.tabBtns)) { b.setAttribute('aria-selected', String(name === k)); b.setAttribute('aria-pressed', String(name === k)); }
+  }
+  /** 도구줄 패널 안의 단추 묶음. */
+  #panelGroup(panel) {
+    const g = document.createElement('div'); g.className = 'group'; g.setAttribute('role', 'group');
+    this.panels[panel].append(g);
+    return g;
+  }
+  #buildFormatPanel() {
+    const grp = () => this.#panelGroup('format');
+    let g = grp();
     this.fontSel = this.#select('edit-font', T.font, [], (v) => this.#format({ fontName: v }));
     g.append(this.fontSel);
     this.sizeLabel = document.createElement('span'); this.sizeLabel.className = 'edit-size';
@@ -500,11 +560,53 @@ export class Editor {
     g.append(this.lineSel, this.#btn('icon', '', T.indentLess, () => this.#indent(-1), ICON.indentLess), this.#btn('icon', '', T.indentMore, () => this.#indent(1), ICON.indentMore));
     this.btn.marks = this.#btn('icon', '¶', T.marks, () => this.#toggleMarks());
     g.append(this.btn.marks);
-    const sp = document.createElement('span'); sp.className = 'spacer'; bar.append(sp);
-    this.btn.save = this.#btn('primary', T.save, T.saveTitle, () => this.save());
-    bar.append(this.btn.save);
+  }
+
+  /** 기능 모듈(ed-*.js)이 쓰는 창구. 모듈은 이 객체로만 편집기와 통신한다. */
+  #makeApi() {
+    const ed = this;
+    return {
+      get pos() { return ed.pos; }, get anchor() { return ed.anchor; }, get rect() { return ed.rect; }, get tbl() { return ed.tbl; }, get cellBlock() { return ed.cellBlock; },
+      get cur() { return ed.cur; }, get hasSel() { return ed.#hasSel(); }, get fileName() { return ed.fileName; }, get meta() { return ed.meta; },
+      group: (panel) => ed.#panelGroup(panel),
+      btn: (cls, label, title, fn, html) => ed.#btn(cls, label, title, fn, html),
+      select: (cls, label, options, fn) => ed.#select(cls, label, options, fn),
+      fillSelect: (el, options, cur) => ed.#fillSelect(el, options, cur),
+      colorInput: (label, value, fn) => ed.#colorInput(label, value, fn),
+      form: (title, fields) => askForm(title, fields, { ok: T.ok, cancel: T.cancel }).finally(() => ed.#refocus()),
+      ask: (title, lines, yes, no) => ed.#ask(title, lines, yes, no),
+      status: (m) => ed.status(m),
+      enqueue: (fn) => ed.#enqueue(fn),
+      req: (op, payload) => ed.#req(op, payload),
+      /** 대기열 안에서: 문서를 바꾸는 rhwp API를 부르고 화면·캐럿을 맞춘다. 돌려주는 값은 API의 결과 JSON. */
+      mutateApi: (fn, args, opts) => ed.#apiCall(fn, args, opts),
+      /** 대기열 안에서: 캐럿을 pos로(없으면 가까운 곳으로) 옮긴다. */
+      placeCaret: (pos) => ed.#revalidate(pos),
+      onContext: (fn) => ed.ctx.push(fn),
+      focus: () => ed.#focus(true),
+    };
+  }
+  /** (작업 안에서) 문서를 바꾸는 rhwp API 호출: 되돌리기 항목·변경 표시·쪽 다시 그리기·캐럿 보정까지. */
+  async #apiCall(fn, args, { pos = this.pos, op = 'api' } = {}) {
+    this.#flushGroup(); this.pending = {};
+    const r = await this.#req(op, { fn, args });
+    this.#setDirty(true);
+    this.viewer.refresh(r.sizes, {});
+    this.#updateStatus(await this.#req('status', {}));
+    await this.#revalidate(pos);
+    return r.result;
+  }
+  /** (작업 안에서) 캐럿을 pos에 두되, 그 자리가 없어졌으면(칸·표가 지워진 경우) 같은 문단의 처음, 그것도 없으면 문서 처음으로. */
+  async #revalidate(pos) {
+    let c = null, at = pos;
+    if (at) { try { c = await this.#req('caret', { pos: at }); } catch { c = null; } }
+    if (!c?.rect && at?.path) { at = { s: at.s, p: at.p, o: 0, path: null }; try { c = await this.#req('caret', { pos: at }); } catch { c = null; } }
+    if (!c?.rect) { at = { s: 0, p: 0, o: 0, path: null }; c = await this.#req('caret', { pos: at }); }
+    this.anchor = null;
+    this.#set(at, c.rect, {});
   }
   #updateToolbar() {
+    for (const f of this.ctx ?? []) f();
     const c = { ...this.cur, ...this.pending };
     for (const k of ['bold', 'italic', 'underline', 'strikethrough']) this.btn[k].setAttribute('aria-pressed', String(!!c[k]));
     const al = this.cur.alignment;
@@ -527,7 +629,7 @@ export class Editor {
     this.propsTimer = setTimeout(async () => {
       if (!this.pos || !this.active) return;
       const r = await this.#call('props', { pos: this.pos });
-      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align, lineSpacing: r.para?.lineSpacing, marginLeft: r.para?.marginLeft }; this.#updateToolbar(); }
+      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align, lineSpacing: r.para?.lineSpacing, marginLeft: r.para?.marginLeft }; this.tbl = r.table ?? null; this.#updateToolbar(); }
       const s = await this.#call('status', {});
       if (s) this.#updateStatus(s);
     }, 80);
@@ -536,7 +638,13 @@ export class Editor {
   #format(props) {
     return this.#enqueue(async () => {
       if (!this.pos) return;
-      if (this.#hasSel()) {
+      if (this.cellBlock) {
+        this.#flushGroup();
+        const r = await this.#req('cellfmt', { a: this.anchor, b: this.pos, kind: 'char', props });
+        if (r.skipped) { this.status(T.readonlyHere); return; }
+        this.#setDirty(true); this.viewer.refresh(r.sizes, {}); this.#scheduleProps();
+        this.#updateStatus(await this.#req('status', {}));
+      } else if (this.#hasSel()) {
         this.#flushGroup();
         const r = await this.#req('fmt', { a: this.anchor, b: this.pos, props });
         if (r.skipped) { this.status(T.readonlyHere); return; }
@@ -570,7 +678,7 @@ export class Editor {
       if (!this.pos) return;
       this.#flushGroup();
       const [x, y] = this.#range();
-      const r = await this.#req('parafmt', { a: x, b: y, props });
+      const r = this.cellBlock ? await this.#req('cellfmt', { a: this.anchor, b: this.pos, kind: 'para', props }) : await this.#req('parafmt', { a: x, b: y, props });
       this.#setDirty(true); this.viewer.refresh(r.sizes); this.#scheduleProps();
       this.#updateStatus(await this.#req('status', {}));
       this.#focus();
@@ -600,7 +708,7 @@ export class Editor {
       const ul = dlg.querySelector('ul');
       for (const t of lines) { const li = document.createElement('li'); li.textContent = t; ul.append(li); }
       dlg.querySelector('[data-no]').textContent = no; dlg.querySelector('[data-yes]').textContent = yes;
-      const done = (v) => { dlg.close(); dlg.remove(); resolve(v); };
+      const done = (v) => { dlg.close(); dlg.remove(); resolve(v); queueMicrotask(() => this.#refocus()); };
       dlg.querySelector('[data-no]').addEventListener('click', () => done(false));
       dlg.querySelector('[data-yes]').addEventListener('click', () => done(true));
       dlg.addEventListener('cancel', (e) => { e.preventDefault(); done(false); });

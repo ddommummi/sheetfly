@@ -195,6 +195,87 @@ test('문단 부호 보기를 켜고 끌 수 있다(문서는 바뀌지 않는�
   await done(page);
 });
 
+// ── 표 편집 ──
+const tab = (page, name) => page.click(`#edit-bar .btn.tab[data-tab="${name}"]`);
+const tbtn = (page, title) => page.locator(`#edit-bar [aria-label="${title}"]`);
+/** hwp_table_test.hwp 첫 쪽의 첫 표(4줄×3칸)에서 (줄,칸)의 화면 위치를 쪽 비율로 돌려준다. */
+const CELL = { '0,0': [0.265, 0.235], '0,1': [0.498, 0.235], '1,0': [0.265, 0.2566], '1,1': [0.498, 0.2566], '2,0': [0.265, 0.278] };
+async function openTable(page) {
+  await open(page, 'hwp_table_test.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+}
+async function clickCell(page, rc, shift = false) {
+  const box = await page.locator('.page').first().boundingBox();
+  const [fx, fy] = CELL[rc];
+  if (shift) await page.keyboard.down('Shift');
+  await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+  if (shift) await page.keyboard.up('Shift');
+  await page.waitForTimeout(400); await settle(page);
+}
+const dims = (doc, p = 3, c = 0) => JSON.parse(doc.getTableDimensions(0, p, c));
+
+test('표: 줄·칸 넣기와 지우기, 되돌리기', async () => {
+  const page = await newPage();
+  await openTable(page);
+  await clickCell(page, '0,0');
+  await tab(page, 'table'); await page.waitForTimeout(300);
+  assert.equal(await tbtn(page, '표 만들기').isDisabled(), true, '표 안에서는 새 표를 넣을 수 없다');
+  await tbtn(page, '아래에 줄 넣기').click(); await settle(page);
+  await tbtn(page, '오른쪽에 칸 넣기').click(); await settle(page);
+  let r = await saveAndParse(page);
+  assert.deepEqual([dims(r.doc).rowCount, dims(r.doc).colCount], [5, 4]);
+  await page.keyboard.press('Control+z'); await settle(page);          // 칸 넣기 취소 → 5×3
+  await tbtn(page, '줄 지우기').click(); await settle(page);           // 5→4
+  r = await saveAndParse(page);
+  assert.deepEqual([dims(r.doc).rowCount, dims(r.doc).colCount], [4, 3]);
+  await done(page);
+});
+
+test('표: 칸 합치기·나누기, 칸 속성(배경색), 표 지우기', async () => {
+  const page = await newPage();
+  await openTable(page);
+  await clickCell(page, '0,0');
+  await tab(page, 'table'); await page.waitForTimeout(300);
+  assert.equal(await tbtn(page, '칸 합치기').isDisabled(), true, '칸 하나만 고르면 합칠 수 없다');
+  await clickCell(page, '1,1', true);
+  await page.waitForFunction(() => document.querySelectorAll('.sel').length >= 4, null, { timeout: 5000 });   // 칸 블록 4칸
+  assert.equal(await tbtn(page, '칸 합치기').isDisabled(), false);
+  await tbtn(page, '칸 합치기').click(); await settle(page);
+  // 칸 속성: 배경색
+  await tbtn(page, '칸 속성…').click();
+  await page.waitForSelector('dialog[open]');
+  await page.selectOption('dialog[open] select >> nth=0', 'solid');
+  await page.locator('dialog[open] input[type=color]').first().fill('#ffee00');
+  await page.click('dialog[open] button[type=submit]'); await settle(page);
+  let r = await saveAndParse(page);
+  const ci = JSON.parse(r.doc.getCellInfo(0, 3, 0, 0));
+  assert.deepEqual([ci.rowSpan, ci.colSpan], [2, 2]);
+  assert.equal(JSON.parse(r.doc.getCellProperties(0, 3, 0, 0)).fillColor.toLowerCase(), '#ffee00');
+  // 표 지우기
+  await tbtn(page, '표 지우기').click();
+  await page.waitForSelector('dialog[open]'); await page.click('dialog[open] [data-yes]'); await settle(page);
+  r = await saveAndParse(page);
+  assert.throws(() => r.doc.getTableDimensions(0, 3, 0));
+  await done(page);
+});
+
+test('표: 새 표 만들기(본문에서) 후 칸에 글 입력', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'table'); await page.waitForTimeout(300);
+  await tbtn(page, '표 만들기').click();
+  await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=number]').nth(0).fill('2');
+  await page.locator('dialog[open] input[type=number]').nth(1).fill('3');
+  await page.click('dialog[open] button[type=submit]'); await settle(page);
+  await page.keyboard.type('NEWT', { delay: 60 }); await settle(page);
+  const r = await saveAndParse(page);
+  const f = find(r.doc, 'NEWT'); assert.ok(f.found && f.cellContext, '새 표의 첫 칸에 들어갔다');
+  const d = dims(r.doc, f.cellContext.parentPara, f.cellContext.ctrlIdx);
+  assert.deepEqual([d.rowCount, d.colCount], [2, 3]);
+  await done(page);
+});
+
 test('저장 전후 문서 구조가 같다(검증 통과 시 경고창 없음), 저장하면 변경 표시가 사라진다', async () => {
   const page = await newPage();
   await open(page, BODY); await clickBody(page);
