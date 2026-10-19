@@ -2,7 +2,7 @@
 // 슬라이드·레이아웃·마스터·테마를 따라가며 상속을 풀어 모든 도형을 절대 위치 상자로 낸다.
 // 지원: 위치·크기, 자리 표시자 상속(xfrm·bodyPr·목록 스타일), 글자 서식(크기·굵기·기울임·밑줄·색·글꼴), 문단(정렬·들여쓰기·간격·글머리표),
 //       사각형·둥근 사각형·원·삼각형·마름모·선, 채우기·선(테마 색 포함), 그림, 표, 그룹, 배경(색), 마스터/레이아웃 장식, 글자 줄임(fontScale).
-// 미지원(건너뜀): 회전, 그림 자르기, 그라데이션·그림 채우기(첫 색만), 차트·도표(자리 표시 상자), 애니메이션, 발표자 노트.
+// 미지원(건너뜀): 회전, 그라데이션·그림 채우기(첫 색만), 차트·도표(자리 표시 상자), 애니메이션, 발표자 노트.
 import { openZip } from './zip.js';
 import { parseXml, kid, kids, path, num } from './xml.js';
 
@@ -253,7 +253,14 @@ async function renderShapes(tree, level, env, out, T, depth) {
       const rid = blip?.a['r:embed'];
       const rel = rid ? level.rels.get(rid) : null;
       const img = rel?.target ? await env.ctx.image(rel.target) : null;
-      if (img) { box.content = [{ type: 'image', format: img.format, data: img.data, display_width_emu: Math.round(box.width_emu), display_height_emu: Math.round(box.height_emu), positioning: 'inline' }]; box.inset = [0, 0, 0, 0]; box.picture = true; }
+      if (img) {
+        // 그림 자르기(srcRect): 원본의 일부만 상자에 채운다. 값은 원본 크기의 1/1000 %(음수는 바깥으로 늘임).
+        const sr = path(node, 'blipFill', 'srcRect');
+        const crop = sr ? { l: num(sr.a.l) / 100000, t: num(sr.a.t) / 100000, r: num(sr.a.r) / 100000, b: num(sr.a.b) / 100000 } : null;
+        const image = { type: 'image', format: img.format, data: img.data, display_width_emu: Math.round(box.width_emu), display_height_emu: Math.round(box.height_emu), positioning: 'inline' };
+        if (crop && (crop.l || crop.t || crop.r || crop.b)) image.crop = crop;
+        box.content = [image]; box.inset = [0, 0, 0, 0]; box.picture = true;
+      }
       else { box.fill = [238, 238, 238]; box.stroke = { color: [187, 187, 187], w: 9525 }; }
       out.push(box); continue;
     }

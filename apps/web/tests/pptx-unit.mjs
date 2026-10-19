@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parsePptx } from '../src/docx/pptx.js';
+import { layoutDocument, pageToSvg, createFakeMeasurer } from '../src/docx/index.js';
 import { openZip } from '../src/docx/zip.js';
 import { parseXml } from '../src/docx/xml.js';
 
@@ -57,4 +58,16 @@ test('손상·악의적 입력은 예외로 끝나고 멈추지 않는다', asyn
   // 깊이 폭탄·큰 XML은 해석기가 거부한다
   assert.throws(() => parseXml('<a>'.repeat(5000)));
   const z = openZip(good); assert.ok(z.has('ppt/presentation.xml'));
+});
+
+test('그림 자르기(srcRect): IR에 crop이 실리고 SVG가 원본의 일부만 상자에 채운다 (욱여넣어 찌그러지던 문제의 회귀 시험)', async () => {
+  const r = await parsePptx(fixture('sample.pptx'));
+  const pic = r.ir.sections[3].elements.find((e) => e.picture);
+  const crop = pic.content[0].crop;
+  assert.ok(crop && Math.abs(crop.l - 0.25) < 1e-3 && Math.abs(crop.r - 0.25) < 1e-3 && Math.abs(crop.t - 0.1) < 1e-3 && !crop.b, JSON.stringify(crop));
+  const res = layoutDocument(r.ir, createFakeMeasurer(), {});
+  const svg = pageToSvg(res.pages[3], createFakeMeasurer());
+  assert.match(svg, /<svg x="[\d.]+" y="[\d.]+" width="[\d.]+" height="[\d.]+" viewBox="0\.25 0\.1 0\.5 0\.9" preserveAspectRatio="none"><image /);
+  // 자르지 않은 그림(슬라이드 3)은 그대로 <image>
+  assert.doesNotMatch(pageToSvg(res.pages[2], createFakeMeasurer()), /viewBox="0\.\d+ /);
 });
