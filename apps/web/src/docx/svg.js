@@ -1,6 +1,7 @@
 // 쪽 표시 목록 → SVG 문자열. <img>로 불러 쓰므로 스크립트·외부 로드가 없다(이미지는 data URL만).
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const n = (v) => Math.round(v * 1000) / 1000;
+const f6 = (v) => Math.round(v * 1e6) / 1e6;
 const IMG_OK = new Set(['png', 'jpeg', 'jpg', 'gif', 'webp']);
 
 function dataUrl(img) {
@@ -34,7 +35,12 @@ export function pageToSvg(page, measure) {
       }
       case 'i': {
         const u = dataUrl(it.img);
-        if (u) out.push(`<image href="${u}" x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}" preserveAspectRatio="none"/>`);
+        const c = it.img.crop;
+        const cw = c ? 1 - c.l - c.r : 1, ch = c ? 1 - c.t - c.b : 1;
+        if (u && c && [c.l, c.t, c.r, c.b].every(Number.isFinite) && cw > 0.01 && ch > 0.01 && cw < 20 && ch < 20) {
+          // 그림 자르기: 안쪽 svg의 viewBox로 원본(0..1)의 일부만 보이게 하고 상자 밖은 잘린다
+          out.push(`<svg x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}" viewBox="${f6(c.l)} ${f6(c.t)} ${f6(cw)} ${f6(ch)}" preserveAspectRatio="none"><image href="${u}" x="0" y="0" width="1" height="1" preserveAspectRatio="none"/></svg>`);
+        } else if (u) out.push(`<image href="${u}" x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}" preserveAspectRatio="none"/>`);
         else out.push(`<rect x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}" fill="#eee" stroke="#bbb"/>`);
         break;
       }

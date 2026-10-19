@@ -6,7 +6,7 @@
 
 ## 상태
 
-**1단계(저장소 구성·측정·감사) 완료, 2단계(웹 뷰어 MVP: HWP/HWPX 읽기 전용) 구현·검증 완료, 3단계(DOCX 뷰어) 진행 중: DOCX·RTF·DOC·XLSX·XLS·PPTX·PPT 열기·쪽 단위 보기 구현(자체 조판 엔진, 정확도·한계는 `docs/phase3/report.md`, RTF·DOC는 `docs/decisions.md` D-035, XLSX·PPTX는 D-038).** 아직 공개 배포는 하지 않았다.
+**1단계(저장소 구성·측정·감사) 완료, 2단계(웹 뷰어 MVP: HWP/HWPX 읽기 전용) 구현·검증 완료, 3단계(DOCX 뷰어) 진행 중: DOCX·RTF·DOC·XLSX·XLS·PPTX·PPT 열기·쪽 단위 보기 구현(자체 조판 엔진, 정확도·한계는 `docs/phase3/report.md`, RTF·DOC는 `docs/decisions.md` D-035, XLSX·PPTX는 D-038).** 아직 공개 배포는 하지 않았다. 다음 단계는 **편집(웹) → Windows 앱 → 모바일 → PDF** 순이다(`docs/roadmap.md`, D-040).
 측정값과 결정은 [`docs/phase1/report.md`](docs/phase1/report.md), [`docs/phase2/report.md`](docs/phase2/report.md), [`docs/decisions.md`](docs/decisions.md)에 있다.
 
 ## 저장소 구성

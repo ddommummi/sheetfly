@@ -46,6 +46,7 @@ sh = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1), Inches(5), Inches(3), In
 # 4번째: 제목 자리 표시자가 직접 위치를 가진다(그림 아래) — 레이아웃 기본 위치(위쪽)와 다르다. 실제 발표 자료에서 흔한 모양.
 s = p.slides.add_slide(p.slide_layouts[5]); s.shapes.title.text = 'AI 에이전트'
 s.shapes.title.left, s.shapes.title.top, s.shapes.title.width, s.shapes.title.height = Inches(5), Inches(6), Inches(3), Inches(1)
-s.shapes.add_picture(os.path.join(here, '_red.png'), Inches(4), Inches(0.5), Inches(5), Inches(5))
+pic = s.shapes.add_picture(os.path.join(here, '_red.png'), Inches(4), Inches(0.5), Inches(5), Inches(5))
+pic.crop_left, pic.crop_right, pic.crop_top = 0.25, 0.25, 0.1       # PowerPoint의 '자르기': 원본의 일부만 상자에 채운다
 p.save(os.path.join(here, 'sample.pptx'))
 os.remove(os.path.join(here, '_red.png'))
