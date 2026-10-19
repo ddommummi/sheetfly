@@ -343,6 +343,12 @@ export function run(doc, HwpDocument, m) {
       return { ...viewInfo(doc, st), pos: ent.pos, canUndo: st.undo.length > 0, canRedo: st.redo.length > 0 };
     }
     case 'fonts': { try { return { fonts: J(doc.getDocumentInfo()).fontsUsed ?? [] }; } catch { return { fonts: [] }; } }
+    case 'view': {   // 보기 옵션: marks 문단 부호, codes 조판 부호, transparent 투명 선
+      const f = { marks: ['setShowParagraphMarks', 'getShowParagraphMarks'], codes: ['setShowControlCodes', 'getShowControlCodes'], transparent: ['setShowTransparentBorders', 'getShowTransparentBorders'] }[m.mode];
+      if (!f) throw { code: 'unknown', message: `view mode ${m.mode}` };
+      doc[f[0]](!!m.on);
+      return { ...viewInfo(doc, st), on: !!doc[f[1]]() };
+    }
     case 'marks': { doc.setShowParagraphMarks(!!m.on); return { ...viewInfo(doc, st), on: !!doc.getShowParagraphMarks() }; }   // 보기 옵션: 문서를 바꾸지 않는다
     case 'status': return { canUndo: st.undo.length > 0, canRedo: st.redo.length > 0, dirty: st.dirty };
     case 'clean': st.dirty = false; return {};

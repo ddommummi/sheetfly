@@ -23,6 +23,8 @@ const STEPS = Number(arg('steps', 40));
 const MAX_KB = Number(arg('max-kb', 400));
 const OBJP = Number(arg('obj', 0)) > 0;       // 개체(그림·도형·수식) 편집을 섞는다
 const OBJR = Number(arg('obj', 0));
+const PAGER = Number(arg('page', 0));        // 쪽·머리글·각주 편집을 섞는다
+const PAGEP = PAGER > 0;
 const TBLP = Number(arg('tbl', 0));        // 편집 한 번이 표 구조 편집일 확률(0이면 기본 비율)
 
 function* walk(dir) {
@@ -112,7 +114,24 @@ function objectOp(doc, m, rand, pos) {
   ];
   try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) { return rejectOk(e); }
 }
-let failures = 0, totalOps = 0, noRect = 0, objOps = 0, tblOps = 0, rejected = 0, apiOps = 0;
+function pageOp(doc, m, rand, pos) {
+  const ri = (n) => Math.floor(rand() * n);
+  const kinds = [
+    () => m('api', { fn: 'setPageDef', args: [0, JSON.stringify({ width: [59528, 84188, 41953][ri(3)], height: [84188, 59528, 119055][ri(3)], landscape: rand() < 0.4, marginLeft: 2000 + ri(8000), marginRight: 2000 + ri(8000), marginTop: 2000 + ri(8000), marginBottom: 2000 + ri(8000) })] }),
+    () => m('api', { fn: 'setColumnDef', args: [0, 1 + ri(3), ri(3), ri(2), ri(3000)] }),
+    () => m('api', { fn: 'insertPageBreak', args: [0, pos.p, pos.o] }),
+    () => m('api', { fn: 'insertColumnBreak', args: [0, pos.p, pos.o] }),
+    () => m('api', { fn: 'setPageBorderFill', args: [0, JSON.stringify({ borderLeft: { type: ri(3), width: ri(8), color: '#123456' }, fillType: rand() < 0.5 ? 'solid' : 'none', fillColor: '#ddeeff' })] }),
+    () => m('api', { fn: 'setPageHide', args: [0, pos.p, rand() < 0.5, rand() < 0.5, false, rand() < 0.5, false, rand() < 0.5] }),
+    () => m('api', { fn: 'insertNewNumber', args: [0, pos.p, pos.o, ri(50)] }),
+    () => m('hfset', { s: 0, header: rand() < 0.5, applyTo: ri(3), lines: rand() < 0.2 ? [] : ['머리 {쪽}', '두번째', '끝 {전체쪽}'].slice(0, 1 + ri(3)), alignment: ['left', 'center', 'right'][ri(3)] }),
+    () => m('api', { fn: rand() < 0.5 ? 'insertFootnote' : 'insertEndnote', args: [0, pos.p, pos.o] }),
+    () => { const f = m('fnat', { pos: { s: 0, p: pos.p, o: pos.o, path: null } }).fn; return f && m('fnset', { s: 0, p: pos.p, ctrl: f.ctrl, lines: ['각주', '둘째'].slice(0, 1 + ri(2)) }); },
+    () => { const f = m('fnat', { pos: { s: 0, p: pos.p, o: pos.o, path: null } }).fn; return f && rand() < 0.5 && m('api', { fn: 'deleteFootnote', args: [0, pos.p, f.ctrl] }); },
+  ];
+  try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) { return rejectOk(e); }
+}
+let failures = 0, totalOps = 0, noRect = 0, pageOps = 0, objOps = 0, tblOps = 0, rejected = 0, apiOps = 0;
 const fail = (f, msg) => { failures++; console.log('  ✗', f.rel, msg); };
 
 for (const f of files) {
@@ -132,7 +151,7 @@ for (const f of files) {
   let pos = randPos(), muts = 0, ok = true, lastOp = '';
   try {
     for (let i = 0; i < STEPS && ok; i++) {
-      const k = TBLP && rand() < TBLP ? 0.95 : (OBJR && rand() < OBJR ? 0.98 : rand());
+      const k = TBLP && rand() < TBLP ? 0.95 : (OBJR && rand() < OBJR ? 0.98 : (PAGER && rand() < PAGER ? 0.99 : rand()));
       let r = null, op = ''; lastOp = '';
       if (k < 0.34) { op = lastOp = 'insert'; r = m('insert', { pos, text: POOL[Math.floor(rand() * POOL.length)], group: rand() < 0.5 }); }
       else if (k < 0.44) { op = lastOp = 'enter'; r = m('enter', { pos }); }
@@ -156,6 +175,15 @@ for (const f of files) {
         if (res === 'rejected') { rejected++; if (JSON.stringify(paras(doc)) !== before) { fail(f, `step ${i}: 엔진이 거부한 표 편집 뒤 문서가 바뀌어 있다`); ok = false; break; } }
         else { muts++; tblOps++; }
         pos = { s: 0, p: Math.min(doc.getParagraphCount(0) - 1, T.p), o: 0, path: null };
+        continue;
+      }
+      else if (PAGEP && k >= 0.985) {
+        op = 'page';
+        const before = JSON.stringify(paras(doc));
+        const res = pageOp(doc, m, rand, { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: Math.min(pos.o, doc.getParagraphLength(0, Math.min(pos.p, doc.getParagraphCount(0) - 1))) });
+        if (res === 'rejected') { rejected++; if (JSON.stringify(paras(doc)) !== before) { fail(f, `step ${i}: 엔진이 거부한 쪽 편집 뒤 문서가 바뀌어 있다`); ok = false; break; } }
+        else { muts++; pageOps++; }
+        pos = { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: 0, path: null };
         continue;
       }
       else if (OBJP && k >= 0.97) {
@@ -201,5 +229,5 @@ for (const f of files) {
   } catch (e) { fail(f, `되돌리기 예외: ${String(e && (e.message || e.code) || e).slice(0, 140)}`); }
   try { doc.free(); } catch {}
 }
-console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·개체 편집 ${objOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
+console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·개체 편집 ${objOps}·쪽 편집 ${pageOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
 process.exit(failures ? 1 : 0);

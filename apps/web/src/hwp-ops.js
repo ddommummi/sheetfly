@@ -11,10 +11,14 @@ export const MUT = new Set([
   'transposeTableCellsInPlace', 'moveTableOffset', 'deleteCellTableControlByPath', 'evaluateTableFormula',
   // 개체(그림·도형·수식). 개체 앞뒤 순서는 changeShapeZOrder를 쓴다(…ControlAt 계열 중 setControlZOrderAt은 wasm이 죽는다).
   'insertPicture', 'setPictureProperties', 'deletePictureControl', 'assignPictureImage', 'createShapeControl', 'setShapeProperties', 'deleteShapeControl', 'changeShapeZOrder',
+  // 쪽·구역·머리글·각주
+  'setPageDef', 'setSectionDef', 'insertPageBreak', 'insertColumnBreak', 'setColumnDef', 'setPageBorderFill', 'setPageHide', 'insertNewNumber', 'toggleHideHeaderFooter',
+  'createHeaderFooter', 'deleteHeaderFooter', 'applyHfTemplate', 'insertFootnote', 'insertEndnote', 'deleteFootnote',
   'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt',
 ]);
 /** 문서를 바꾸지 않는 조회 API. */
 export const QRY = new Set([
+  'getPageDef', 'getSectionDef', 'getColumnDef', 'getPageBorderFill', 'getPageHide', 'getPageInfo', 'getHeaderFooter', 'getHeaderFooterParaInfo', 'getHeaderFooterList', 'getFootnoteInfo',
   'copyControl', 'clipboardHasControl', 'getPictureProperties', 'getShapeProperties', 'getEquationProperties', 'getShapeBBox', 'getPageControlLayout', 'getObjects',
   'getTableDimensions', 'getCellInfo', 'getCellProperties', 'getCellOwnProperties', 'getTableProperties', 'getTableBBox', 'getTableCellBboxes', 'getControls',
 ]);
@@ -42,6 +46,10 @@ export function ext(c, m) {
     }
     case 'objfind': return { obj: findObject(doc, J, m.page, m.s, m.p, m.ctrl) };
     case 'objprops': return { props: objProps(doc, J, m.obj) };
+    case 'hfget': return hfGet(c, m);
+    case 'hfset': return hfSet(c, m);
+    case 'fnat': return { fn: fnAt(c, m.pos) };
+    case 'fnset': return fnSet(c, m);
     case 'tableAt': return { table: tableAt(c, m.pos) };
     case 'cellrange': return cellRange(c, m.a, m.b);
     case 'cellfmt': return cellFmt(c, m);
@@ -168,4 +176,78 @@ function objProps(doc, J, o) {
     if (o.type === 'equation') return { kind: 'equation', ...J(doc.getEquationProperties(o.s, o.p, o.ctrl, -1, -1)) };
     return { kind: 'shape', ...J(doc.getShapeProperties(o.s, o.p, o.ctrl)) };
   } catch { return null; }
+}
+
+// ── 머리글·바닥글 ──
+// 필드 표지: 0x15 현재 쪽 번호, 0x16 전체 쪽 수, 0x17 파일 이름 — 편집창에서는 {쪽} {전체쪽} {파일이름}으로 보인다.
+const MARK = [['\u0015', '{쪽}', 1], ['\u0016', '{전체쪽}', 2], ['\u0017', '{파일이름}', 3]];
+const toTokens = (t) => MARK.reduce((a, [m, tok]) => a.split(m).join(tok), t);
+/** 머리글·바닥글의 현재 내용: {exists, lines:[text…]}. 쪽 번호 등 표지는 {쪽}으로 바꿔 돌려준다. */
+function hfGet(c, m) {
+  const { doc, J } = c;
+  const g = J(doc.getHeaderFooter(m.s, !!m.header, m.applyTo ?? 0));
+  if (!g.exists) return { exists: false, lines: [] };
+  const first = J(doc.getHeaderFooterParaInfo(m.s, !!m.header, m.applyTo ?? 0, 0));
+  const lines = [toTokens(first.text ?? '')];
+  for (let i = 1; i < (first.paraCount ?? 1); i++) lines.push(toTokens(J(doc.getHeaderFooterParaInfo(m.s, !!m.header, m.applyTo ?? 0, i)).text ?? ''));
+  return { exists: true, lines };
+}
+/** 머리글·바닥글을 주어진 줄들로 새로 만든다(한 번의 되돌리기). lines가 비면 지운다. alignment가 있으면 모든 문단에 적용. */
+function hfSet(c, m) {
+  const { doc, J, mutate, viewInfo, st } = c;
+  const at = m.applyTo ?? 0, hd = !!m.header;
+  mutate(() => {
+    const had = J(doc.getHeaderFooter(m.s, hd, at)).exists;
+    if (had) doc.deleteHeaderFooter(m.s, hd, at);
+    const lines = (m.lines ?? []).map((x) => String(x));
+    if (!lines.length || lines.every((x) => x === '')) return;
+    doc.createHeaderFooter(m.s, hd, at);
+    lines.forEach((line, i) => {
+      if (i > 0) doc.splitParagraphInHeaderFooter(m.s, hd, at, i - 1, [...J(doc.getHeaderFooterParaInfo(m.s, hd, at, i - 1)).text ?? ''].length);
+      // 표지({쪽} 등)를 자리마다 필드로 넣는다
+      let off = 0;
+      for (const part of line.split(/(\{쪽\}|\{전체쪽\}|\{파일이름\})/)) {
+        if (!part) continue;
+        const f = MARK.find(([, tok]) => tok === part);
+        if (f) { doc.insertFieldInHf(m.s, hd, at, i, off, f[2]); off += 1; }
+        else { doc.insertTextInHeaderFooter(m.s, hd, at, i, off, part); off += [...part].length; }
+      }
+      if (m.alignment) doc.applyParaFormatInHf(m.s, hd, at, i, JSON.stringify({ alignment: m.alignment }));
+    });
+  }, false);
+  return { ...viewInfo(doc, st) };
+}
+
+// ── 각주 ──
+/** 캐럿 문단에서 캐럿 앞(없으면 가장 가까운) 각주/미주: {ctrl, number, lines:[…]} */
+function fnAt(c, pos) {
+  const { doc, J } = c;
+  if (!pos || pos.path) return null;
+  let k = 0, positions = [];
+  try { positions = J(doc.getControlTextPositions(pos.s, pos.p)); k = positions.length; } catch { return null; }
+  let best = null;
+  for (let i = 0; i < k; i++) {
+    let info; try { info = J(doc.getFootnoteInfo(pos.s, pos.p, i)); } catch { continue; }
+    if (!info.ok) continue;
+    const d = Math.abs((positions[i] ?? 0) - pos.o);
+    if (!best || d < best.d) best = { ctrl: i, number: info.number, lines: info.texts ?? [], d };
+  }
+  return best ? { ctrl: best.ctrl, number: best.number, lines: best.lines } : null;
+}
+/** 각주 본문을 주어진 줄들로 바꾼다(기존 글은 지운다). */
+function fnSet(c, m) {
+  const { doc, J, mutate, viewInfo, st } = c;
+  mutate(() => {
+    const info = J(doc.getFootnoteInfo(m.s, m.p, m.ctrl));
+    const n = info.paraCount ?? 1;
+    // 끝 문단부터 합쳐 한 문단으로 만든 뒤 글을 지운다
+    for (let i = n - 1; i >= 1; i--) doc.mergeParagraphInFootnote(m.s, m.p, m.ctrl, i);
+    const len = [...(J(doc.getFootnoteInfo(m.s, m.p, m.ctrl)).texts?.[0] ?? '')].length;
+    if (len > 0) doc.deleteTextInFootnote(m.s, m.p, m.ctrl, 0, 0, len);
+    (m.lines ?? []).forEach((line, i) => {
+      if (i > 0) doc.splitParagraphInFootnote(m.s, m.p, m.ctrl, i - 1, [...(J(doc.getFootnoteInfo(m.s, m.p, m.ctrl)).texts?.[i - 1] ?? '')].length);
+      if (line) doc.insertTextInFootnote(m.s, m.p, m.ctrl, i, 0, String(line));
+    });
+  }, false);
+  return { ...viewInfo(doc, st) };
 }

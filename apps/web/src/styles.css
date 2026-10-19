@@ -194,3 +194,4 @@ body[data-dirty] .file-name::after { content: " ●"; color: var(--accent); }
 .obj-handle.h-ne { right: -5px; top: -5px; cursor: nesw-resize; } .obj-handle.h-e { right: -5px; top: calc(50% - 4px); cursor: ew-resize; }
 .obj-handle.h-se { right: -5px; bottom: -5px; cursor: nwse-resize; } .obj-handle.h-s { left: calc(50% - 4px); bottom: -5px; cursor: ns-resize; }
 .obj-handle.h-sw { left: -5px; bottom: -5px; cursor: nesw-resize; } .obj-handle.h-w { left: -5px; top: calc(50% - 4px); cursor: ew-resize; }
+.dialog-text { min-height: 90px; padding: 6px 8px; resize: vertical; font: inherit; }

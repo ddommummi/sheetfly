@@ -1,7 +1,7 @@
 // 편집기 공용 UI 부품: 값을 입력받는 대화상자(askForm). 스타일은 기존 .dialog·.btn·.select·.field를 그대로 쓴다.
 /**
  * @param {string} title
- * @param {Array<{key:string,label:string,type:'number'|'select'|'color'|'text'|'checkbox'|'file',value?:any,min?:number,max?:number,step?:number,options?:[string,string][],hint?:string,accept?:string}>} fields
+ * @param {Array<{key:string,label:string,type:'number'|'select'|'color'|'text'|'textarea'|'checkbox'|'file',value?:any,min?:number,max?:number,step?:number,options?:[string,string][],hint?:string,accept?:string}>} fields
  * @param {{ok:string,cancel:string}} labels
  * @returns {Promise<Record<string, any>|null>} 확인하면 {key: 값}, 취소하면 null
  */
@@ -27,6 +27,8 @@ export function askForm(title, fields, labels) {
           i = document.createElement('select'); i.className = 'select';
           for (const [v, text] of f.options ?? []) { const o = document.createElement('option'); o.value = v; o.textContent = text; i.append(o); }
           i.value = String(f.value ?? '');
+        } else if (f.type === 'textarea') {
+          i = document.createElement('textarea'); i.className = 'search-input dialog-text'; i.rows = f.rows ?? 5; i.value = String(f.value ?? '');
         } else {
           i = document.createElement('input');
           i.type = f.type === 'file' ? 'file' : f.type === 'color' ? 'color' : f.type === 'number' ? 'number' : 'text';

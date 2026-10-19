@@ -6,6 +6,7 @@
 import { askForm } from './ed-ui.js';
 import { installTable } from './ed-table.js';
 import { installObjects } from './ed-objects.js';
+import { installPage } from './ed-page.js';
 
 const T = {
   tabs: { format: '서식', insert: '입력', table: '표', object: '개체', page: '쪽', view: '보기' }, ok: '확인', cancel: '취소',
@@ -521,7 +522,29 @@ export class Editor {
     this.api = this.#makeApi();
     installTable(this.api);
     installObjects(this.api);
+    installPage(this.api);
+    this.#buildViewPanel();
     this.#showTab('format');
+  }
+  /** 보기 탭: 문서를 바꾸지 않는 표시 옵션. */
+  #buildViewPanel() {
+    const g = this.#panelGroup('view');
+    this.viewBtn = {};
+    for (const [mode, label, title] of [['marks', '문단 부호', T.marks], ['codes', '조판 부호', '조판 부호(개체 위치 표시) 보이기·숨기기'], ['transparent', '투명 선', '투명한 표 테두리를 점선으로 보이기·숨기기']]) {
+      const b = this.#btn('', label, title, () => this.#toggleView(mode, b));
+      b.setAttribute('aria-label', label); b.setAttribute('aria-pressed', 'false');
+      this.viewBtn[mode] = b; g.append(b);
+    }
+  }
+  #toggleView(mode, b) {
+    return this.#enqueue(async () => {
+      const on = b.getAttribute('aria-pressed') !== 'true';
+      const r = await this.#req('view', { mode, on });
+      b.setAttribute('aria-pressed', String(r.on));
+      if (mode === 'marks') this.btn.marks.setAttribute('aria-pressed', String(r.on));
+      this.viewer.refresh(r.sizes);
+      this.#focus();
+    });
   }
   #showTab(k) {
     this.tab = k;
@@ -706,15 +729,7 @@ export class Editor {
       this.#focus();
     });
   }
-  #toggleMarks() {
-    return this.#enqueue(async () => {
-      const on = this.btn.marks.getAttribute('aria-pressed') !== 'true';
-      const r = await this.#req('marks', { on });
-      this.btn.marks.setAttribute('aria-pressed', String(r.on));
-      this.viewer.refresh(r.sizes);   // 보이는 쪽을 모두 다시 그린다(문서 내용은 바뀌지 않는다)
-      this.#focus();
-    });
-  }
+  #toggleMarks() { return this.#toggleView('marks', this.viewBtn.marks); }
 
   // ── 저장 ──────────────────────────────────────────────────────────
   #ext() { return /\.hwpx$/i.test(this.fileName) ? 'hwpx' : 'hwp'; }

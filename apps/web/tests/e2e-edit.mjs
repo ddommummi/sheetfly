@@ -362,6 +362,57 @@ test('개체: 도형(타원)·글상자·수식 넣기, 앞뒤 순서', async ()
   await done(page);
 });
 
+// ── 쪽·머리글·각주 ──
+const clickBtn = (page, label) => page.locator(`#edit-bar [aria-label="${label}"]`).click();
+async function submit(page) { await page.click('dialog[open] button[type=submit]'); await settle(page); }
+
+test('쪽: 쪽 설정(가로·여백)·쪽 나누기·단 설정·쪽 감추기', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  const pages0 = await page.locator('.page').count();
+  await tab(page, 'page'); await page.waitForTimeout(200);
+  await clickBtn(page, '쪽 설정…'); await page.waitForSelector('dialog[open]');
+  await page.selectOption('dialog[open] select >> nth=1', '1');                       // 가로
+  await page.locator('dialog[open] input[type=number]').nth(4).fill('30');           // 왼쪽 여백 30mm
+  await submit(page);
+  await page.waitForFunction((n) => document.querySelectorAll('.page').length !== n, pages0, { timeout: 15000 });
+  await clickBtn(page, '쪽 나누기'); await settle(page);
+  await clickBtn(page, '단 설정…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=number]').nth(0).fill('2'); await submit(page);
+  await clickBtn(page, '쪽 감추기…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=checkbox]').nth(5).check(); await submit(page);
+  const r = await saveAndParse(page, { warn: true });
+  const pd = JSON.parse(r.doc.getPageDef(0));
+  assert.equal(pd.landscape, true);
+  assert.ok(Math.abs(pd.marginLeft - 30 * 283.465) < 5, `왼쪽 여백 ${pd.marginLeft}`);
+  assert.equal(JSON.parse(r.doc.getColumnDef(0)).columnCount, 2);
+  await done(page);
+});
+
+test('쪽: 머리글·바닥글(쪽 번호 표지)과 각주를 넣고 저장본에서 확인', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'page'); await page.waitForTimeout(200);
+  await clickBtn(page, '머리글…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] textarea').fill('국립국어원 {쪽}쪽\n둘째 줄'); await submit(page);
+  await clickBtn(page, '쪽 번호 넣기…'); await page.waitForSelector('dialog[open]'); await submit(page);   // 바닥글 가운데 "{쪽}"
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await clickBtn(page, '각주 넣기'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] textarea').fill('각주 본문'); await submit(page);
+  const r = await saveAndParse(page, { warn: true });
+  const hf = (h) => JSON.parse(r.doc.getHeaderFooterParaInfo(0, h, 0, 0)).text;
+  assert.match(hf(true), /국립국어원/);
+  assert.ok(JSON.parse(r.doc.getHeaderFooterParaInfo(0, true, 0, 1)).text.includes('둘째 줄'));
+  assert.equal(JSON.parse(r.doc.getHeaderFooter(0, false, 0)).exists, true, '바닥글');
+  const f = find(r.doc, '각주 본문');
+  assert.ok(true);
+  // 각주가 저장본 어딘가에 있다: 본문 문단의 각주 정보
+  let found = false;
+  for (let p = 0; p < r.doc.getParagraphCount(0) && !found; p++) { for (let c = 0; c < 3; c++) { try { if ((JSON.parse(r.doc.getFootnoteInfo(0, p, c)).texts ?? []).join('').includes('각주 본문')) { found = true; break; } } catch { /* 각주 아님 */ } } }
+  assert.ok(found, '각주 본문이 저장됐다');
+  await done(page);
+});
+
 test('저장 전후 문서 구조가 같다(검증 통과 시 경고창 없음), 저장하면 변경 표시가 사라진다', async () => {
   const page = await newPage();
   await open(page, BODY); await clickBody(page);
