@@ -79,3 +79,5 @@ for (const [k, v] of Object.entries(out)) lines.push(`${k.padEnd(7)} ${String(si
 console.log(lines.join('\n'));
 writeFileSync(join(dist, 'BUILD_ASSETS.json'), JSON.stringify(out, null, 2));
 console.log('dist 준비 완료');
+// 배포물에 LGPL 개발 의존성 흔적이 없는지 확인한다 (D-028). 있으면 빌드 실패.
+await import('./check-dist.mjs');

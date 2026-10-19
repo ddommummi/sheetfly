@@ -12,7 +12,8 @@
     "dev": "node scripts/build.mjs && node scripts/serve.mjs",
     "test:e2e": "node tests/e2e.mjs",
     "test:corpus": "node tests/corpus.mjs",
-    "budget": "node scripts/budget.mjs"
+    "budget": "node scripts/budget.mjs",
+    "check:dist": "node scripts/check-dist.mjs"
   },
   "devDependencies": {
     "binaryen": "132.0.0",

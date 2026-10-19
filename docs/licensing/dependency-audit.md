@@ -74,5 +74,6 @@ licensing/build-third-party.sh > THIRD_PARTY_LICENSES
 
 **LGPL 예외 (wrangler 추가 시 발생, 2026-10-18)**: `wrangler → miniflare → sharp`가 선택적(optional)으로 끌어오는 `@img/sharp-libvips-*`(LGPL-3.0-or-later) 네이티브 바이너리 10개와 `@img/sharp-wasm32`·`@img/sharp-win32-*`(Apache-2.0 AND LGPL-3.0-or-later 포함) 4개, 합계 14개. PRD 8.2는 LGPL을 "검토 필요"로 둔다.
 - **판단(오너 확인 필요)**: 모두 **개발 도구의 선택 의존성**(이미지 처리, 로컬 `wrangler dev`용)이고, 우리 배포물(`dist/`)에는 들어가지 않는다(번들에 `libvips` 문자열 0건 확인). 우리가 이 바이너리를 재배포하지 않으므로 LGPL 의무(재링크 허용·소스 제공 등)가 생기지 않는다고 보지만 법률 판단은 아니다.
+- **오너 결정(2026-10-19): 허용.** 배포물에 들어가지 않는지는 `apps/web/scripts/check-dist.mjs`가 빌드마다 검사한다(D-028).
 - 이 패키지들을 아예 설치하지 않으려면 `npm ci --omit=optional`을 쓰면 된다(Workers Builds 빌드 명령에는 쓰지 않았다 — esbuild도 플랫폼 바이너리를 optional로 받으므로 함께 빠진다).
 
