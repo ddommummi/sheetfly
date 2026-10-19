@@ -85,6 +85,7 @@ impl SheetflyDoc {
     pub fn new(data: &[u8], format: &str) -> Result<SheetflyDoc, JsValue> {
         let fmt = match format.to_ascii_lowercase().as_str() {
             "docx" => DocumentFormat::Docx,
+            "doc" => DocumentFormat::Doc, // 바이너리 Word(OLE). office_oxide가 IR로 읽는다
             "xlsx" => DocumentFormat::Xlsx,
             "pptx" => DocumentFormat::Pptx,
             other => return Err(JsValue::from_str(&format!("지원하지 않는 형식: {other}"))),

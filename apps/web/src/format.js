@@ -3,8 +3,8 @@
 export const MAX_BYTES = 100 * 1024 * 1024;
 
 const UNSUPPORTED_EXT = {
-  doc: 'DOC', xlsx: 'XLSX', xls: 'XLS', pptx: 'PPTX', ppt: 'PPT',
-  pdf: 'PDF', odt: 'ODT', ods: 'ODS', odp: 'ODP', rtf: 'RTF', txt: '텍스트',
+  xlsx: 'XLSX', xls: 'XLS', pptx: 'PPTX', ppt: 'PPT',
+  pdf: 'PDF', odt: 'ODT', ods: 'ODS', odp: 'ODP', txt: '텍스트',
 };
 
 export function extOf(name) {
@@ -24,11 +24,21 @@ export function precheck(file, head) {
   return null;
 }
 
-/** 열 엔진 종류: 'docx' | 'hwp'. 확장자가 분명하면 그것을, 아니면 ZIP 끝(중앙 디렉터리)에서 word/document.xml을 찾는다. */
+/**
+ * 열 엔진 종류: 'hwp' | 'docx' | 'doc' | 'rtf'. 'hwp' 외에는 모두 DOCX 엔진 Worker가 연다.
+ * 확장자보다 앞 바이트를 믿는다(.doc로 저장된 RTF·DOCX가 흔하다). OLE(D0 CF 11 E0)는 HWP 5.x도 같은 껍데기라 확장자로 가른다.
+ */
 export async function kindOf(file) {
   const ext = extOf(file.name);
-  if (ext === 'docx') return 'docx';
+  let head = new Uint8Array(0);
+  try { head = new Uint8Array(await file.slice(0, 16).arrayBuffer()); } catch { /* 판별 실패는 확장자로 */ }
+  const at = (s) => [...s].every((c, i) => head[i] === c.charCodeAt(0));
+  if (at('{\\rtf')) return 'rtf';
   if (ext === 'hwp' || ext === 'hwpx') return 'hwp';
+  if (ext === 'docx') return 'docx';
+  const ole = head.length >= 4 && head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0;
+  if (ole) return ext === 'doc' ? 'doc' : 'hwp';
+  if (ext === 'rtf') return 'rtf';
   try {
     const tail = new Uint8Array(await file.slice(Math.max(0, file.size - 262144)).arrayBuffer());
     const needle = new TextEncoder().encode('word/document.xml');

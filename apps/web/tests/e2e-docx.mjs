@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { startServer, launch, instrument, samples, waitState, sleep } from './helpers.mjs';
+import { makeRtf, rp, rpage, rtable, pageField, numPagesField, u } from './rtf-fixtures.mjs';
 import { makeDocx, p, pageBreak, table, fieldSimple, fieldComplex, fieldComplexPaired, run, footerPara } from './docx-fixtures.mjs';
 
 let server, url, browser;
@@ -171,6 +172,77 @@ test('확장자 없는 DOCX도 ZIP 안의 word/document.xml로 알아본다', as
   const page = await newPage();
   await openDocx(page, 'noext', makeDocx(p('확장자 없음')));
   assert.equal(await page.locator('#doc-note').isVisible(), true);
+  await done(page);
+});
+
+const hitsOf = async (page, q) => {
+  await page.keyboard.press('Control+f');
+  await page.fill('#search-input', '');
+  await page.waitForFunction(() => document.getElementById('search-count').textContent === '', null, { timeout: 15000 });
+  await page.fill('#search-input', q);
+  await page.waitForFunction(() => /\d+ \/ \d+|결과 없음/.test(document.getElementById('search-count').textContent), null, { timeout: 15000 });
+  return page.locator('#search-count').innerText();
+};
+
+test('RTF: 열기, 한글(\\uN과 \\\'hh 코드페이지), 쪽 나누기, 표, 바닥글 쪽 번호 필드', async () => {
+  const page = await newPage();
+  // \'b0\'a1 = EUC-KR(코드페이지 949)의 "가". 글꼴 f1(fcharset129)로 바꾸면 코드페이지가 949로 바뀐다.
+  const body = rp('첫 쪽 제목 Title', '\\qc\\b') + rp('본문입니다. ' + '대한민국은 민주공화국이다. '.repeat(3)) + '\\pard\\f1 \\\'b0\\\'a1\\\'b3\\\'aa\\par\n'
+    + rtable([['A1', '둘'], ['A2', 'B2']], [3000, 3000]) + rpage + rp('둘째 쪽') + rpage + rp('셋째 쪽');
+  const footer = u('쪽 ') + pageField('7') + ' / ' + numPagesField('9');
+  await openDocx(page, 'sample.rtf', makeRtf(body, { footer }));
+  assert.equal(await pageCount(page), 3);
+  assert.equal(await page.locator('#doc-note').isVisible(), true);
+  assert.match(await hitsOf(page, '민주공화국'), /^1 \/ [23]$/);   // 3번 쓴 문장, 줄 경계에 걸린 것은 못 찾는다
+  assert.match(await hitsOf(page, '가나'), /\/ 1$/);                  // 코드페이지 949 바이트
+  assert.match(await hitsOf(page, 'A2'), /\/ 1$/);                    // 표 칸
+  for (const n of [1, 2, 3]) assert.match(await hitsOf(page, `쪽 ${n} / 3`), /\/ 1$/, `쪽 ${n} / 3`);   // 저장된 값(7, 9)이 아니라 계산한 값
+  assert.equal(await hitsOf(page, '쪽 7'), '결과 없음');
+  await done(page);
+});
+
+test('RTF 판별: .doc 확장자로 저장된 RTF도, 확장자 없는 RTF도 앞 바이트로 알아본다', async () => {
+  const page = await newPage();
+  const rtf = makeRtf(rp('이름만 doc 인 RTF 문서'));
+  await openDocx(page, '헌법.doc', rtf);
+  assert.match(await hitsOf(page, 'RTF 문서'), /\/ 1$/);
+  await openDocx(page, 'noext', makeRtf(rp('확장자 없는 문서')));
+  assert.match(await hitsOf(page, '확장자 없는'), /\/ 1$/);
+  await done(page);
+});
+
+test('DOC(구형 Word): LibreOffice가 저장한 .doc을 연다 (제목·표·본문)', async () => {
+  const page = await newPage();
+  await openDocx(page, 'sample.doc', readFileSync(new URL('./fixtures/sample.doc', import.meta.url)));
+  // office_oxide의 DOC 읽기는 명시적 쪽 나누기를 IR에 싣지 않는다(D-035). 쪽 수는 단정하지 않고 내용·쪽 설정만 본다.
+  assert.ok((await pageCount(page)) >= 1);
+  assert.match(await hitsOf(page, '민주공화국'), /\/ 1$/);
+  assert.match(await hitsOf(page, 'B2'), /\/ 1$/);
+  assert.match(await hitsOf(page, 'second page'), /\/ 1$/);
+  const ratio = await page.evaluate(() => { const r = document.querySelector('.page').getBoundingClientRect(); return r.height / r.width; });
+  assert.ok(Math.abs(ratio - 16838 / 11906) < 0.01, `쪽 설정이 없는 DOC는 A4로 본다: ${ratio}`);
+  await done(page);
+});
+
+test('DOC·RTF 오류: 잘린 DOC, 쓰레기 .doc, 잘린 RTF는 앱을 멈추지 않는다', async () => {
+  const page = await newPage();
+  const doc = readFileSync(new URL('./fixtures/sample.doc', import.meta.url));
+  await send(page, 'cut.doc', doc.subarray(0, 1500));
+  assert.match(await waitError(page), /손상되었거나 지원하지 않는 형식/);
+  await send(page, 'junk.doc', Buffer.from('이건 문서가 아닙니다. '.repeat(50)));
+  assert.match(await waitError(page), /손상되었거나 지원하지 않는 형식/);
+  const rtf = makeRtf(rp('정상 문장 입니다') + rtable([['a', 'b']], [2000, 2000]));
+  await openDocx(page, 'cut.rtf', rtf.subarray(0, rtf.length - 30));        // 닫는 괄호가 없어도 읽을 수 있는 만큼 연다
+  assert.match(await hitsOf(page, '정상 문장'), /\/ 1$/);
+  await done(page);
+});
+
+test('DOC 파서가 패닉해도(업스트림 결함, 바이트 손상 DOC) 앱은 오류를 보여 주고 다음 문서를 연다', async () => {
+  const page = await newPage();
+  await send(page, 'panic.doc', readFileSync(new URL('./fixtures/doc-upstream-panic.doc', import.meta.url)));
+  assert.match(await waitError(page), /엔진 오류가 발생해|손상되었거나/);
+  await openDocx(page, 'after.rtf', makeRtf(rp('패닉 뒤에도 열린다')));
+  assert.match(await hitsOf(page, '패닉 뒤에도'), /\/ 1$/);
   await done(page);
 });
 
