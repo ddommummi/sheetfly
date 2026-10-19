@@ -62,7 +62,8 @@ for (const f of files) {
     const split = m('enter', { pos });                                   // 줄바꿈 → 새 문단 P+1
     pos = split.pos;
     pos = m('insert', { pos, text: 'second', group: true }).pos;
-    m('fmt', { a: { ...pos, o: 0 }, b: pos, props: { bold: true } });    // 서식
+    m('fmt', { a: { ...pos, o: 0 }, b: pos, props: { bold: true, strikethrough: true, underline: true, fontName: '맑은 고딕', spacings: Array(7).fill(-3) } });    // 서식
+    m('parafmt', { a: pos, b: pos, props: { lineSpacing: 200, lineSpacingType: 'Percent', marginLeft: 2000 } });
     const del = m('del', { pos, dir: 'back', group: false }); pos = del.pos ?? pos;
     m('undo', { pos }); m('redo', { pos });                              // 되돌리기·다시 실행이 문서를 깨뜨리지 않는지
     // 저장
@@ -80,6 +81,11 @@ for (const f of files) {
       let diffs = rest.length === orig.length ? 0 : Math.abs(rest.length - orig.length) + 1;
       for (let i = 0; i < Math.min(rest.length, orig.length); i++) if (i !== P && (rest[i][0] !== orig[i][0] || rest[i][1] !== orig[i][1])) diffs++;
       row.diffs = diffs;
+      // 서식이 저장본에 남았는지(본문 동일 판정과는 별도로 센다)
+      try {
+        const c = JSON.parse(re.getCharPropertiesAt(0, P + 1, 1)), pp = JSON.parse(re.getParaPropertiesAt(0, P + 1));
+        row.fmtKept = c.bold === true && c.strikethrough === true && c.underline === true && c.fontFamily === '맑은 고딕' && c.spacings[0] === -3 && Math.round(pp.lineSpacing) === 200 && pp.marginLeft > 10;
+      } catch { row.fmtKept = false; }
       row.sections = `${doc.getSectionCount()}→${re.getSectionCount()}`;
     } finally { re.free(); }
     row.bodySame = row.verifyOk && !row.reopenError && row.inserted && row.diffs === 0;
@@ -95,6 +101,8 @@ const skipped = (k) => rows.filter((r) => r.skip === k).length;
 const ms = tested.map((r) => r.exportMs).filter((x) => typeof x === 'number').sort((a, b) => a - b);
 console.log(`파일 ${rows.length}개 (제외: 열 수 없음 ${skipped('open')}, 암호 ${skipped('encrypted')}, ${MAX_BYTES / 1048576}MB 초과 ${skipped('big')}, 열기가 수 분 걸리는 병리 문서 ${skipped('slow')})`);
 console.log(`편집→저장→다시 열기 본문 동일: ${pass.length}/${tested.length} = ${(pass.length / Math.max(1, tested.length) * 100).toFixed(1)}%  (기준 ${MIN_PASS * 100}%)`);
+const fk = pass.filter((r) => r.fmtKept).length;
+console.log(`서식(글꼴·굵게·취소선·자간·줄 간격·여백)이 저장본에 남음: ${fk}/${pass.length}`);
 if (ms.length) console.log(`저장(내보내기) ms: p50 ${ms[Math.floor(ms.length / 2)]}, p95 ${ms[Math.floor(ms.length * 0.95)]}, 최대 ${ms.at(-1)}`);
 const bad = tested.filter((r) => !r.bodySame);
 for (const r of bad.slice(0, 40)) console.log('  ✗', r.f, r.error ?? JSON.stringify({ verifyOk: r.verifyOk, reopenError: r.reopenError, inserted: r.inserted, diffs: r.diffs, pages: r.pages, sections: r.sections }));

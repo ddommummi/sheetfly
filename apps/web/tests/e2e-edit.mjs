@@ -156,6 +156,45 @@ test('선택 → 굵게, 선택 삭제, 복사·붙여넣기', async () => {
   await done(page);
 });
 
+test('서식: 글꼴·취소선·형광펜·자간·장평·줄 간격·들여쓰기가 저장본에 남는다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await page.keyboard.type('FormatMe', { delay: 60 }); await settle(page);
+  await page.keyboard.down('Shift');
+  for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowLeft', { delay: 60 });
+  await page.keyboard.up('Shift'); await page.waitForSelector('.sel'); await settle(page);
+  await page.selectOption('#edit-bar .edit-font', '맑은 고딕'); await settle(page);
+  await page.click('#edit-bar .fmt-s'); await settle(page);
+  await page.locator('#edit-bar input[type=color]').nth(1).fill('#ffff00'); await settle(page);
+  await page.waitForFunction(() => document.querySelector('#edit-bar .edit-size').textContent.length > 0);
+  for (let i = 0; i < 2; i++) { await page.click('#edit-bar [title="자간 줄이기"]'); await settle(page); await page.waitForTimeout(150); }
+  for (let i = 0; i < 2; i++) { await page.click('#edit-bar [title="장평 줄이기"]'); await settle(page); await page.waitForTimeout(150); }
+  await page.selectOption('#edit-bar .edit-line', '200'); await settle(page);
+  await page.click('#edit-bar [title="왼쪽 여백 늘리기"]'); await settle(page);
+  const r = await saveAndParse(page);
+  const f = find(r.doc, 'FormatMe'); assert.ok(f.found);
+  const c = JSON.parse(r.doc.getCharPropertiesAt(f.sec, f.para, f.charOffset + 2));
+  assert.equal(c.fontFamily, '맑은 고딕');
+  assert.equal(c.strikethrough, true);
+  assert.equal(c.shadeColor.toLowerCase(), '#ffff00');
+  assert.equal(c.spacings[0], (JSON.parse(r.doc.getCharPropertiesAt(f.sec, f.para, 0)).spacings[0]) - 2);
+  assert.equal(c.ratios[0], 90);
+  const para = JSON.parse(r.doc.getParaPropertiesAt(f.sec, f.para));
+  assert.equal(para.lineSpacing, 200);
+  assert.ok(para.marginLeft > 10 && para.marginLeft < 16, `marginLeft ${para.marginLeft}`);
+  await done(page);
+});
+
+test('문단 부호 보기를 켜고 끌 수 있다(문서는 바뀌지 않는다)', async () => {
+  const page = await newPage();
+  await open(page, 'hwp_table_test.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+  await page.click('#edit-bar [title="문단 부호 보이기·숨기기"]'); await settle(page);
+  assert.equal(await page.locator('#edit-bar [title="문단 부호 보이기·숨기기"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await dirty(page), false, '보기 옵션은 변경 표시를 만들지 않는다');
+  await done(page);
+});
+
 test('저장 전후 문서 구조가 같다(검증 통과 시 경고창 없음), 저장하면 변경 표시가 사라진다', async () => {
   const page = await newPage();
   await open(page, BODY); await clickBody(page);

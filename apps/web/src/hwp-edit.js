@@ -109,6 +109,21 @@ function selectionText(doc, a, b) {
   return out.join('\n');
 }
 
+/** 화면 쪽 서식 이름을 rhwp 속성으로 바꾼다: fontName → 7개 언어 칸의 글꼴 번호(없으면 문서에 등록). */
+function charJson(doc, props) {
+  const p = { ...props };
+  if (p.fontName) {
+    // 글꼴 번호는 언어(한글·영어·한자·일어·기타·기호·사용자)마다 따로 매겨진다: 같은 번호를 7칸에 넣으면 칸마다 다른 글꼴이 된다.
+    const ids = [0, 1, 2, 3, 4, 5, 6].map((lang) => doc.findOrCreateFontIdForLang(lang, String(p.fontName)));
+    if (ids.every((id) => id >= 0)) p.fontIds = ids;
+    delete p.fontName;
+  }
+  // 켠다고만 하면 선 모양이 "없음"(15)인 글자는 저장 때 선이 사라진다: 선 모양을 실선(0)으로 함께 지정한다.
+  if (p.strikethrough === true && p.strikeShape === undefined) p.strikeShape = 0;
+  if (p.underline === true) { if (p.underlineShape === undefined) p.underlineShape = 0; if (p.underlineType === undefined) p.underlineType = 'Bottom'; }
+  return JSON.stringify(p);
+}
+
 // ── 되돌리기 ──
 const CAP = 60;
 const NOOP = Symbol('noop');
@@ -224,7 +239,7 @@ export function run(doc, HwpDocument, m) {
         if (m.replace > 0) at = opDeleteChars(doc, at, m.replace);
         const end = m.text ? opInsert(doc, at, m.text) : at;
         if (m.fmt && end.o > at.o) {
-          const json = JSON.stringify(m.fmt);
+          const json = charJson(doc, m.fmt);
           if (inCell(at)) doc.applyCharFormatInCellByPath(at.s, at.p, pj(at), at.o, end.o, json); else doc.applyCharFormat(at.s, at.p, at.o, end.o, json);
         }
         return end;
@@ -276,11 +291,11 @@ export function run(doc, HwpDocument, m) {
     }
     case 'fmt': {
       if (!sameContainer(m.a, m.b)) return { skipped: true, ...viewInfo(doc, st) };
-      const json = JSON.stringify(m.props);
-      mutate(() => eachParaRange(doc, m.a, m.b, (at, from, to) => {
+      let json;
+      mutate(() => { json = charJson(doc, m.props); eachParaRange(doc, m.a, m.b, (at, from, to) => {
         if (to <= from) return;
         if (inCell(at)) doc.applyCharFormatInCellByPath(at.s, at.p, pj(at), from, to, json); else doc.applyCharFormat(at.s, at.p, from, to, json);
-      }), false);
+      }); }, false);
       return { ...viewInfo(doc, st) };
     }
     case 'parafmt': {
@@ -301,6 +316,8 @@ export function run(doc, HwpDocument, m) {
       st.groupOpen = false; st.dirty = true;
       return { ...viewInfo(doc, st), pos: ent.pos, canUndo: st.undo.length > 0, canRedo: st.redo.length > 0 };
     }
+    case 'fonts': { try { return { fonts: J(doc.getDocumentInfo()).fontsUsed ?? [] }; } catch { return { fonts: [] }; } }
+    case 'marks': { doc.setShowParagraphMarks(!!m.on); return { ...viewInfo(doc, st), on: !!doc.getShowParagraphMarks() }; }   // 보기 옵션: 문서를 바꾸지 않는다
     case 'status': return { canUndo: st.undo.length > 0, canRedo: st.redo.length > 0, dirty: st.dirty };
     case 'clean': st.dirty = false; return {};
     case 'save': {

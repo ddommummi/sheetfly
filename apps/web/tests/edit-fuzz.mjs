@@ -65,7 +65,11 @@ for (const f of files) {
       else if (k < 0.44) { op = 'enter'; r = m('enter', { pos }); }
       else if (k < 0.58) { op = 'del'; r = m('del', { pos, dir: rand() < 0.5 ? 'back' : 'fwd', group: false }); }
       else if (k < 0.66) { op = 'delrange'; const b = { ...pos, o: Math.min(doc.getParagraphLength(0, pos.p), pos.o + 1 + Math.floor(rand() * 8)) }; r = m('delrange', { a: pos, b }); }
-      else if (k < 0.74) { op = 'fmt'; const b = { ...pos, o: Math.min(doc.getParagraphLength(0, pos.p), pos.o + 1 + Math.floor(rand() * 8)) }; m('fmt', { a: pos, b, props: { bold: rand() < 0.5, italic: rand() < 0.5 } }); r = { pos }; }
+      else if (k < 0.74) { op = 'fmt'; const b = { ...pos, o: Math.min(doc.getParagraphLength(0, pos.p), pos.o + 1 + Math.floor(rand() * 8)) }; const FMTS = [{ bold: rand() < 0.5, italic: rand() < 0.5 }, { fontName: ['맑은 고딕', '바탕', 'Arial', '새글꼴'][Math.floor(rand() * 4)] }, { strikethrough: rand() < 0.5, underline: rand() < 0.5 },
+          { shadeColor: ['#ffff00', '#ffffff', '#00ff00'][Math.floor(rand() * 3)], textColor: '#ff0000' }, { spacings: Array(7).fill(Math.floor(rand() * 21) - 10), ratios: Array(7).fill(60 + Math.floor(rand() * 100)) }, { fontSize: 800 + 100 * Math.floor(rand() * 20) }];
+        m('fmt', { a: pos, b, props: FMTS[Math.floor(rand() * FMTS.length)] }); r = { pos }; }
+      else if (k < 0.77) { op = 'parafmt'; const b = { ...pos, p: Math.min(doc.getParagraphCount(0) - 1, pos.p + Math.floor(rand() * 3)), o: 0 };
+        m('parafmt', { a: pos, b, props: [{ lineSpacing: [100, 160, 250][Math.floor(rand() * 3)], lineSpacingType: 'Percent' }, { marginLeft: 2000 * Math.floor(rand() * 5) }, { alignment: ['left', 'center', 'right', 'justify'][Math.floor(rand() * 4)] }][Math.floor(rand() * 3)] }); r = { pos }; }
       else if (k < 0.80) { op = 'paste'; r = m('paste', { pos, text: ['한 줄', '두\n줄', 'a\n\nb\n'][Math.floor(rand() * 3)] }); }
       else if (k < 0.88) { op = 'undo'; r = m('undo', { pos }); }
       else if (k < 0.92) { op = 'redo'; r = m('redo', { pos }); }

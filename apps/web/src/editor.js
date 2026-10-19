@@ -6,6 +6,10 @@
 const T = {
   undo: '실행 취소 (Ctrl+Z)', redo: '다시 실행 (Ctrl+Y)', bold: '굵게 (Ctrl+B)', italic: '기울임 (Ctrl+I)', underline: '밑줄 (Ctrl+U)',
   sizeDown: '글자 작게', sizeUp: '글자 크게', color: '글자 색', left: '왼쪽 맞춤', center: '가운데 맞춤', right: '오른쪽 맞춤', justify: '양쪽 맞춤',
+  font: '글꼴', strike: '취소선', highlight: '형광펜 색', highlightOff: '형광펜 지우기', highlightOffLabel: '지움',
+  spacing: '자간', spacingTitle: '글자 사이 간격(자간) %', ratio: '장평', ratioTitle: '글자 폭(장평) %',
+  spacingDown: '자간 줄이기', spacingUp: '자간 늘리기', ratioDown: '장평 줄이기', ratioUp: '장평 늘리기',
+  lineSpacing: '줄 간격', indentLess: '왼쪽 여백 줄이기', indentMore: '왼쪽 여백 늘리기', marks: '문단 부호 보이기·숨기기',
   save: '저장', saveTitle: '다른 이름으로 저장 (Ctrl+S)', toolbar: '편집 도구', input: '문서 편집 입력',
   saving: '저장 중…', saved: (n) => `${n} 저장했습니다.`, saveCancelled: '저장을 취소했습니다.', saveFailed: '저장하지 못했습니다.',
   opFailed: '이 편집을 적용하지 못했습니다. 실행 취소(Ctrl+Z)로 직전 상태로 돌아갈 수 있습니다.',
@@ -22,11 +26,16 @@ const T = {
 };
 const SLOW_OPEN_MS = 8000;         // 열기에 이보다 오래 걸린 문서는 편집 전에 알린다(뷰어의 "시간이 걸리고 있습니다" 안내와 같은 기준)
 const GAP_MS = 1500;               // 이 시간 안의 연속 입력은 되돌리기 한 묶음
+const COMMON_FONTS = ['함초롬바탕', '함초롬돋움', '맑은 고딕', '바탕', '돋움', '굴림', '궁서', '한컴바탕', '한컴돋움', '휴먼명조', '휴먼고딕', 'Arial', 'Times New Roman', 'Calibri'];
+const LINE_SPACINGS = [100, 120, 130, 150, 160, 180, 200, 250, 300];
+const INDENT_STEP = 2000;           // 왼쪽 여백 한 단계(HWPUNIT, 약 10pt). rhwp가 돌려주는 값은 96dpi 픽셀(=HWPUNIT/150)이다.
+const PX_TO_HWPUNIT = 150;
 const SZ_MIN = 100, SZ_MAX = 40000; // HWPUNIT(1pt = 100)
 
 const svg = (d) => `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const ICON = {
   undo: svg('M6 4L3 7l3 3M3 7h6a4 4 0 010 8H7'), redo: svg('M10 4l3 3-3 3M13 7H7a4 4 0 000 8h2'),
+  indentLess: svg('M2 3h12M7 7h7M7 11h7M2 15h12M5 6L2 9l3 3'), indentMore: svg('M2 3h12M7 7h7M7 11h7M2 15h12M2 6l3 3-3 3'),
   left: svg('M2 3h12M2 7h8M2 11h12M2 15h8'), center: svg('M2 3h12M4 7h8M2 11h12M4 15h8'), right: svg('M2 3h12M6 7h8M2 11h12M6 15h8'), justify: svg('M2 3h12M2 7h12M2 11h12M2 15h12'),
 };
 
@@ -47,8 +56,18 @@ export class Editor {
     this.cleanups = [];
     this.lastTyped = 0; this.selText = ''; this.dragging = false; this.hitBusy = false; this.hitNext = null; this.keyHandled = false;
     this.#buildToolbar();
+    this.#loadFonts();
     this.#buildInput();
     this.#bind();
+  }
+
+  /** 글꼴 목록: 이 문서가 쓰는 글꼴 + 흔한 글꼴(브라우저는 설치된 글꼴 목록을 알려주지 않는다). */
+  async #loadFonts() {
+    let used = [];
+    try { used = (await this.#req('fonts')).fonts ?? []; } catch { /* 목록 없이도 동작 */ }
+    const seen = new Set();
+    this.fontOptions = [...used, ...COMMON_FONTS].filter((f) => f && !seen.has(f) && seen.add(f)).map((f) => [f, f]);
+    this.#fillSelect(this.fontSel, this.fontOptions, this.cur.fontFamily ?? '');
   }
 
   // ── 시작·끝 ───────────────────────────────────────────────────────
@@ -421,6 +440,27 @@ export class Editor {
     b.addEventListener('click', onClick);
     return b;
   }
+  /** 도구줄 선택 상자. options: [[값, 글자]...]. 고르면 fn(값). */
+  #select(cls, label, options, fn) {
+    const el = document.createElement('select');
+    el.className = `select ${cls}`; el.title = label; el.setAttribute('aria-label', label);
+    this.#fillSelect(el, options);
+    el.addEventListener('change', () => { if (el.value !== '') fn(el.value); });
+    return el;
+  }
+  #fillSelect(el, options, current) {
+    el.replaceChildren();
+    const opts = [...options];
+    if (current !== undefined && current !== '' && !opts.some(([v]) => v === String(current))) opts.unshift([String(current), String(current)]);
+    for (const [v, t] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = t; el.append(o); }
+    if (current !== undefined) el.value = String(current);
+  }
+  #colorInput(label, value, fn) {
+    const c = document.createElement('input');
+    c.type = 'color'; c.className = 'edit-color'; c.value = value; c.title = label; c.setAttribute('aria-label', label);
+    c.addEventListener('input', () => fn(c.value));
+    return c;
+  }
   #buildToolbar() {
     const bar = this.bar;
     bar.replaceChildren();
@@ -431,31 +471,53 @@ export class Editor {
     g.append(this.btn.undo = this.#btn('icon', '', T.undo, () => this.#undoRedo('undo'), ICON.undo), this.btn.redo = this.#btn('icon', '', T.redo, () => this.#undoRedo('redo'), ICON.redo));
     this.btn.undo.disabled = true; this.btn.redo.disabled = true;
     g = grp();
+    this.fontSel = this.#select('edit-font', T.font, [], (v) => this.#format({ fontName: v }));
+    g.append(this.fontSel);
+    this.sizeLabel = document.createElement('span'); this.sizeLabel.className = 'edit-size';
+    g.append(this.#btn('icon', '−', T.sizeDown, () => this.#size(-1)), this.sizeLabel, this.#btn('icon', '+', T.sizeUp, () => this.#size(1)));
+    g = grp();
     g.append(
       this.btn.bold = this.#btn('icon fmt-b', 'B', T.bold, () => this.#toggle('bold')),
       this.btn.italic = this.#btn('icon fmt-i', 'I', T.italic, () => this.#toggle('italic')),
       this.btn.underline = this.#btn('icon fmt-u', 'U', T.underline, () => this.#toggle('underline')),
+      this.btn.strikethrough = this.#btn('icon fmt-s', 'S', T.strike, () => this.#toggle('strikethrough')),
     );
     g = grp();
-    this.sizeLabel = document.createElement('span'); this.sizeLabel.className = 'edit-size';
-    const color = document.createElement('input');
-    color.type = 'color'; color.className = 'edit-color'; color.value = '#000000'; color.title = T.color; color.setAttribute('aria-label', T.color);
-    color.addEventListener('input', () => this.#format({ textColor: color.value }));
-    this.colorInput = color;
-    g.append(this.#btn('icon', '−', T.sizeDown, () => this.#size(-1)), this.sizeLabel, this.#btn('icon', '+', T.sizeUp, () => this.#size(1)), color);
+    this.colorInput = this.#colorInput(T.color, '#000000', (v) => this.#format({ textColor: v }));
+    this.shadeInput = this.#colorInput(T.highlight, '#ffff00', (v) => this.#format({ shadeColor: v }));
+    g.append(this.colorInput, this.shadeInput, this.#btn('', T.highlightOffLabel, T.highlightOff, () => this.#format({ shadeColor: '#ffffff' })));
+    g = grp();
+    this.spacingLabel = document.createElement('span'); this.spacingLabel.className = 'edit-size'; this.spacingLabel.title = T.spacingTitle;
+    this.ratioLabel = document.createElement('span'); this.ratioLabel.className = 'edit-size'; this.ratioLabel.title = T.ratioTitle;
+    const cap = (t) => { const e = document.createElement('span'); e.className = 'edit-cap'; e.textContent = t; return e; };
+    g.append(
+      cap(T.spacing), this.#btn('icon', '−', T.spacingDown, () => this.#spacing(-1)), this.spacingLabel, this.#btn('icon', '+', T.spacingUp, () => this.#spacing(1)),
+      cap(T.ratio), this.#btn('icon', '−', T.ratioDown, () => this.#ratio(-5)), this.ratioLabel, this.#btn('icon', '+', T.ratioUp, () => this.#ratio(5)),
+    );
     g = grp();
     for (const a of ['left', 'center', 'right', 'justify']) g.append(this.btn[a] = this.#btn('icon', '', T[a], () => this.#align(a), ICON[a]));
+    this.lineSel = this.#select('edit-line', T.lineSpacing, LINE_SPACINGS.map((v) => [String(v), `${v}%`]), (v) => this.#paraFmt({ lineSpacing: Number(v), lineSpacingType: 'Percent' }));
+    g.append(this.lineSel, this.#btn('icon', '', T.indentLess, () => this.#indent(-1), ICON.indentLess), this.#btn('icon', '', T.indentMore, () => this.#indent(1), ICON.indentMore));
+    this.btn.marks = this.#btn('icon', '¶', T.marks, () => this.#toggleMarks());
+    g.append(this.btn.marks);
     const sp = document.createElement('span'); sp.className = 'spacer'; bar.append(sp);
     this.btn.save = this.#btn('primary', T.save, T.saveTitle, () => this.save());
     bar.append(this.btn.save);
   }
   #updateToolbar() {
     const c = { ...this.cur, ...this.pending };
-    for (const k of ['bold', 'italic', 'underline']) this.btn[k].setAttribute('aria-pressed', String(!!c[k]));
+    for (const k of ['bold', 'italic', 'underline', 'strikethrough']) this.btn[k].setAttribute('aria-pressed', String(!!c[k]));
     const al = this.cur.alignment;
     for (const a of ['left', 'center', 'right', 'justify']) this.btn[a].setAttribute('aria-pressed', String(al === a));
     this.sizeLabel.textContent = c.fontSize ? `${Math.round(c.fontSize / 10) / 10}pt` : '';
     if (c.textColor && /^#[0-9a-f]{6}$/i.test(c.textColor)) this.colorInput.value = c.textColor.toLowerCase();
+    if (c.shadeColor && /^#[0-9a-f]{6}$/i.test(c.shadeColor) && c.shadeColor.toLowerCase() !== '#ffffff') this.shadeInput.value = c.shadeColor.toLowerCase();
+    this.spacingLabel.textContent = c.spacings ? `${c.spacings[0]}%` : '';
+    this.ratioLabel.textContent = c.ratios ? `${c.ratios[0]}%` : '';
+    const fam = c.fontFamily ?? '';
+    if (this.fontSel.value !== fam) this.#fillSelect(this.fontSel, this.fontOptions ?? [], fam);
+    const ls = this.cur.lineSpacing ? String(Math.round(this.cur.lineSpacing)) : '';
+    if (ls && this.lineSel.value !== ls) this.#fillSelect(this.lineSel, LINE_SPACINGS.map((v) => [String(v), `${v}%`]), ls);
   }
   #updateStatus(r) {
     if (r && r.canUndo !== undefined) { this.btn.undo.disabled = !r.canUndo; this.btn.redo.disabled = !r.canRedo; }
@@ -465,7 +527,7 @@ export class Editor {
     this.propsTimer = setTimeout(async () => {
       if (!this.pos || !this.active) return;
       const r = await this.#call('props', { pos: this.pos });
-      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align }; this.#updateToolbar(); }
+      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align, lineSpacing: r.para?.lineSpacing, marginLeft: r.para?.marginLeft }; this.#updateToolbar(); }
       const s = await this.#call('status', {});
       if (s) this.#updateStatus(s);
     }, 80);
@@ -489,14 +551,37 @@ export class Editor {
     const cur = ({ ...this.cur, ...this.pending }).fontSize ?? 1000;
     return this.#format({ fontSize: Math.min(SZ_MAX, Math.max(SZ_MIN, Math.round(cur / 100) * 100 + d * 100)) });
   }
-  #align(a) {
+  #spacing(d) {
+    const v = Math.min(50, Math.max(-50, (this.cur.spacings?.[0] ?? 0) + d));
+    return this.#format({ spacings: [v, v, v, v, v, v, v] });
+  }
+  #ratio(d) {
+    const v = Math.min(200, Math.max(50, (this.cur.ratios?.[0] ?? 100) + d));
+    return this.#format({ ratios: [v, v, v, v, v, v, v] });
+  }
+  #align(a) { return this.#paraFmt({ alignment: a }); }
+  #indent(dir) {
+    // 현재 문단의 왼쪽 여백(96dpi 픽셀)을 한 단계씩 늘리거나 줄인다(0 아래로는 내려가지 않는다)
+    const now = Math.round((this.cur.marginLeft ?? 0) * PX_TO_HWPUNIT);
+    return this.#paraFmt({ marginLeft: Math.max(0, now + dir * INDENT_STEP) });
+  }
+  #paraFmt(props) {
     return this.#enqueue(async () => {
       if (!this.pos) return;
       this.#flushGroup();
       const [x, y] = this.#range();
-      const r = await this.#req('parafmt', { a: x, b: y, props: { alignment: a } });
+      const r = await this.#req('parafmt', { a: x, b: y, props });
       this.#setDirty(true); this.viewer.refresh(r.sizes); this.#scheduleProps();
       this.#updateStatus(await this.#req('status', {}));
+      this.#focus();
+    });
+  }
+  #toggleMarks() {
+    return this.#enqueue(async () => {
+      const on = this.btn.marks.getAttribute('aria-pressed') !== 'true';
+      const r = await this.#req('marks', { on });
+      this.btn.marks.setAttribute('aria-pressed', String(r.on));
+      this.viewer.refresh(r.sizes);   // 보이는 쪽을 모두 다시 그린다(문서 내용은 바뀌지 않는다)
       this.#focus();
     });
   }

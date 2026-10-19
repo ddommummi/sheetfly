@@ -159,6 +159,9 @@ body.doc-page { display: block; height: auto; min-height: 100%; }
 .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
 .btn.primary[aria-pressed="true"] { color: var(--accent-text); }
 .btn.fmt-b { font-weight: 800; } .btn.fmt-i { font-style: italic; } .btn.fmt-u { text-decoration: underline; }
+.editbar .select { max-width: 150px; }
+.edit-cap { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.btn.fmt-s { text-decoration: line-through; }
 .edit-size { min-width: 5ch; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 .edit-color { width: 32px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); cursor: pointer; }
 .edit-input { position: fixed; left: 0; top: 0; width: 2px; height: 20px; padding: 0; margin: 0; border: 0; outline: none; opacity: 0; resize: none; overflow: hidden; z-index: 5; pointer-events: none; font-size: 16px; }
