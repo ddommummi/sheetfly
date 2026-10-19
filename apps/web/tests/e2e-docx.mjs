@@ -4,7 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { startServer, launch, instrument, samples, waitState, sleep } from './helpers.mjs';
-import { makeDocx, p, pageBreak, table } from './docx-fixtures.mjs';
+import { makeDocx, p, pageBreak, table, fieldSimple, fieldComplex, fieldComplexPaired, run, footerPara } from './docx-fixtures.mjs';
 
 let server, url, browser;
 const allExternal = [];
@@ -105,6 +105,30 @@ test('DOCX 검색: 한글·영문, 대소문자, 쪽을 넘어 찾기, 없음', 
   await page.waitForFunction(() => /\/ 2$/.test(document.getElementById('search-count').textContent), null, { timeout: 15000 });
   await page.fill('#search-input', '없는말zzz');
   await page.waitForFunction(() => document.getElementById('search-count').textContent === '결과 없음', null, { timeout: 15000 });
+  await done(page);
+});
+
+test('바닥글 쪽 번호 필드: 쪽마다 값이 바뀌고(PAGE) 전체 쪽 수(NUMPAGES)·로마자 서식이 맞는다', async () => {
+  const page = await newPage();
+  const footer = footerPara(run('쪽 ') + fieldSimple('PAGE', '1') + run(' / ') + fieldSimple('NUMPAGES', '9'))
+    + footerPara(run('p. ') + fieldComplex('PAGE \\* roman', '1') + run(' - ') + fieldComplex('PAGE', '1'))
+    + footerPara(run('§ ') + fieldComplexPaired('PAGE', '20'));
+  await openDocx(page, 'footer.docx', makeDocx(p('첫 쪽') + pageBreak + p('둘째 쪽') + pageBreak + p('셋째 쪽'), { footer }));
+  assert.equal(await pageCount(page), 3);
+  const hits = async (q) => {
+    await page.keyboard.press('Control+f');
+    await page.fill('#search-input', '');                      // 직전 검색의 결과 표시가 남아 있지 않게 비운다
+    await page.waitForFunction(() => document.getElementById('search-count').textContent === '', null, { timeout: 15000 });
+    await page.fill('#search-input', q);
+    await page.waitForFunction(() => /\d+ \/ \d+|결과 없음/.test(document.getElementById('search-count').textContent), null, { timeout: 15000 });
+    return page.locator('#search-count').innerText();
+  };
+  for (const n of [1, 2, 3]) assert.match(await hits(`쪽 ${n} / 3`), /\/ 1$/, `쪽 ${n} / 3`);      // 단순 필드, 쪽마다 다른 값과 실제 전체 쪽 수
+  assert.equal(await hits('쪽 1 / 9'), '결과 없음');                                                  // 저장돼 있던 값(9)이 아니라 계산한 값
+  assert.match(await hits('p. ii - 2'), /\/ 1$/);                                                      // 복합 필드 + \* roman 서식
+  assert.match(await hits('p. iii - 3'), /\/ 1$/);
+  assert.match(await hits('§ 2'), /\/ 1$/);                                                           // 태그 쌍 형태(LibreOffice), 저장된 값(20)이 아님
+  assert.equal(await hits('§ 20'), '결과 없음');
   await done(page);
 });
 

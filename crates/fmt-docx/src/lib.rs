@@ -5,6 +5,8 @@
 //! office_oxide는 수정하지 않고 공개 API(`Document::as_docx`, `StyleSheet::effective_run_properties`)만 쓴다.
 //!
 //! 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
+mod fields;
+
 use office_oxide::{Document, DocumentFormat};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -87,7 +89,9 @@ impl SheetflyDoc {
             "pptx" => DocumentFormat::Pptx,
             other => return Err(JsValue::from_str(&format!("지원하지 않는 형식: {other}"))),
         };
-        Document::from_reader(Cursor::new(data.to_vec()), fmt)
+        // DOCX는 머리글/바닥글의 쪽 번호 필드를 표식으로 바꿔 넘긴다(fields.rs). 실패하면 원본을 그대로 쓴다.
+        let bytes = if fmt == DocumentFormat::Docx { fields::mark_fields(data).unwrap_or_else(|| data.to_vec()) } else { data.to_vec() };
+        Document::from_reader(Cursor::new(bytes), fmt)
             .map(|inner| SheetflyDoc { inner })
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }

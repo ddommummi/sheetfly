@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { chromium } from 'playwright-core';
 import { rng, mutate, KINDS } from './mutate.mjs';
-import { makeDocx, p, pageBreak, table } from './docx-fixtures.mjs';
+import { makeDocx, p, pageBreak, table, fieldSimple, fieldComplex, run, footerPara } from './docx-fixtures.mjs';
 import { chromiumPath } from './helpers.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +42,9 @@ function semantic(xml, rand) {
   return out;
 }
 
+// 바닥글 필드(쪽 번호) 씨앗: 어댑터가 ZIP을 다시 묶는 경로를 시험에 포함한다
+const FOOTER = footerPara(run('쪽 ') + fieldSimple('PAGE', '1') + run(' / ') + fieldSimple('NUMPAGES', '9')) + footerPara(run('p. ') + fieldComplex('PAGE \\* roman', '1') + run(' ') + fieldComplex('SECTIONPAGES', '1'));
+
 function makeCase(i) {
   const rand = rng(SEED * 1000003 + i);
   const kind = rand();
@@ -49,9 +52,9 @@ function makeCase(i) {
   if (kind < 0.55) {
     const bodyM = semantic(body, rand);
     const sectM = semantic(sect(), rand);
-    return { label: `semantic#${i}`, buf: makeDocx(bodyM, { sect: sectM }) };
+    return { label: `semantic#${i}`, buf: makeDocx(bodyM, { sect: sectM, footer: rand() < 0.5 ? FOOTER : null }) };
   }
-  const buf = makeDocx(body, { sect: sect() });
+  const buf = makeDocx(body, { sect: sect(), footer: rand() < 0.5 ? FOOTER : null });
   const k = KINDS[Math.floor(rand() * KINDS.length)];
   return { label: `${k}#${i}`, buf: mutate(buf, rand, k) };
 }
