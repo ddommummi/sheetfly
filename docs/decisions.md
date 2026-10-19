@@ -207,7 +207,7 @@
 - **구현**: D-032 방향대로 구현했다. `crates/fmt-docx`(office_oxide 래퍼), `apps/web/src/docx/`(조판 엔진), `docx-worker.js`, 형식 판별(`kindOf`), 안내 문구. 상세와 한계: `docs/phase3/report.md`.
 - **측정**: BetterOffice 대비 쪽 수 일치 105/111(94.6%), 완전 일치 51/111(45.9%); 변이 14,331개 충돌 0; 300쪽 0.53초; E2E 29/29. 합성 문서 기준이며 Word 일치는 미측정.
 - **예산 제안(오너 승인 전)**: 지연 로딩 자산 brotli — WASM ≤700,000B(실측 635,785), JS ≤20,000B(실측 11,907), 합계 ≤720,000B. `tools/measure/budgets-docx.json`, `apps/web/scripts/budget.mjs`가 검사한다. 첫 화면 합계 예산(3,340,000B)은 그대로이며 실측 3,148,838B.
-- **빌드 영향**: Cloudflare 빌드에 DOCX WASM 단계가 추가된다(`scripts/cloudflare-build.sh` 5단계). 시간은 클린 환경 시뮬레이션으로 측정(아래 참조).
+- **빌드 영향(측정, 2026-10-19)**: 새 클론에서 `scripts/cloudflare-build.sh`(`WASM_OPT=0`)를 처음부터 돌린 결과 **총 9분 53초, 성공**: rhwp cargo 8분 08초, **DOCX(fmt-docx) cargo 1분 16초**, 나머지(받기·npm ci·웹 빌드) 약 30초. 도구(rustup 툴체인·cargo 레지스트리)는 이 환경에 이미 있어 Cloudflare 첫 빌드보다 짧을 수 있고, Cloudflare 환경에서는 **미측정**이다. 이전 HWP 단독 시뮬레이션(10분 57초, 빈 HOME)과 직접 비교할 수 없다. `WASM_OPT=0` 산출물은 최적화본보다 커서 예산 여유가 줄어든다: 첫 화면 합계 3,285,770B(상한 3,340,000B), DOCX WASM 663,680B(상한 700,000B) — **모두 이내**지만 첫 화면 여유는 약 54KB다.
 
 ## 오너 결정/확인 요청 목록 (1단계 종료 시점)
 
