@@ -287,8 +287,8 @@ test('XLS(구형 Excel)와 이름만 .xls인 XLSX를 연다, OLE 껍데기의 .x
 test('PPTX: 슬라이드마다 한 쪽(16:9), 제목·목록·표·도형 글자, 그림, 안내 문구', async () => {
   const page = await newPage();
   await openDocx(page, 'sample.pptx', fixture('sample.pptx'));
-  assert.equal(await pageCount(page), 3);
-  assert.match(await page.locator('#doc-note').innerText(), /슬라이드의 글·표·그림을 배치해 보여 줍니다/);
+  assert.equal(await pageCount(page), 4);
+  assert.match(await page.locator('#doc-note').innerText(), /슬라이드의 글·표·그림·도형을 원래 위치에 배치해 보여 줍니다/);
   const ratios = await pageRatios(page);
   assert.ok(ratios.every((r) => Math.abs(r - 13.333 / 7.5) < 0.02), `슬라이드 비율: ${ratios}`);
   assert.match(await hitsOf(page, '둘째 항목'), /\/ 1$/);
@@ -307,7 +307,7 @@ test('XLSX·PPTX 오류: 잘린 파일은 오류를 보이고 다음 문서를 �
   await send(page, 'cut.pptx', pp.subarray(0, 1000));
   assert.match(await waitError(page), /손상되었거나 지원하지 않는 형식/);
   await openDocx(page, 'ok.pptx', pp);
-  assert.equal(await pageCount(page), 3);
+  assert.equal(await pageCount(page), 4);
   await done(page);
 });
 

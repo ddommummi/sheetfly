@@ -407,7 +407,7 @@ export function placeBlocks(elements, flow, ctx) {
     switch (el.type) {
       case 'paragraph': case 'heading': {
         if (el.type === 'heading') el = withHeadingStyle(el, ctx.headingRuns?.[String(el.level)]);
-        const par = layoutParagraph(el, paragraphCtx(flow, ctx));
+        const par = layoutParagraph(el, paragraphCtx(flow, ctx, el.marker_text ? { marker: el.marker_text } : {}));
         if (par.keepNext && flow.paginated && !st.atTop) {
           const next = elements[idx + 1];
           const own = par.before + par.lines.reduce((a, l) => a + l.height, 0);
@@ -450,13 +450,48 @@ export function placeBlocks(elements, flow, ctx) {
   }
 }
 
-/** x_emu/y_emu가 있는 상자: 내용을 상자 너비로 조판해 그 위치에 얹는다(높이는 제한하지 않는다). */
+/** 문단 목록의 글자 크기·간격을 비율로 줄인 사본. */
+function scaleBlocks(blocks, sc) {
+  return blocks.map((b) => (b.type !== 'paragraph' ? b : {
+    ...b,
+    content: (b.content ?? []).map((r) => (r.type === 'text' && r.font_size_half_pt ? { ...r, font_size_half_pt: r.font_size_half_pt * sc } : r)),
+    space_before_twips: (b.space_before_twips || 0) * sc, space_after_twips: (b.space_after_twips || 0) * sc,
+  }));
+}
+
+/**
+ * x_emu/y_emu가 있는 상자(슬라이드 도형): 채우기·선을 그리고, 안쪽 여백을 둔 칸에 내용을 조판해 세로 정렬(위·가운데·아래)에 맞춰 얹는다.
+ * 높이로 글을 자르지 않는다(넘치면 그대로 넘친다).
+ */
 function placeAbsolute(el, flow, ctx) {
-  const f = scratchFlow(Math.max(1, emuToPx(el.width_emu)));
-  placeBlocks(el.content ?? [], f, { ...ctx, notesOut: [] });
+  const W = emuToPx(el.width_emu), H = emuToPx(el.height_emu ?? 0);
   const ox = emuToPx(el.x_emu), oy = emuToPx(el.y_emu);
   const dx = el.h_anchor === 'page' ? ox : flow.x0 + ox, dy = el.v_anchor === 'page' ? oy : flow.top + oy;
-  for (const it of f.items) flow.items.push(shiftItem(it, dx, dy));
+  const color = (c) => rgb(c) ?? '#000000';
+  if (el.shape === 'line') {
+    const x1 = el.flipH ? dx + W : dx, x2 = el.flipH ? dx : dx + W, y1 = el.flipV ? dy + H : dy, y2 = el.flipV ? dy : dy + H;
+    flow.items.push({ k: 'l', x1, y1, x2, y2, w: Math.max(0.5, emuToPx(el.stroke?.w ?? 12700)), color: color(el.stroke?.color) });
+    return;
+  }
+  if ((el.fill || el.stroke) && W > 0 && H > 0) flow.items.push({ k: 's', shape: el.shape ?? 'rect', adj: el.adj, x: dx, y: dy, w: W, h: H, fill: el.fill ? color(el.fill) : null, stroke: el.stroke ? color(el.stroke.color) : null, sw: Math.max(0.5, emuToPx(el.stroke?.w ?? 12700)) });
+  if (!el.content?.length) return;
+  const [li, ti, ri, bi] = (el.inset ?? [0, 0, 0, 0]).map(emuToPx);
+  let f = scratchFlow(Math.max(1, W - li - ri));
+  placeBlocks(el.content, f, { ...ctx, notesOut: [] });
+  // 이 기기에 원래 글꼴이 없으면 대체 글꼴이 더 넓어 상자 밖으로 넘치거나 한 줄이 두 줄이 된다. 글자를 조금 줄여 맞춘다(최대 30%).
+  const avail = H - ti - bi;
+  if (el.fit && avail > 0 && f.y > avail * 1.05) {
+    for (let k = 1; k <= 8; k++) {
+      const sc = 1 - k * 0.04;
+      const g = scratchFlow(Math.max(1, W - li - ri));
+      placeBlocks(scaleBlocks(el.content, sc), g, { ...ctx, notesOut: [] });
+      f = g;
+      if (g.y <= avail * 1.05) break;
+    }
+  }
+  const free = H - ti - bi - f.y;
+  const off = el.anchor === 'ctr' ? free / 2 : el.anchor === 'b' ? free : 0;
+  for (const it of f.items) flow.items.push(shiftItem(it, dx + li, dy + ti + off));
 }
 
 export { pushRect, pushLine, shiftItem, MAX_ITEMS_PER_PAGE };

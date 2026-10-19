@@ -10,6 +10,7 @@ import { chromium } from 'playwright-core';
 import { rng, mutate, KINDS } from './mutate.mjs';
 import { makeDocx, p, pageBreak, table, fieldSimple, fieldComplex, run, footerPara } from './docx-fixtures.mjs';
 import { makeRtf, rp, rpage, rtable, pageField, numPagesField, u } from './rtf-fixtures.mjs';
+import { unpackPptx, mutatePptx } from './pptx-mutate.mjs';
 import { chromiumPath } from './helpers.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -118,6 +119,10 @@ for (let i = 0; i < Math.ceil(N * 0.3); i++) {
   cases.push({ label: `ir-${seed.kind}#${i}`, kind: `ir-${seed.kind}`, buf: seed.buf, seed: Math.floor(rand() * 2 ** 31) });
 }
 for (const s of OFFICE_SEEDS) cases.push({ label: `${s.kind}-seed`, kind: s.kind, buf: s.buf });
+// PPTX 직접 해석기: XML 의미 변이(숫자·구조)를 풀어 쓴 파일로 시험한다
+const PPTX_FILES = await unpackPptx(OFFICE_SEEDS.find((x) => x.kind === 'pptx').buf);
+for (let i = 0; i < Math.ceil(N * 0.5); i++) cases.push({ label: `pptxown-xml#${i}`, kind: 'pptx-own', buf: mutatePptx(PPTX_FILES, rng(SEED * 8000009 + i)) });
+cases.push({ label: 'pptxown-seed', kind: 'pptx-own', buf: OFFICE_SEEDS.find((x) => x.kind === 'pptx').buf });
 if (SEEDS_DIR) {
   for (const f of readdirSync(SEEDS_DIR).filter((x) => /\.(docx|doc|rtf)$/i.test(x)).sort()) {
     const buf = readFileSync(join(SEEDS_DIR, f));
@@ -140,7 +145,7 @@ async function freshPage() {
   await page.evaluate(async (w) => { const b = Uint8Array.from(atob(w), (c) => c.charCodeAt(0)); await SheetflyFuzz.initEngine(b); }, wasm);
   return page;
 }
-const runBatch = (page, items) => page.evaluate((arr) => arr.map(([b64, kind, seed]) => SheetflyFuzz.run(b64, 60, kind, seed)), items);
+const runBatch = (page, items) => page.evaluate(async (arr) => { const out = []; for (const [b64, kind, seed] of arr) out.push(await SheetflyFuzz.run(b64, 60, kind, seed)); return out; }, items);
 
 const results = [];
 let page = await freshPage();

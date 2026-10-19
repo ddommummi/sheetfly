@@ -16,6 +16,16 @@ export function pageToSvg(page, measure) {
       case 'r': out.push(`<rect x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}" fill="${esc(it.fill)}"/>`); break;
       case 'l': out.push(`<line x1="${n(it.x1)}" y1="${n(it.y1)}" x2="${n(it.x2)}" y2="${n(it.y2)}" stroke="${esc(it.color)}" stroke-width="${n(it.w)}"/>`); break;
       case 't': out.push(`<text x="${n(it.x)}" y="${n(it.y)}" style="font:${esc(it.font)}" fill="${esc(it.fill)}"${it.ls ? ` letter-spacing="${n(it.ls)}"` : ''} xml:space="preserve">${esc(it.s)}</text>`); break;
+      case 's': {   // 도형(슬라이드): 채우기·선
+        const f = it.fill ? esc(it.fill) : 'none', st = it.stroke ? ` stroke="${esc(it.stroke)}" stroke-width="${n(it.sw)}"` : '';
+        const x = n(it.x), y = n(it.y), w = n(it.w), h = n(it.h);
+        if (it.shape === 'ellipse') out.push(`<ellipse cx="${n(it.x + it.w / 2)}" cy="${n(it.y + it.h / 2)}" rx="${n(it.w / 2)}" ry="${n(it.h / 2)}" fill="${f}"${st}/>`);
+        else if (it.shape === 'roundRect') { const r = n(Math.min(it.w, it.h) * Math.max(0, Math.min(0.5, (Number.isFinite(it.adj) ? it.adj : 16667) / 100000))); out.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${f}"${st}/>`); }
+        else if (it.shape === 'triangle') out.push(`<polygon points="${n(it.x + it.w / 2)},${y} ${n(it.x + it.w)},${n(it.y + it.h)} ${x},${n(it.y + it.h)}" fill="${f}"${st}/>`);
+        else if (it.shape === 'diamond') out.push(`<polygon points="${n(it.x + it.w / 2)},${y} ${n(it.x + it.w)},${n(it.y + it.h / 2)} ${n(it.x + it.w / 2)},${n(it.y + it.h)} ${x},${n(it.y + it.h / 2)}" fill="${f}"${st}/>`);
+        else out.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"${st}/>`);
+        break;
+      }
       case 'leader': {
         const dw = measure ? measure.width(it.font, it.ch) : 6;
         const cnt = Math.max(0, Math.floor(it.w / Math.max(1, dw)) - 1);
