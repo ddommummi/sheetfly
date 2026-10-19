@@ -25,7 +25,7 @@ function emitLine(items, line, x0, y, par) {
       const st = it.st;
       const by = y + line.base + (st.shift || 0);
       if (st.highlight) pushRect(items, x, y, it.w, line.height, (HIGHLIGHT[st.highlight] ?? st.highlight));
-      items.push({ k: 't', x, y: by, s: it.text, font: it.font, fill: st.color, ls: st.spacing || 0, w: it.w, link: st.link || undefined });
+      items.push({ k: 't', x, y: by, s: it.text, font: it.font, fill: st.color, ls: st.spacing || 0, w: it.w, top: y, lh: line.height, link: st.link || undefined });
       const th = Math.max(1, st.px / 16);
       if (st.underline && st.underline !== 'none') {
         pushRect(items, x, by + st.px * 0.12, it.w, th, st.color);

@@ -31,6 +31,9 @@ jobs:
           RHWP_SAMPLES: "1"
         run: scripts/fetch-rhwp.sh
 
+      - name: office_oxide 받기 (DOCX 엔진, 약 7MB)
+        run: scripts/fetch-office-oxide.sh
+
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable 브랜치 (업스트림 고정값)
         with:
           toolchain: "1.93.1"
@@ -67,6 +70,9 @@ jobs:
       - name: WASM 빌드 (scripts/build-wasm.sh)
         run: scripts/build-wasm.sh
 
+      - name: DOCX WASM 빌드 (scripts/build-docx-wasm.sh)
+        run: scripts/build-docx-wasm.sh
+
       - name: 웹 빌드
         working-directory: apps/web
         run: npm run build
@@ -79,9 +85,13 @@ jobs:
         working-directory: apps/web
         run: npx playwright-core install --with-deps chromium
 
-      - name: E2E
+      - name: E2E (HWP 21개 + DOCX 8개)
         working-directory: apps/web
         run: npm run test:e2e
+
+      - name: DOCX 변이 시험 (스모크)
+        working-directory: apps/web
+        run: npm run test:docx-fuzz -- --n 3000
 
       - name: 코퍼스 크래시 시험
         working-directory: apps/web

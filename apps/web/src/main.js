@@ -1,11 +1,12 @@
 import { S } from './strings.js';
 import { Viewer, MIN_ZOOM, MAX_ZOOM } from './viewer.js';
 import { DocWorker } from './client.js';
-import { precheck } from './format.js';
+import { precheck, kindOf } from './format.js';
 
 const $ = (id) => document.getElementById(id);
 const meta = (n) => document.querySelector(`meta[name="${n}"]`)?.getAttribute('content') ?? '';
 const cfg = { workerUrl: meta('sheetfly-worker'), wasmUrl: meta('sheetfly-wasm') };
+const docxCfg = { workerUrl: meta('sheetfly-docx-worker'), wasmUrl: meta('sheetfly-docx-wasm') }; // DOCX 엔진은 열 때만 불러온다(지연 로딩)
 
 const body = document.body;
 const stage = $('stage');
@@ -66,8 +67,10 @@ async function openFile(file, password) {
   if (pre) { showError(pre.code, pre.arg); return; }
 
   const token = ++openToken;
-  const worker = warm ?? spawn();
-  warm = null;
+  const kind = await kindOf(file);
+  if (token !== openToken) return;
+  const worker = kind === 'docx' ? new DocWorker(docxCfg) : (warm ?? spawn());
+  if (kind !== 'docx') warm = null;
   opening = { worker, token };
   setLoading(true, file.name);
   try {
@@ -86,6 +89,7 @@ async function openFile(file, password) {
     old?.terminate();
     docName = file.name;
     document.title = `${docName} – ${S.appName}`;
+    $('doc-note').hidden = kind !== 'docx';
     $('file-name').textContent = docName;
     $('file-name').title = docName;
     $('page-total').textContent = S.pageOf(res.pageCount);

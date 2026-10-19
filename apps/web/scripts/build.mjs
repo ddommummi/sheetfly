@@ -13,9 +13,9 @@ const repo = resolve(web, '../..');
 const dist = join(web, 'dist');
 const wasmDir = join(web, 'src/wasm');
 
-for (const f of ['rhwp.js', 'rhwp_bg.wasm']) {
+for (const [f, script] of [['rhwp.js', 'build-wasm.sh'], ['rhwp_bg.wasm', 'build-wasm.sh'], ['fmt_docx.js', 'build-docx-wasm.sh'], ['fmt_docx_bg.wasm', 'build-docx-wasm.sh']]) {
   if (!existsSync(join(wasmDir, f))) {
-    console.error(`src/wasm/${f}가 없다. 먼저 scripts/build-wasm.sh를 실행하라 (npm run build:wasm).`);
+    console.error(`src/wasm/${f}가 없다. 먼저 scripts/${script}를 실행하라 (npm run build:wasm).`);
     process.exit(1);
   }
 }
@@ -27,6 +27,7 @@ const result = await build({
   entryPoints: {
     main: join(web, 'src/main.js'),
     worker: join(web, 'src/worker.js'),
+    docxworker: join(web, 'src/docx-worker.js'),
     theme: join(web, 'src/theme.js'),
     styles: join(web, 'src/styles.css'),
   },
@@ -55,6 +56,12 @@ const wasmName = `engine-${wasmHash.slice(0, 10)}.wasm`;
 writeFileSync(join(dist, 'assets', wasmName), wasmBytes);
 out.wasm = `/assets/${wasmName}`;
 
+// DOCX 엔진(fmt-docx = office_oxide 어댑터). 지연 로딩이라 첫 화면 전송량에는 들어가지 않는다.
+const docxBytes = readFileSync(join(wasmDir, 'fmt_docx_bg.wasm'));
+const docxName = `docx-${createHash('sha256').update(docxBytes).digest('hex').slice(0, 10)}.wasm`;
+writeFileSync(join(dist, 'assets', docxName), docxBytes);
+out.docxwasm = `/assets/${docxName}`;
+
 let buildInfo = '';
 try {
   const bi = JSON.parse(readFileSync(join(wasmDir, 'BUILD_INFO.json'), 'utf8'));
@@ -63,7 +70,8 @@ try {
 
 const fill = (s) => s
   .replaceAll('%MAIN%', out.main).replaceAll('%WORKER%', out.worker).replaceAll('%THEME%', out.theme)
-  .replaceAll('%CSS%', out.styles).replaceAll('%WASM%', out.wasm).replaceAll('%BUILD_INFO%', buildInfo);
+  .replaceAll('%CSS%', out.styles).replaceAll('%WASM%', out.wasm)
+  .replaceAll('%DOCX_WORKER%', out.docxworker).replaceAll('%DOCX_WASM%', out.docxwasm).replaceAll('%BUILD_INFO%', buildInfo);
 for (const f of ['index.html', 'licenses.html', '404.html']) {
   writeFileSync(join(dist, f), fill(readFileSync(join(web, f), 'utf8')));
 }

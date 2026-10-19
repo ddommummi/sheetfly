@@ -14,4 +14,9 @@ const r = spawnSync(process.execPath, [
   join(web, '../../tools/measure/check-budget.mjs'), budgets,
   `wasm=${file('wasm')}`, `js_main=${file('main')}`, `js_worker=${file('worker')}`, `css=${file('styles')}`,
 ], { stdio: 'inherit' });
-process.exit(r.status ?? 1);
+// 지연 로딩 자산(DOCX 엔진)은 첫 화면 합계와 따로 센다
+const docx = spawnSync(process.execPath, [
+  join(web, '../../tools/measure/check-budget.mjs'), join(web, '../../tools/measure/budgets-docx.json'),
+  `docxwasm=${file('docxwasm')}`, `docxworker=${file('docxworker')}`,
+], { stdio: 'inherit' });
+process.exit((r.status ?? 1) || (docx.status ?? 1));
