@@ -12,6 +12,9 @@
     "dev": "node scripts/build.mjs && node scripts/serve.mjs",
     "test:e2e": "node tests/pptx-unit.mjs && node tests/e2e.mjs && node tests/e2e-docx.mjs",
     "test:corpus": "node tests/corpus.mjs",
+    "test:edit": "node tests/e2e-edit.mjs",
+    "test:edit-corpus": "node tests/edit-corpus.mjs",
+    "test:edit-fuzz": "node tests/edit-fuzz.mjs",
     "test:docx-fuzz": "node tests/docx-fuzz.mjs",
     "budget": "node scripts/budget.mjs",
     "check:dist": "node scripts/check-dist.mjs"

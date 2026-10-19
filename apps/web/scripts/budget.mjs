@@ -19,4 +19,9 @@ const docx = spawnSync(process.execPath, [
   join(web, '../../tools/measure/check-budget.mjs'), join(web, '../../tools/measure/budgets-docx.json'),
   `docxwasm=${file('docxwasm')}`, `docxworker=${file('docxworker')}`,
 ], { stdio: 'inherit' });
-process.exit((r.status ?? 1) || (docx.status ?? 1));
+// 편집 코드(지연 로딩)도 따로 센다
+const edit = spawnSync(process.execPath, [
+  join(web, '../../tools/measure/check-budget.mjs'), join(web, '../../tools/measure/budgets-edit.json'),
+  `editor=${file('editor')}`, `hwpedit=${file('hwpedit')}`,
+], { stdio: 'inherit' });
+process.exit((r.status ?? 1) || (docx.status ?? 1) || (edit.status ?? 1));

@@ -10,6 +10,8 @@
   <meta name="sheetfly-worker" content="%WORKER%">
   <meta name="sheetfly-wasm" content="%WASM%">
   <meta name="sheetfly-docx-worker" content="%DOCX_WORKER%">
+  <meta name="sheetfly-editor" content="%EDITOR%">
+  <meta name="sheetfly-hwp-edit" content="%HWP_EDIT%">
   <meta name="sheetfly-docx-wasm" content="%DOCX_WASM%">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="%CSS%">
@@ -48,9 +50,12 @@
       <button id="fit-width" class="btn" type="button" data-s-title="zoomFitWidth">너비</button>
       <button id="fit-page" class="btn" type="button" data-s-title="zoomFitPage">쪽</button>
     </div>
+    <button id="edit-btn" class="btn doc-only" type="button" data-s="edit" data-s-title="editTitle" aria-pressed="false" hidden>편집</button>
     <button id="search-btn" class="btn doc-only" type="button" data-s="search" data-s-title="searchTitle">검색</button>
     <button id="theme-btn" class="btn" type="button">테마: 자동</button>
   </header>
+
+  <div id="edit-bar" class="editbar" hidden></div>
 
   <div id="searchbar" class="searchbar" role="search" hidden>
     <input id="search-input" class="search-input" type="search" autocomplete="off" spellcheck="false" aria-label="검색어">

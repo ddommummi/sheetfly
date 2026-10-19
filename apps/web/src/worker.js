@@ -4,6 +4,7 @@ import init, { HwpDocument } from './wasm/rhwp.js';
 
 let doc = null;
 let searchToken = 0;
+let editMod = null;
 const enc = new TextEncoder();
 
 // 엔진이 글자 폭 측정을 JS에 맡길 때 부르는 콜백. 1단계 측정(310개 문서)에서는 호출이 0회였지만
@@ -59,7 +60,7 @@ function openDocument({ buffer, password }) {
     let meta = {};
     try {
       const di = JSON.parse(d.getDocumentInfo());
-      meta = { version: di.version, encrypted: !!di.encrypted };
+      meta = { version: di.version, encrypted: !!di.encrypted, hwp3: /^3\./.test(di.version || '') || !!di.hwp3Variant };
     } catch { /* 메타 정보는 없어도 된다 */ }
     if (doc) doc.free();
     doc = d;
@@ -235,6 +236,20 @@ self.onmessage = async (e) => {
     if (m.type === 'search') {
       const r = await search(m);
       return reply(r);
+    }
+    // 편집: 편집 계층(hwp-edit.js)은 편집을 시작할 때만 받는다(지연 로딩, docs/phase4/design.md 7절)
+    if (m.type === 'editInit') {
+      if (!doc) throw { code: 'render_failed', message: 'no document' };
+      editMod = editMod ?? await import(/* 편집 계층 URL은 메인이 알려 준다 */ m.url);
+      return reply({});
+    }
+    if (m.type === 'edit') {
+      if (!doc || !editMod) throw { code: 'render_failed', message: 'edit not ready' };
+      const r = editMod.run(doc, HwpDocument, m);
+      const transfer = [];
+      if (r.sizes) transfer.push(r.sizes.buffer);
+      if (r.bytes) transfer.push(r.bytes.buffer);
+      return reply(r, transfer);
     }
     if (m.type === 'close') {
       if (doc) { doc.free(); doc = null; }

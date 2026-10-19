@@ -28,7 +28,7 @@
 html, body { height: 100%; margin: 0; }
 body {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
   background: var(--bg);
   color: var(--text);
@@ -72,13 +72,13 @@ body[data-state="empty"] .doc-only, body[data-state="loading"] .doc-only { displ
 .page-total { color: var(--muted); min-width: 4ch; }
 
 /* 검색 바 */
-.searchbar { grid-row: 2; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.searchbar { grid-row: 3; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .search-input { flex: 0 1 320px; min-width: 120px; }
 .check { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); white-space: nowrap; }
 .search-count { color: var(--muted); min-width: 9ch; font-variant-numeric: tabular-nums; }
 
 /* 본문 */
-.stage { grid-row: 3; overflow: auto; background: var(--stage-bg); outline: none; position: relative; }
+.stage { grid-row: 4; overflow: auto; background: var(--stage-bg); outline: none; position: relative; }
 .pages { display: flex; flex-direction: column; align-items: center; width: max-content; min-width: 100%; }
 .page { position: relative; flex: none; background: #fff; box-shadow: var(--page-shadow); }
 .page > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
@@ -127,7 +127,7 @@ body[data-drag="1"] .drop-overlay { display: grid; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
 .footer {
-  grid-row: 4;
+  grid-row: 5;
   display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; padding: 6px 12px;
   background: var(--surface); border-top: 1px solid var(--border); color: var(--muted); font-size: 12px;
 }
@@ -153,3 +153,21 @@ body.doc-page { display: block; height: auto; min-height: 100%; }
 .prose h2 { font-size: 17px; margin-top: 28px; }
 .prose a { color: var(--accent); }
 .license-text { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; font: 12px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; }
+
+/* 편집 (4단계): 도구줄은 상단바와 같은 .btn(모서리 둥근 사각형)을 그대로 쓴다 */
+.editbar { grid-row: 2; display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
+.btn.primary[aria-pressed="true"] { color: var(--accent-text); }
+.btn.fmt-b { font-weight: 800; } .btn.fmt-i { font-style: italic; } .btn.fmt-u { text-decoration: underline; }
+.edit-size { min-width: 5ch; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+.edit-color { width: 32px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); cursor: pointer; }
+.edit-input { position: fixed; left: 0; top: 0; width: 2px; height: 20px; padding: 0; margin: 0; border: 0; outline: none; opacity: 0; resize: none; overflow: hidden; z-index: 5; pointer-events: none; font-size: 16px; }
+.edit-layer, .sel-layer { position: absolute; inset: 0; pointer-events: none; }
+.caret { position: absolute; min-width: 1.5px; background: var(--accent); animation: caret-blink 1.06s steps(1) infinite; }
+@keyframes caret-blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+.sel { position: absolute; background: color-mix(in srgb, var(--accent) 32%, transparent); }
+body[data-editing] .page { cursor: text; }
+body[data-editing] .page > img { user-select: none; }
+body[data-dirty] .file-name::after { content: " ●"; color: var(--accent); }
+.dialog-list { margin: 0 0 4px; padding-left: 18px; display: grid; gap: 6px; max-width: 46ch; }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
