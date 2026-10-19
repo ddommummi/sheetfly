@@ -177,6 +177,11 @@
 - **시험**: 현재 `dist/` 통과, `libvips` 문자열과 `sharp` 이름을 심은 임시 dist는 실패(종료 코드 1)를 확인했다.
 - **한계**: 정확한 문자열과 파일 이름만 본다. 다른 표기(예: 라이선스 식별자를 약어로만 적은 경우)는 못 잡는다. 새 LGPL 의존성이 생기면 `dependency-audit.md`를 갱신한다.
 
+### D-029 Cloudflare: 비프로덕션 브랜치 빌드 끔 (2026-10-19, 오너 조치)
+- **현상**: PR #1 머지 빌드(11분 49초, 성공)가 활성 배포가 됐고, 그 뒤 PR #2·#3 머지 빌드와 재시도가 모두 `Queued`에서 멈춰 오너가 취소했다. 오너가 **Builds for non-production branches를 끄자** PR #3 빌드가 진행됐다.
+- **원인은 확정하지 못했다**(가설은 `docs/deploy-cloudflare.md` 6절). 이 환경에서 Cloudflare 상태를 볼 수 없다.
+- **결정**: 비프로덕션 빌드는 끈 채로 운영한다. 검증은 GitHub Actions(수동 실행)가, 배포는 `main`만 한다. 이전 문서의 Preview command(`wrangler versions upload`)는 쓰이지 않는다.
+
 ## 오너 결정/확인 요청 목록 (1단계 종료 시점)
 
 | # | 항목 | 시급도 |
