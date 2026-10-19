@@ -88,7 +88,7 @@ licensing/build-third-party.sh > THIRD_PARTY_LICENSES
 | 라이선스 선택 | office_oxide는 `MIT OR Apache-2.0`. **MIT 사용으로 가정**(오너 확인 필요, D-032·D-033) |
 | 상표 | "OfficeOxide"/"office_oxide"는 저자의 상표(`TRADEMARKS.md`). 허용: "uses OfficeOxide" 같은 서술적 사용. 금지: 자기 제품·도메인·계정 이름으로 사용, 수정본을 같은 이름으로 배포. **우리는 수정하지 않고 제품 이름에 쓰지 않는다**(`/licenses`·`NOTICE`·README에 서술적으로만 언급, 비제휴 문구 포함). PRD 11-5(PR마다 상표 단어 점검) 대상에 추가 |
 | 고지 | `THIRD_PARTY_LICENSES` 5·6절(office_oxide MIT 전문·upstream NOTICE 원문·크레이트 목록), `NOTICE`, `licenses/office_oxide-{LICENSE-MIT,NOTICE}.txt` |
-| 보안 권고(`advisories`) | 이 환경에서 별도 정리하지 않음 — **미확인**(rhwp 감사의 `zip` 8.x 권고와 달리 office_oxide는 `zip 9.x`를 쓴다) |
+| 보안 권고(`advisories`) | **통과(0건)** — RustSec DB 기준(같은 실행에서 rhwp 그래프는 기존 6건이 나와 DB가 동작함을 확인). DOCX 그래프는 `zip 9.0.5`를 쓰고 `rustybuzz`·`ttf-parser`·`paste`를 포함하지 않아 rhwp의 권고가 해당하지 않는다 |
 
 - 첨부된 `docs/phase3/spike/`의 BetterOffice(Apache-2.0) 스파이크 코드는 **참고용**이며 배포물·의존성에 포함되지 않는다. BetterOffice 소스/바이너리는 우리 산출물에 들어가지 않는다(정확도 비교 도구 `tools/docx-compare/`가 로컬에서만 쓴다).
 - 재현: `licensing/build-third-party.sh > THIRD_PARTY_LICENSES`, `cargo deny --locked --manifest-path crates/fmt-docx/Cargo.toml --config licensing/deny.toml check licenses bans sources`.
