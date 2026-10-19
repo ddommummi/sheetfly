@@ -1,0 +1,16 @@
+[package]
+name = "fmt-docx"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+description = "Sheetfly DOCX/XLSX/PPTX 읽기 어댑터: office_oxide(고정 서브모듈, 수정 없음)를 감싸 IR과 IR이 빠뜨리는 스타일 정보를 JSON으로 낸다."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+office_oxide = { path = "../../third_party/office_oxide", default-features = false }
+wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

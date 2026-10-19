@@ -1,7 +1,7 @@
 # Sheetfly 작업공간 (1단계: 스파이크만 있음). 프로젝트 라이선스: MIT (루트 LICENSE).
 [workspace]
 resolver = "2"
-members = ["spikes/rhwp-lib", "spikes/rhwp-wasm"]
+members = ["spikes/rhwp-lib", "spikes/rhwp-wasm", "crates/fmt-docx"]
 # 서브모듈은 자기 [workspace]를 가진다. 우리 작업공간 폴더 안에 있으므로 제외하지 않으면 "multiple workspace roots" 오류가 난다.
 exclude = ["third_party/rhwp", "third_party/office_oxide"]
 

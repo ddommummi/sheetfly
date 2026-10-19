@@ -1,6 +1,6 @@
 // 흐름 배치: 문단·목록·표를 쪽에 채운다. 쪽을 넘기는 곳(본문)과 넘기지 않는 곳(표 칸, 머리글)을 같은 코드로 다룬다.
 import { twipsToPx, emuToPx, rgb } from './units.js';
-import { layoutParagraph, runStyle, DEFAULT_HALF_PT } from './paragraph.js';
+import { layoutParagraph, runStyle, inlineTokens, DEFAULT_HALF_PT } from './paragraph.js';
 import { formatNumber } from './text.js';
 
 const MAX_PAGES = 5000;
@@ -133,6 +133,90 @@ export function flattenList(list, level = 0, parents = []) {
 }
 
 // ── 표 ─────────────────────────────────────────────────────────────────
+// 셀 내용이 줄바꿈 없이 차지하는 폭(max)과 더는 줄일 수 없는 폭(min). 자동 맞춤 표의 열 폭 계산용.
+function contentExtent(content, ctx) {
+  let min = 0, max = 0;
+  for (const el of content ?? []) {
+    if (el.type === 'paragraph' || el.type === 'heading') {
+      const tokens = inlineTokens(el.content, ctx.measure, ctx.notes);
+      let line = 0;
+      for (const t of tokens) {
+        if (t.kind === 'br') { max = Math.max(max, line); line = 0; continue; }
+        line += t.w || 0;
+        if (t.kind !== 'space' && t.kind !== 'tab') min = Math.max(min, t.w || 0);
+      }
+      const ind = twipsToPx((el.indent_left_twips || 0) + (el.indent_right_twips || 0));
+      max = Math.max(max, line + ind); min += 0;
+    } else if (el.type === 'list') {
+      for (const { p, level } of flattenList(el)) {
+        const sub = contentExtent([p], ctx); const ind = twipsToPx(720 * (level + 1));
+        min = Math.max(min, sub.min + ind); max = Math.max(max, sub.max + ind);
+      }
+    }
+  }
+  return { min, max };
+}
+
+/** 셀 너비가 지정되지 않은(자동 맞춤) 표의 열 폭: 내용이 한 줄에 들어가면 그 폭, 아니면 가용 폭을 배분. */
+function autofitGrid(tbl, width, grid, padLR, ctx) {
+  const rows = tbl.rows ?? [];
+  const n = grid.length;
+  const min = Array(n).fill(0), max = Array(n).fill(0);
+  const occupied = [];
+  const spans = [];
+  rows.forEach((row, r) => {
+    occupied[r] = occupied[r] ?? new Set();
+    let c = 0;
+    for (const cell of row.cells ?? []) {
+      while (occupied[r].has(c)) c++;
+      const cs = Math.max(1, cell.col_span || 1), rs = Math.max(1, cell.row_span || 1);
+      for (let dr = 0; dr < rs; dr++) { occupied[r + dr] = occupied[r + dr] ?? new Set(); for (let dc = 0; dc < cs; dc++) occupied[r + dr].add(c + dc); }
+      const e = contentExtent(cell.content, ctx);
+      if (cs === 1 && c < n) { min[c] = Math.max(min[c], e.min + padLR); max[c] = Math.max(max[c], e.max + padLR); }
+      else spans.push({ c, cs, min: e.min + padLR, max: e.max + padLR });
+      c += cs;
+    }
+  });
+  for (const sp of spans) {
+    const have = (arr) => { let t = 0; for (let i = sp.c; i < Math.min(n, sp.c + sp.cs); i++) t += arr[i]; return t; };
+    for (const [arr, need] of [[min, sp.min], [max, sp.max]]) {
+      const d = need - have(arr);
+      if (d > 0) for (let i = sp.c; i < Math.min(n, sp.c + sp.cs); i++) arr[i] += d / sp.cs;
+    }
+  }
+  const sumMax = max.reduce((a, b) => a + b, 0), sumMin = min.reduce((a, b) => a + b, 0);
+  if (sumMax <= width) return max.map((m, i) => Math.max(m, min[i]));
+  if (sumMin >= width) return min.slice();
+  const extra = width - sumMin, span = sumMax - sumMin;
+  return min.map((m, i) => m + (extra * (max[i] - m)) / span);
+}
+
+/** 고정 레이아웃 표: 격자값이 아니라 셀 너비(tcW)로 열 폭을 정한다 (Word가 그렇게 한다). */
+function fixedGrid(tbl, grid, width) {
+  const n = grid.length;
+  const w = Array(n).fill(null);
+  const occupied = [];
+  (tbl.rows ?? []).forEach((row, r) => {
+    occupied[r] = occupied[r] ?? new Set();
+    let c = 0;
+    for (const cell of row.cells ?? []) {
+      while (occupied[r].has(c)) c++;
+      const cs = Math.max(1, cell.col_span || 1), rs = Math.max(1, cell.row_span || 1);
+      for (let dr = 0; dr < rs; dr++) { occupied[r + dr] = occupied[r + dr] ?? new Set(); for (let dc = 0; dc < cs; dc++) occupied[r + dr].add(c + dc); }
+      if (cell.width_twips) {
+        const px = twipsToPx(cell.width_twips);
+        if (cs === 1 && c < n && w[c] == null) w[c] = px;
+        else if (cs > 1) { const free = []; for (let i = c; i < Math.min(n, c + cs); i++) if (w[i] == null) free.push(i); if (free.length === cs) for (const i of free) w[i] = px / cs; }
+      }
+      c += cs;
+    }
+  });
+  let out = w.map((v, i) => (v == null ? grid[i] : v));
+  const sum = out.reduce((a, b) => a + b, 0);
+  if (sum > width * 1.005 && sum > 0) out = out.map((c) => (c * width) / sum);
+  return out;
+}
+
 function gridOf(tbl, width) {
   let cols = (tbl.column_widths_twips ?? []).map(twipsToPx);
   if (!cols.length) {
@@ -145,9 +229,19 @@ function gridOf(tbl, width) {
 }
 
 function placeTable(tbl, flow, st, ctx) {
-  const grid = gridOf(tbl, flow.width);
+  let grid = gridOf(tbl, flow.width);
+  const autoWidth = !(tbl.rows ?? []).some((r) => (r.cells ?? []).some((c) => c.width_twips));
+  if (autoWidth && grid.length) {
+    const cpx = tbl.cell_padding_twips;
+    const lr = typeof cpx === 'number' ? twipsToPx(cpx) * 2 : twipsToPx((cpx?.left_twips ?? 108) + (cpx?.right_twips ?? 108));
+    grid = autofitGrid(tbl, flow.width, grid, lr, ctx);
+  } else if (!autoWidth) {
+    grid = fixedGrid(tbl, grid, flow.width);
+  }
   const gridW = grid.reduce((a, b) => a + b, 0);
-  const pad = tbl.cell_padding_twips ?? {};
+  // IR는 표 셀 여백을 숫자(모든 변 같음) 또는 { top/left/bottom/right_twips }로 준다
+  const cp = tbl.cell_padding_twips;
+  const pad = typeof cp === 'number' ? { left_twips: cp, right_twips: cp, top_twips: cp, bottom_twips: cp } : (cp ?? {});
   const padL = twipsToPx(pad.left_twips ?? 108), padR = twipsToPx(pad.right_twips ?? 108);
   const padT = twipsToPx(pad.top_twips ?? 0), padB = twipsToPx(pad.bottom_twips ?? 0);
   const colX = [0]; for (const c of grid) colX.push(colX[colX.length - 1] + c);
@@ -252,6 +346,7 @@ function paragraphCtx(flow, ctx, extra = {}) {
 }
 
 function estimateFirstHeight(el, flow, ctx) {
+  if (el.type === 'heading') el = withHeadingStyle(el, ctx.headingRuns?.[String(el.level)]);
   if (el.type === 'paragraph' || el.type === 'heading') {
     const par = layoutParagraph(el, paragraphCtx(flow, ctx));
     const k = Math.min(2, par.lines.length);
@@ -260,14 +355,33 @@ function estimateFirstHeight(el, flow, ctx) {
   return 0;
 }
 
+/**
+ * 제목 글자 서식 보완. office_oxide의 IR은 제목 스타일의 크기·굵기·색을 글자에 담지 않으므로
+ * 어댑터(fmt-docx)가 준 제목 스타일 서식을 얹는다. 글자에 직접 지정된 굵게/기울임/색은 그대로 둔다.
+ */
+function withHeadingStyle(el, hr) {
+  if (!hr) return el;
+  const content = (el.content ?? []).map((r) => (r.type !== 'text' ? r : {
+    ...r,
+    font_size_half_pt: hr.font_size_half_pt ?? r.font_size_half_pt,
+    bold: r.bold ?? hr.bold,
+    italic: r.italic ?? hr.italic,
+    color: r.color ?? hr.color,
+    font_name: hr.font_name ?? r.font_name,
+    char_spacing_half_pt: r.char_spacing_half_pt ?? hr.char_spacing_twips,
+  }));
+  return { ...el, content };
+}
+
 /** elements를 흐름에 놓는다. */
 export function placeBlocks(elements, flow, ctx) {
   const st = { atTop: flow.y <= flow.top + EPS, lastAfter: 0 };
   for (let idx = 0; idx < elements.length; idx++) {
-    const el = elements[idx];
+    let el = elements[idx];
     if (ctx.pageCount && ctx.pageCount() > MAX_PAGES) { ctx.warn('쪽 수 상한 초과'); return; }
     switch (el.type) {
       case 'paragraph': case 'heading': {
+        if (el.type === 'heading') el = withHeadingStyle(el, ctx.headingRuns?.[String(el.level)]);
         const par = layoutParagraph(el, paragraphCtx(flow, ctx));
         if (par.keepNext && flow.paginated && !st.atTop) {
           const next = elements[idx + 1];

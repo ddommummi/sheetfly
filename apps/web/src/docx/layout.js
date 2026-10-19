@@ -21,7 +21,7 @@ export function layoutDocument(ir, measure, opts = {}) {
   const notesOut = [];
   let cur = null;
   let pageNo = 0;
-  const ctx = { measure, notes, notesOut, warn: (m) => { if (!warnings.includes(m)) warnings.push(m); }, pageCount: () => pages.length };
+  const ctx = { measure, notes, notesOut, headingRuns: opts.headingRuns ?? {}, warn: (m) => { if (!warnings.includes(m)) warnings.push(m); }, pageCount: () => pages.length };
 
   const sections = ir.sections?.length ? ir.sections : [{ elements: [] }];
   let flow = null;
