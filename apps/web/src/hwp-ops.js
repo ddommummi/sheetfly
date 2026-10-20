@@ -18,7 +18,7 @@ export const MUT = new Set([
   'insertHyperlinkEx', 'updateHyperlinkEx', 'removeHyperlinkEx', 'replaceHyperlinkTextEx', 'addBookmark', 'deleteBookmark', 'renameBookmark',
   'insertClickHereField', 'updateClickHereProps', 'removeFieldAt', 'renameField', 'setFieldValue', 'setFieldValueByName', 'setFormValue',
   'applyStyle', 'updateStyleShapes', 'createStyle', 'updateStyle', 'deleteStyle', 'ensureDefaultNumbering', 'ensureDefaultBullet', 'createNumbering', 'setNumberingRestart', 'setChartData', 'setChartDataByIndex',
-  'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt',
+  'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt', 'setTextBoxAt',
 ]);
 /** 문서를 바꾸지 않는 조회 API. */
 export const QRY = new Set([

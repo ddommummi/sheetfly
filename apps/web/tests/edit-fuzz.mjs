@@ -49,7 +49,7 @@ function hfOp(doc, m, rand, at) {
   const body = JSON.stringify(paras(doc));
   const text = () => { const t = pos.hf; return JSON.stringify(t.k === 'n' ? safeJ(doc.getFootnoteInfo(0, t.bp, t.c)).texts : [0, 1, 2, 3, 4, 5].map((i) => { try { return JSON.parse(doc.getHeaderFooterParaInfo(0, t.k === 'h', 0, i)).text; } catch { return null; } })); };
   const len = (q) => [...(pos.hf.k === 'n' ? safeJ(doc.getFootnoteInfo(0, pos.hf.bp, pos.hf.c)).texts[q.p] : JSON.parse(doc.getHeaderFooterParaInfo(0, pos.hf.k === 'h', 0, q.p)).text)].length;
-  let res = 'ok';
+  let res = 'ok', mk = '';
   for (let i = 0; i < 10; i++) {
     const before = text(), k = rand();
     try {
@@ -60,10 +60,10 @@ function hfOp(doc, m, rand, at) {
       else if (k < 0.7) { const b = { ...pos, o: Math.min(len(pos), pos.o + 1 + Math.floor(rand() * 8)) }; r = m('delrange', { a: pos, b }); }
       else if (k < 0.8) { const b = { ...pos, o: Math.min(len(pos), pos.o + 1 + Math.floor(rand() * 8)) }; m('fmt', { a: pos, b, props: { bold: rand() < 0.5, textColor: '#ff0000' } }); r = { pos }; }
       else if (k < 0.85) { m('parafmt', { a: pos, b: pos, props: { alignment: ['left', 'center', 'right'][Math.floor(rand() * 3)] } }); r = { pos }; }
-      else { r = m('move', { pos, kind: ['left', 'right', 'up', 'down', 'home', 'end', 'wordleft', 'wordright', 'docstart', 'docend'][Math.floor(rand() * 10)], px: -1 }); }
+      else { mk = ['left', 'right', 'up', 'down', 'home', 'end', 'wordleft', 'wordright', 'docstart', 'docend'][Math.floor(rand() * 10)]; r = m('move', { pos, kind: mk, px: -1 }); }
       if (r?.pos) pos = r.pos;
       const lp = len(pos);
-      if (pos.o > lp) return `캐럿 o=${pos.o} > 안쪽 문단 길이 ${lp} (${k.toFixed(2)})`;
+      if (pos.o > lp) return `캐럿 o=${pos.o} > 안쪽 문단 길이 ${lp} (${k.toFixed(2)} ${mk} ${JSON.stringify(pos.hf)} p=${pos.p})`;
       m('selrects', { a: { ...pos, o: 0 }, b: pos });
     } catch (e) {
       res = 'rejected';
@@ -159,6 +159,8 @@ function objectOp(doc, m, rand, pos) {
     () => O && m('api', { fn: 'changeShapeZOrder', args: [O.s, O.p, O.ctrl, ['front', 'back', 'forward', 'backward'][ri(4)]] }),
     () => O && rand() < 0.4 && m('api', { fn: O.type === 'image' ? 'deletePictureControl' : O.type === 'equation' ? 'deleteEquationControl' : 'deleteShapeControl', args: [O.s, O.p, O.ctrl] }),
     () => O && O.type === 'group' && m('api', { fn: 'ungroupShape', args: [O.s, O.p, O.ctrl] }),
+    () => { const same = objs.filter((x) => O && x.s === O.s); const T = [O, same[ri(same.length || 1)]].filter(Boolean); return T.length >= 2 && T[0] !== T[1] && m('api', { fn: 'groupShapes', args: [JSON.stringify({ sectionIdx: O.s, targets: T.map((x) => ({ paraIdx: x.p, controlIdx: x.ctrl })) })] }); },
+    () => O && O.type === 'shape' && O.s === 0 && m('api', { fn: 'setTextBoxAt', args: [O.p, O.ctrl, rand() < 0.7] }),   // 글상자 붙이기·떼기(엔진 API가 구역을 받지 않아 첫 구역만)
   ];
   try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) { return rejectOk(e); }
 }

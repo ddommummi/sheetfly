@@ -368,6 +368,68 @@ test('개체: 도형(타원)·글상자·수식 넣기, 앞뒤 순서', async ()
   await done(page);
 });
 
+test('개체: Shift+누르기로 여러 개 골라 묶고 풀기, 묶음이 하나로 저장된다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-shape', 'ellipse'); await page.waitForSelector('.obj-frame'); await settle(page);
+  const z = await page.evaluate(() => Number(document.querySelector('.page').getBoundingClientRect().width) / 793.7);
+  const fa = await page.locator('.obj-frame').boundingBox();
+  await page.mouse.move(fa.x + fa.width / 2, fa.y + fa.height / 2); await page.mouse.down();   // 첫 개체를 끌어 오른쪽으로 250px
+  await page.mouse.move(fa.x + fa.width / 2 + 250 * z, fa.y + fa.height / 2, { steps: 6 }); await page.mouse.up(); await settle(page);
+  await page.waitForFunction((x0) => { const f = document.querySelector('.obj-frame'); return f && f.getBoundingClientRect().x > x0 + 100; }, fa.x, { timeout: 10000 });
+  const aBox = await page.locator('.obj-frame').boundingBox();
+  await page.keyboard.press('Escape'); await settle(page);
+  await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(aBox.x + aBox.width / 2, aBox.y + aBox.height / 2);
+  await page.keyboard.up('Shift'); await settle(page);
+  await page.waitForFunction(() => document.querySelectorAll('.obj-frame.multi').length === 2, null, { timeout: 10000 });
+  await tab(page, 'object'); await page.waitForTimeout(200);
+  await tbtn(page, '묶기').click(); await settle(page);
+  await page.waitForFunction(() => document.querySelectorAll('.obj-frame').length === 1 && document.querySelector('.obj-frame').dataset.type === 'group', null, { timeout: 10000 });
+  const r = await saveAndParse(page);
+  assert.ok(controlsOf(r.doc, 'group').length >= 1, '묶음 개체가 저장됐다');
+  await tbtn(page, '묶음 풀기').click(); await settle(page);
+  const r2 = await saveAndParse(page);
+  assert.equal(controlsOf(r2.doc, 'group').length, 0, '묶음을 풀었다');
+  assert.ok(controlsOf(r2.doc, 'shape').length >= 2, '풀린 개체 둘');
+  await done(page);
+});
+
+test('개체: 회전 손잡이로 돌린다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  // 손잡이를 틀 가운데의 오른쪽 옆으로 끌면 90도
+  const f = await page.locator('.obj-frame').boundingBox(), h = await page.locator('.obj-rot').boundingBox();
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2); await page.mouse.down();
+  await page.mouse.move(f.x + f.width / 2 + 120, f.y + f.height / 2, { steps: 6 }); await page.mouse.up(); await settle(page);
+  await page.waitForFunction(() => /rotate\((8[5-9]|9\d)/.test(document.querySelector('.obj-frame')?.style.transform ?? ''), null, { timeout: 10000 });
+  const r = await saveAndParse(page);
+  const sh = controlsOf(r.doc, 'shape'); assert.ok(sh.length >= 1);
+  const c = sh[sh.length - 1];
+  const props = JSON.parse(r.doc.getShapeProperties(c.secIdx, c.paraIdx, c.controlIdx));
+  assert.ok(props.rotationAngle >= 85 && props.rotationAngle <= 95, `회전 ${props.rotationAngle}`);
+  await done(page);
+});
+
+test('개체: 도형에 글 넣기(글상자 붙이기)로 안에 글을 쓴다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  await tab(page, 'object'); await page.waitForTimeout(200);
+  await tbtn(page, '글 넣기').click(); await settle(page);
+  await page.waitForSelector('.caret'); await page.keyboard.type('안녕', { delay: 60 }); await settle(page);
+  const r = await saveAndParse(page);
+  const sh = controlsOf(r.doc, 'shape'); assert.ok(sh.length >= 1);
+  const c = sh[sh.length - 1];
+  assert.equal(r.doc.getTextInCellByPath(c.secIdx, c.paraIdx, JSON.stringify([{ controlIndex: c.controlIdx, cellIndex: 0, cellParaIndex: 0 }]), 0, 2), '안녕');
+  await done(page);
+});
+
 // ── 쪽·머리글·각주 ──
 const clickBtn = (page, label) => page.locator(`#edit-bar [aria-label="${label}"]`).click();
 async function submit(page) { await page.click('dialog[open] button[type=submit]'); await settle(page); }
@@ -625,9 +687,11 @@ test('이동: Ctrl+←/→ 단어, Home/End 줄, Ctrl+Home/End 문서, 두 번 �
   await page.keyboard.press('Control+ArrowLeft'); await settle(page);
   await page.keyboard.type('X', { delay: 40 }); await settle(page);           // alpha Xbeta gamma
   // 두 번 클릭으로 "gamma"를 고르고 덮어쓰기
+  await page.waitForSelector('.caret');
   const cb = await page.locator('.caret').boundingBox();
   const pb = await page.locator('.page').nth(2).boundingBox();
   await page.keyboard.press('End'); await settle(page);
+  await page.waitForSelector('.caret');
   const eb = await page.locator('.caret').boundingBox();
   await page.mouse.dblclick(eb.x - 18, eb.y + eb.height / 2); await page.waitForSelector('.sel', { timeout: 8000 }); await settle(page);
   await page.keyboard.type('Z', { delay: 40 }); await settle(page);
