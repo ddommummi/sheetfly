@@ -15,6 +15,8 @@
     "test:edit": "node tests/e2e-edit.mjs",
     "test:edit-corpus": "node tests/edit-corpus.mjs",
     "test:edit-fuzz": "node tests/edit-fuzz.mjs",
+    "test:docx-edit": "node --test tests/docx-edit-model.mjs && node tests/docx-edit-fuzz.mjs --seed 1 --docs 200 && node tests/docx-edit-fuzz.mjs --seed 2 --docs 200 --ops 15",
+    "test:docx-edit-corpus": "node tests/docx-edit-corpus.mjs",
     "test:docx-fuzz": "node tests/docx-fuzz.mjs",
     "budget": "node scripts/budget.mjs",
     "check:dist": "node scripts/check-dist.mjs"

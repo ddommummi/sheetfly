@@ -64,6 +64,7 @@ export class Editor {
    */
   constructor(env) {
     Object.assign(this, env);
+    this.kind ??= 'hwp';              // 편집하는 문서 종류: 'hwp'(rhwp 편집 API 모듈 전부) | 'docx'(4-2: 서식·찾기·보기만, 모듈은 4-2-3에서 연결)
     this.pos = null; this.anchor = null; this.rect = null; this.px = -1;
     this.dirty = false; this.active = false;
     this.q = Promise.resolve();
@@ -596,12 +597,10 @@ export class Editor {
     this.#buildFormatPanel();
     // 나머지 탭의 기능(표·개체·쪽 …)은 모듈이 자기 탭에 단추를 채운다
     this.api = this.#makeApi();
-    installTable(this.api);
-    installObjects(this.api);
-    installPage(this.api);
-    installMisc(this.api);
+    // 표·개체·쪽·링크·스타일·눈금자 모듈은 rhwp 편집 API 위에 있다: HWP/HWPX 편집기에만 설치한다(DOCX 편집기는 4-2에서 자기 모듈을 설치한다)
+    if (this.kind === 'hwp') { installTable(this.api); installObjects(this.api); installPage(this.api); installMisc(this.api); }
     this.#buildViewPanel();
-    installRuler(this.api);
+    if (this.kind === 'hwp') installRuler(this.api);
     this.#showTab('format');
   }
   /** 보기 탭: 문서를 바꾸지 않는 표시 옵션. */

@@ -213,6 +213,16 @@ test('문단 부호 보기를 켜고 끌 수 있다(문서는 바뀌지 않는�
 
 // ── 표 편집 ──
 const tab = (page, name) => page.click(`#edit-bar .btn.tab[data-tab="${name}"]`);
+/** 위치가 두 번 연달아 같을 때까지 기다린 뒤의 상자(애니메이션·다시 그리기 중에 재지 않는다) */
+async function stableBox(page, selector, nth = 0) {
+  let prev = null;
+  for (let i = 0; i < 40; i++) {
+    const b = await page.locator(selector).nth(nth).boundingBox().catch(() => null);
+    if (b && prev && Math.abs(b.x - prev.x) < 0.5 && Math.abs(b.y - prev.y) < 0.5 && Math.abs(b.width - prev.width) < 0.5) return b;
+    prev = b; await page.waitForTimeout(120);
+  }
+  return prev;
+}
 const tbtn = (page, title) => page.locator(`#edit-bar [aria-label="${title}"]`);
 /** hwp_table_test.hwp 첫 쪽의 첫 표(4줄×3칸)에서 (줄,칸)의 화면 위치를 쪽 비율로 돌려준다. */
 const CELL = { '0,0': [0.265, 0.235], '0,1': [0.498, 0.235], '1,0': [0.265, 0.2566], '1,1': [0.498, 0.2566], '2,0': [0.265, 0.278] };
@@ -378,11 +388,12 @@ test('개체: Shift+누르기로 여러 개 골라 묶고 풀기, 묶음이 하�
   await page.mouse.move(fa.x + fa.width / 2, fa.y + fa.height / 2); await page.mouse.down();   // 첫 개체를 끌어 오른쪽으로 250px
   await page.mouse.move(fa.x + fa.width / 2 + 250 * z, fa.y + fa.height / 2, { steps: 6 }); await page.mouse.up(); await settle(page);
   await page.waitForFunction((x0) => { const f = document.querySelector('.obj-frame'); return f && f.getBoundingClientRect().x > x0 + 100; }, fa.x, { timeout: 10000 });
-  const aBox = await page.locator('.obj-frame').boundingBox();
+  const aBox = await stableBox(page, '.obj-frame');
   await page.keyboard.press('Escape'); await settle(page);
   await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  const bBox = await stableBox(page, '.obj-frame');   // 둘째 개체는 캐럿 자리, 첫째는 거기서 오른쪽으로 250px(둘째를 넣을 때 화면이 움직여도 어긋나지 않게 둘째 기준으로 잡는다)
   await page.keyboard.down('Shift');
-  await page.mouse.click(aBox.x + aBox.width / 2, aBox.y + aBox.height / 2);
+  await page.mouse.click(bBox.x + bBox.width / 2 + 250 * z, bBox.y + bBox.height / 2);
   await page.keyboard.up('Shift'); await settle(page);
   await page.waitForFunction(() => document.querySelectorAll('.obj-frame.multi').length === 2, null, { timeout: 10000 });
   await tab(page, 'object'); await page.waitForTimeout(200);
@@ -492,11 +503,12 @@ test('개체: 여러 개를 고른 채 하나를 끌면 모두 함께 옮겨진�
   const aBox = await page.locator('.obj-frame').boundingBox();
   await page.keyboard.press('Escape'); await settle(page);
   await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  const bBox = await stableBox(page, '.obj-frame');   // 둘째 개체는 캐럿 자리, 첫째는 거기서 오른쪽으로 250px(둘째를 넣을 때 화면이 움직여도 어긋나지 않게 둘째 기준으로 잡는다)
   await page.keyboard.down('Shift');
-  await page.mouse.click(aBox.x + aBox.width / 2, aBox.y + aBox.height / 2);
+  await page.mouse.click(bBox.x + bBox.width / 2 + 250 * z, bBox.y + bBox.height / 2);
   await page.keyboard.up('Shift'); await settle(page);
   await page.waitForFunction(() => document.querySelectorAll('.obj-frame.multi').length === 2, null, { timeout: 10000 });
-  const before = await page.locator('.obj-frame.multi').first().boundingBox();
+  const before = await stableBox(page, '.obj-frame.multi');
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2); await page.mouse.down();
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2 + 60 * z, { steps: 6 }); await page.mouse.up(); await settle(page);
   await page.waitForFunction((y0) => { const fs = [...document.querySelectorAll('.obj-frame')]; return fs.length === 2 && fs.every((f) => f.getBoundingClientRect().y > y0 + 40); }, before.y, { timeout: 10000 });
