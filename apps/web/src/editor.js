@@ -314,10 +314,11 @@ export class Editor {
   #hitAt(h, extend) {
     // 끌기 중에는 가장 최근 위치만 보낸다
     if (this.hitBusy) { this.hitNext = [h, extend]; return; }
-    h = { ...h, hf: this.pos?.hf ?? null };
+    h = { ...h, hf: this.pos?.hf ?? null, drag: extend, s: this.pos?.s };
     this.hitBusy = true;
     this.#enqueue(async () => {
       const r = await this.#req('hit', { ...h, objs: !extend });
+      if (r.keep) return;
       if (r.form) { this.#flushGroup(); this.#clearObj(); for (const f of this.formListeners) this.#enqueue(() => f(r.form)); return; }
       if (r.obj) { this.#flushGroup(); this.#selectObj(r.obj); return; }
       if (r.pos) { this.#clearObj(); this.#flushGroup(); this.pending = {}; this.#set(r.pos, r.rect, { extend }); }
