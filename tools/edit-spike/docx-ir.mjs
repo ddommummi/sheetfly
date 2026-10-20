@@ -20,19 +20,21 @@ export function flattenIr(ir) {
       default: out.push({ kind: el.type, text: null });
     }
   };
-  const listItem = (it) => { for (const e of it.content ?? []) { if (e.type === 'paragraph' || e.type === 'heading') out.push({ kind: 'list', text: inl(e.content) }); else block(e); } for (const n of it.nested ?? []) (n.items ? n.items : [n]).forEach(listItem); };
+  const listItem = (it) => { for (const e of it.content ?? []) { if (e.type === 'paragraph' || e.type === 'heading') out.push({ kind: 'list', text: inl(e.content) }); else block(e); } const nn = it.nested; if (nn) (Array.isArray(nn) ? nn : [nn]).forEach((n) => (n.items ?? [n]).forEach(listItem)); };
   for (const s of ir.ir.sections) for (const e of s.elements) block(e);
   return out;
 }
 export const dump = (ir) => JSON.stringify(ir.ir.sections[0].elements.slice(0, 40), null, 0).slice(0, 3000);
 
 /** XML 문단 열과 IR 글 블록 열을 문서 순서로 맞춘다. IR은 빈 문단·쪽 나누기 문단을 문단으로 두지 않는다. 맞는 XML 문단 번호(없으면 -1) 배열을 돌려준다. */
-export function align(blocks, xmlParas, window = 12) {
+export function align(blocks, xmlParas, window = 12, info = null) {
   const map = []; let j = 0;
   for (const b of blocks) {
     if (b.text === null) { map.push(-1); continue; }       // 문단이 아닌 블록(표·그림·쪽 나누기 …)
     let hit = -1;
     for (let k = j; k < Math.min(xmlParas.length, j + window); k++) if (xmlParas[k].all === b.text) { hit = k; break; }
+    // 확신 낮은 짝: 건너뛴 XML 문단 중 글이 든 것이 있으면(IR이 글이 든 문단을 뺐거나 우리가 잘못 짝지었을 수 있다) 표시한다
+    if (info && hit >= 0 && b.text) { let skipped = 0; for (let k = j; k < hit; k++) if (xmlParas[k].all) skipped++; if (skipped) info.risky.push(hit); }
     map.push(hit); if (hit >= 0) j = hit + 1;
   }
   return map;

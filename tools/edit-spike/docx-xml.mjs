@@ -6,9 +6,9 @@ export const unesc = (s) => s.replace(/&(amp|lt|gt|quot|apos);|&#(\d+);|&#x([0-9
 export const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** 편집할 수 있는 런 안의 요소(글자·탭·줄바꿈)와 그 밖의 요소를 가른다. */
-const RUN_OK = new Set(['w:rPr', 'w:t', 'w:tab', 'w:br', 'w:cr', 'w:noBreakHyphen']);
+const RUN_OK = new Set(['w:rPr', 'w:t', 'w:tab', 'w:br', 'w:cr', 'w:noBreakHyphen', 'w:lastRenderedPageBreak', 'w:softHyphen']);   // 마지막 둘은 글이 아닌 표지(보존만)
 // 문단 직속 또는 하이퍼링크 안의 이 요소들만 "일반 텍스트 문단"으로 본다. 그 밖(필드·변경 추적·내용 컨트롤·도형 …)이 있으면 그 문단은 읽기 전용.
-const PARA_OK = new Set(['w:pPr', 'w:r', 'w:hyperlink', 'w:bookmarkStart', 'w:bookmarkEnd', 'w:proofErr', 'w:lastRenderedPageBreak']);
+const PARA_OK = new Set(['w:pPr', 'w:r', 'w:hyperlink', 'w:bookmarkStart', 'w:bookmarkEnd', 'w:proofErr', 'w:lastRenderedPageBreak', 'w:commentRangeStart', 'w:commentRangeEnd', 'w:permStart', 'w:permEnd']);
 
 /** 문단 목록: [{start, end, pPr:[s,e]|null, runs:[{start,end,rPr:[s,e]|null,items:[{kind,start,end,textStart,textEnd,text}]}], text, editable, why}] — start/end는 문서 문자열의 위치. */
 export function indexParagraphs(xml) {
@@ -37,7 +37,8 @@ export function indexParagraphs(xml) {
     }
     const node = { name, start, textStart: end };
     const para = open[open.length - 1];
-    if (para && (name === 'w:tab' || name === 'w:cr' || (name === 'w:br' && !/w:type="(page|column)"/.test(all)))) para.all += name === 'w:tab' ? '\t' : '\n';
+    if (para && parent && parent.name === 'w:r' && (name === 'w:noBreakHyphen') ) para.all += '\u2011';
+    if (para && parent && parent.name === 'w:r' && (name === 'w:tab' || name === 'w:cr' || (name === 'w:br' && !/w:type="(page|column)"/.test(all)))) para.all += name === 'w:tab' ? '\t' : '\n';   // w:pPr/w:tabs/w:tab은 탭 정지 정의라 글자가 아니다
     if (name === 'w:p') {
       const p = { start, end: -1, pPr: null, runs: [], text: '', all: '', editable: true, why: '', depth: open.length };
       paras.push(p); node.para = p;
@@ -50,7 +51,7 @@ export function indexParagraphs(xml) {
       const run = parent.run;
       if (name === 'w:rPr') { run.rPr = [start, selfClose ? end : -1]; node.rPr = run.rPr; }
       else if (RUN_OK.has(name)) {
-        const item = { kind: name, start, end: selfClose ? end : -1, textStart: end, textEnd: end, text: name === 'w:tab' ? '\t' : (name === 'w:br' || name === 'w:cr') ? '\n' : name === 'w:noBreakHyphen' ? '-' : '' };
+        const item = { kind: name, start, end: selfClose ? end : -1, textStart: end, textEnd: end, text: name === 'w:tab' ? '\t' : (name === 'w:br' || name === 'w:cr') ? '\n' : name === 'w:noBreakHyphen' ? '\u2011' : '' };
         if (name === 'w:br' && /w:type="(page|column)"/.test(all)) { run.bad = true; para.editable = false; para.why ||= 'w:br(page)'; }
         run.items.push(item); if (name === 'w:t' && !selfClose) node.item = item;
       } else { run.bad = true; para.editable = false; para.why ||= name; }
