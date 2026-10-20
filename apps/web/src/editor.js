@@ -33,7 +33,12 @@ const T = {
   discardBody: '이 문서를 닫으면 저장하지 않은 변경 내용이 사라집니다.',
   slowTitle: '이 문서는 편집이 매우 느릴 수 있습니다', slowBody: (s) => `문서를 여는 데만 ${s}초가 걸렸습니다. 편집은 글자를 칠 때마다 문서를 다시 계산하므로 한 글자에 그만큼 걸릴 수 있습니다.`,
   keepEditing: '그래도 편집', cancelEdit: '편집 취소',
+  zones: { h: '머리글', f: '바닥글', n: '각주' }, zoneNote: (z) => `${z} 편집 중 — Esc를 누르면 본문으로 돌아갑니다`,
+  zoneEnter: (z) => `${z}을(를) 편집합니다. Esc로 본문으로 돌아갑니다.`, zoneBlocked: '머리글·바닥글·각주 안에서는 쓸 수 없는 기능입니다. Esc로 본문으로 돌아가세요.',
+  zoneNoChar: '각주 안에서는 글자 서식을 바꿀 수 없습니다(문단 서식만 가능).',
 };
+// 머리글·바닥글·각주 안에서 쓸 수 있는 작업(그 밖의 작업은 본문 좌표를 쓰므로 막는다)
+const ZONE_OPS = new Set(['hit', 'caret', 'move', 'insert', 'del', 'enter', 'delrange', 'paste', 'fmt', 'parafmt', 'undo', 'redo', 'mark', 'props', 'text', 'selrects', 'wordat', 'status', 'clean', 'save', 'fonts', 'view', 'marks', 'q']);
 const SLOW_OPEN_MS = 8000;         // 열기에 이보다 오래 걸린 문서는 편집 전에 알린다(뷰어의 "시간이 걸리고 있습니다" 안내와 같은 기준)
 const GAP_MS = 1500;               // 이 시간 안의 연속 입력은 되돌리기 한 묶음
 const COMMON_FONTS = ['함초롬바탕', '함초롬돋움', '맑은 고딕', '바탕', '돋움', '굴림', '궁서', '한컴바탕', '한컴돋움', '휴먼명조', '휴먼고딕', 'Arial', 'Times New Roman', 'Calibri'];
@@ -49,7 +54,8 @@ const ICON = {
   left: svg('M2 3h12M2 7h8M2 11h12M2 15h8'), center: svg('M2 3h12M4 7h8M2 11h12M4 15h8'), right: svg('M2 3h12M6 7h8M2 11h12M6 15h8'), justify: svg('M2 3h12M2 7h12M2 11h12M2 15h12'),
 };
 
-const same = (a, b) => !!a && !!b && a.s === b.s && a.p === b.p && a.o === b.o && JSON.stringify(a.path) === JSON.stringify(b.path);
+const zoneKey = (p) => (p?.hf ? `${p.hf.k}${p.hf.a ?? ''}.${p.hf.bp ?? ''}.${p.hf.c ?? ''}` : '');
+const same = (a, b) => !!a && !!b && a.s === b.s && a.p === b.p && a.o === b.o && JSON.stringify(a.path) === JSON.stringify(b.path) && zoneKey(a) === zoneKey(b);
 
 export class Editor {
   /**
@@ -93,7 +99,7 @@ export class Editor {
     this.#flushGroup();
     this.active = false;
     this.bar.hidden = true;
-    delete document.body.dataset.editing;
+    delete document.body.dataset.editing; delete document.body.dataset.editZone;
     this.#clearOverlays();
     this.input.blur();
   }
@@ -132,7 +138,8 @@ export class Editor {
     // 바뀐 곳은 캐럿이 있던 쪽과 새 캐럿이 있는 쪽(줄바꿈이 쪽을 넘길 수 있다). 선택 삭제는 시작 쪽을 모르므로 처음부터.
     const oldPage = this.rect?.page, newPage = r.rect?.page;
     const hot = [oldPage, newPage].filter((x) => x !== undefined);
-    this.viewer.refresh(r.sizes, op === 'delrange' || !hot.length ? { hot: hot.length ? hot : null } : { from: Math.min(...hot), hot });
+    if (payload.pos?.hf || payload.a?.hf) this.viewer.refresh(r.sizes, {});   // 머리글·바닥글은 모든 쪽에 보이므로 쪽 전체를 다시 그린다
+    else this.viewer.refresh(r.sizes, op === 'delrange' || !hot.length ? { hot: hot.length ? hot : null } : { from: Math.min(...hot), hot });
     if (r.pos) this.#set(r.pos, r.rect, { keepSel });
     else { this.#draw(); this.#updateStatus(r); }
     return r;
@@ -156,6 +163,7 @@ export class Editor {
   #set(pos, rect, { extend = false, keepSel = false, keepPx = false, scroll = true } = {}) {
     if (extend) { if (!this.anchor) this.anchor = this.pos; }
     else if (!keepSel) this.anchor = null;
+    this.#zone(pos);
     this.pos = pos; this.rect = rect;
     if (this.obj) this.#clearObj();
     if (!keepPx) this.px = -1;
@@ -163,6 +171,17 @@ export class Editor {
     this.#syncSelection();
     this.#scheduleProps();
     this.#focus();
+  }
+  /** 머리글·바닥글·각주 안으로 들어가거나 나올 때: 들어가기 전 본문 위치를 기억하고 안내 표시를 바꾼다. */
+  #zone(pos) {
+    const was = this.pos?.hf, now = pos?.hf;
+    if (!was && now && this.pos) this.bodyPos = this.pos;
+    if (zoneKey(this.pos) !== zoneKey(pos)) {
+      this.zoneNote.textContent = now ? T.zoneNote(T.zones[now.k]) : '';
+      this.zoneNote.hidden = !now;
+      if (now) document.body.dataset.editZone = now.k; else delete document.body.dataset.editZone;
+      if (now) this.status(T.zoneEnter(T.zones[now.k]));
+    }
   }
   #hasSel() { return !!this.anchor && !!this.pos && !same(this.anchor, this.pos); }
   #range() { return this.#hasSel() ? [this.anchor, this.pos] : [this.pos, this.pos]; }
@@ -295,6 +314,7 @@ export class Editor {
   #hitAt(h, extend) {
     // 끌기 중에는 가장 최근 위치만 보낸다
     if (this.hitBusy) { this.hitNext = [h, extend]; return; }
+    h = { ...h, hf: this.pos?.hf ?? null };
     this.hitBusy = true;
     this.#enqueue(async () => {
       const r = await this.#req('hit', { ...h, objs: !extend });
@@ -323,6 +343,10 @@ export class Editor {
       this.#focus(true);
       this.#enqueue(async () => {
         if (!this.pos || this.obj) return;
+        if (this.clicks === 2 && !this.pos.hf) {   // 두 번 클릭이 머리글·바닥글·각주 영역이면 그 안을 편집한다
+          const z = await this.#req('hit', { ...h, enter: true });
+          if (z.pos?.hf) { this.#flushGroup(); this.pending = {}; this.#set(z.pos, z.rect, {}); return; }
+        }
         const w = await this.#req('wordat', { pos: this.pos, whole });
         if (w.a && w.b && !same(w.a, w.b)) { const c = await this.#req('caret', { pos: w.b }); this.anchor = w.a; this.#set(w.b, c.rect, { extend: true }); }
       });
@@ -369,7 +393,11 @@ export class Editor {
     if (k === 'Backspace' || k === 'Delete') { e.preventDefault(); this.#delete(k === 'Backspace' ? 'back' : 'fwd'); return; }
     if (k === 'Enter') { e.preventDefault(); this.#enter(); return; }
     if (k === 'Tab') { e.preventDefault(); this.#type('\t'); return; }
-    if (k === 'Escape') { if (this.#hasSel()) this.#set(this.pos, this.rect, {}); return; }
+    if (k === 'Escape') {
+      if (this.#hasSel()) this.#set(this.pos, this.rect, {});
+      else if (this.pos?.hf) this.#enqueue(async () => { this.#flushGroup(); this.pending = {}; await this.#revalidate(this.bodyPos ?? { s: this.pos.s, p: 0, o: 0, path: null }); });
+      return;
+    }
     this.keyHandled = false;
   }
   #onBeforeInput(e) {
@@ -421,6 +449,11 @@ export class Editor {
   #selectAll() {
     return this.#enqueue(async () => {
       if (!this.pos) return;
+      if (this.pos.hf) {   // 머리글·바닥글·각주는 그 안 전체
+        const a = await this.#req('move', { pos: this.pos, kind: 'docstart' }), b = await this.#req('move', { pos: this.pos, kind: 'docend' });
+        this.#flushGroup(); this.anchor = a.pos; this.#set(b.pos, b.rect, { extend: true });
+        return;
+      }
       // 같은 구역의 본문 전체(처음 ~ 마지막 문단 끝)
       const first = { s: this.pos.s, p: 0, o: 0, path: null };
       const last = await this.#req('endOf', { s: this.pos.s });
@@ -483,7 +516,7 @@ export class Editor {
       this.#flushGroup();
       // 이 문서에서 복사한 것이면 서식·개체째, 다른 곳의 HTML이면 HTML로, 안 되면 글로 붙인다
       try {
-        const r = await this.#req('pasterich', { pos: this.pos, text, html });
+        const r = this.pos.hf ? { fallback: true } : await this.#req('pasterich', { pos: this.pos, text, html });
         if (!r.fallback) {
           this.#setDirty(true); this.viewer.refresh(r.sizes, {});
           if (r.pos) this.#set(r.pos, r.rect, {});
@@ -497,7 +530,7 @@ export class Editor {
     if (!this.#hasSel() || !this.selText) return;
     e.preventDefault();
     e.clipboardData?.setData('text/plain', this.selText);
-    if (!this.cellBlock) this.#stashSelection(this.anchor, this.pos);
+    if (!this.cellBlock && !this.pos?.hf) this.#stashSelection(this.anchor, this.pos);
     if (cut) this.#delete('back');
   }
 
@@ -543,6 +576,7 @@ export class Editor {
     hg.append(this.btn.undo = this.#btn('icon', '', T.undo, () => this.#undoRedo('undo'), ICON.undo), this.btn.redo = this.#btn('icon', '', T.redo, () => this.#undoRedo('redo'), ICON.redo));
     this.btn.undo.disabled = true; this.btn.redo.disabled = true;
     head.append(hg);
+    this.zoneNote = document.createElement('span'); this.zoneNote.className = 'edit-cap edit-zone'; this.zoneNote.hidden = true; this.zoneNote.setAttribute('role', 'status');
     for (const [k, label] of Object.entries(T.tabs)) {
       const b = this.#btn('tab', label, label, () => this.#showTab(k));
       b.setAttribute('role', 'tab'); b.dataset.tab = k;
@@ -554,7 +588,7 @@ export class Editor {
     this.btn.saveOpts = this.#btn('', T.saveOpts, T.saveOptsTitle, () => this.#saveOptions());
     this.btn.saveOpts.setAttribute('aria-label', T.saveOpts);
     this.btn.save = this.#btn('primary', T.save, T.saveTitle, () => this.save());
-    head.append(this.btn.saveOpts, this.btn.save);
+    head.append(this.zoneNote, this.btn.saveOpts, this.btn.save);
     bar.append(head, ...Object.values(this.panels));
     this.#buildFormatPanel();
     // 나머지 탭의 기능(표·개체·쪽 …)은 모듈이 자기 탭에 단추를 채운다
@@ -657,9 +691,9 @@ export class Editor {
       ask: (title, lines, yes, no) => ed.#ask(title, lines, yes, no),
       status: (m) => ed.status(m),
       enqueue: (fn) => ed.#enqueue(fn),
-      req: (op, payload) => ed.#req(op, payload),
+      req: (op, payload) => (ed.pos?.hf && !ZONE_OPS.has(op) ? Promise.resolve({}) : ed.#req(op, payload)),
       /** 대기열 안에서: 문서를 바꾸는 rhwp API를 부르고 화면·캐럿을 맞춘다. 돌려주는 값은 API의 결과 JSON. */
-      mutateApi: (fn, args, opts) => ed.#apiCall(fn, args, opts),
+      mutateApi: (fn, args, opts) => (ed.pos?.hf ? (ed.status(T.zoneBlocked), Promise.resolve(null)) : ed.#apiCall(fn, args, opts)),
       /** 대기열 안에서: 캐럿을 pos로(없으면 가까운 곳으로) 옮긴다. */
       placeCaret: (pos) => ed.#revalidate(pos),
       onContext: (fn) => ed.ctx.push(fn),
@@ -737,7 +771,8 @@ export class Editor {
         this.#flushGroup();
         const r = await this.#req('fmt', { a: this.anchor, b: this.pos, props });
         if (r.skipped) { this.status(T.readonlyHere); return; }
-        this.#setDirty(true); this.viewer.refresh(r.sizes); this.#scheduleProps();
+        if (r.unsupported) { this.status(T.zoneNoChar); return; }
+        this.#setDirty(true); this.viewer.refresh(r.sizes, this.pos?.hf ? {} : undefined); this.#scheduleProps();
         this.#updateStatus(await this.#req('status', {}));
       } else { Object.assign(this.pending, props); this.#updateToolbar(); }
       this.#focus();
@@ -768,7 +803,7 @@ export class Editor {
       this.#flushGroup();
       const [x, y] = this.#range();
       const r = this.cellBlock ? await this.#req('cellfmt', { a: this.anchor, b: this.pos, kind: 'para', props }) : await this.#req('parafmt', { a: x, b: y, props });
-      this.#setDirty(true); this.viewer.refresh(r.sizes); this.#scheduleProps();
+      this.#setDirty(true); this.viewer.refresh(r.sizes, this.pos?.hf ? {} : undefined); this.#scheduleProps();
       this.#updateStatus(await this.#req('status', {}));
       this.#focus();
     });

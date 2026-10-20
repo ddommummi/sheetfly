@@ -3,9 +3,11 @@
 // 위치(pos): { s: 구역, p: 본문 문단(칸 안이면 그 칸을 가진 문단), o: 문단 안 글자 위치, path: null | [{controlIndex, cellIndex, cellParaIndex}…] }
 //   · 글자 위치·개수는 UTF-16이 아니라 유니코드 글자(code point) 단위다(rhwp 계약) — 이모지 등을 위해 [...s].length로 센다.
 //   · 표 칸 안이면 path의 마지막 항목의 cellParaIndex가 칸 안 문단 번호다.
+//   · 머리글·바닥글·각주 안이면 hf = {k:'h'|'f'|'n', a: 적용 쪽(0 양쪽·1 짝수·2 홀수), pg: 보고 있는 쪽, bp/c: 각주가 달린 본문 문단·개체 번호}이고, p가 그 안의 문단 번호다(path는 null).
 import { ext, tableAt, cellRange, pickObject } from './hwp-ops.js';
 const states = new WeakMap();
-const J = JSON.parse;
+// 엔진 일부 API(각주 정보 등)는 글 안의 제어 문자(탭·줄바꿈 등)를 JSON으로 이스케이프하지 않는다: 읽기에 실패하면 제어 문자를 이스케이프해 다시 읽는다.
+const J = (s) => { try { return JSON.parse(s); } catch (e) { if (typeof s !== 'string') throw e; return JSON.parse(s.replace(/[\u0000-\u001f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)); } };
 const len = (s) => [...s].length;
 
 function state(doc) {
@@ -26,32 +28,87 @@ function toPos(h) {
   return { s: h.sectionIndex, p: h.paragraphIndex, o: h.charOffset, path: null };
 }
 const inCell = (pos) => !!pos.path;
+const inHf = (pos) => !!pos.hf;
+const isFn = (pos) => pos.hf?.k === 'n';
+const isHd = (pos) => pos.hf.k === 'h';
+const hfKey = (pos) => (pos.hf ? `${pos.hf.k}${pos.hf.a ?? ''}.${pos.hf.bp ?? ''}.${pos.hf.c ?? ''}` : '');
 const cellPara = (pos) => pos.path[pos.path.length - 1].cellParaIndex;
 const withCellPara = (pos, cp) => ({ ...pos, path: pos.path.map((x, i) => (i === pos.path.length - 1 ? { ...x, cellParaIndex: cp } : x)) });
 const pj = (pos) => JSON.stringify(pos.path);
 /** 칸 안 위치의 "문단 번호"(정렬·비교용). */
 const paraNo = (pos) => (inCell(pos) ? cellPara(pos) : pos.p);
-const sameContainer = (a, b) => a.s === b.s && (inCell(a) === inCell(b)) && (!inCell(a) || (a.p === b.p && a.path.length === b.path.length && a.path.every((x, i) => i === a.path.length - 1 || (x.controlIndex === b.path[i].controlIndex && x.cellIndex === b.path[i].cellIndex))));
+const sameContainer = (a, b) => a.s === b.s && hfKey(a) === hfKey(b) && (inCell(a) === inCell(b)) && (!inCell(a) || (a.p === b.p && a.path.length === b.path.length && a.path.every((x, i) => i === a.path.length - 1 || (x.controlIndex === b.path[i].controlIndex && x.cellIndex === b.path[i].cellIndex))));
 const cmp = (a, b) => (paraNo(a) - paraNo(b)) || (a.o - b.o);
 
 // ── 문단 정보 ──
-function paraLen(doc, pos) { return inCell(pos) ? doc.getCellParagraphLengthByPath(pos.s, pos.p, pj(pos)) : doc.getParagraphLength(pos.s, pos.p); }
-function paraCount(doc, pos) { return inCell(pos) ? doc.getCellParagraphCountByPath(pos.s, pos.p, pj(pos)) : doc.getParagraphCount(pos.s); }
+// ── 머리글·바닥글·각주 안 ──
+const fnInfo = (doc, pos) => J(doc.getFootnoteInfo(pos.s, pos.hf.bp, pos.hf.c));
+const hfInfo = (doc, pos, p = pos.p) => J(doc.getHeaderFooterParaInfo(pos.s, isHd(pos), pos.hf.a, p));
+const hfText = (doc, pos) => (isFn(pos) ? fnInfo(doc, pos).texts[pos.p] : hfInfo(doc, pos).text) ?? '';
+/** 각주가 지금 어느 쪽·몇 번째 각주 칸에 있는지(편집으로 쪽이 바뀔 수 있어 매번 찾는다). */
+function fnLoc(doc, pos) {
+  const h = pos.hf, n = doc.pageCount();
+  for (let d = 0; d <= 3; d++) for (const pg of d ? [h.pg - d, h.pg + d] : [h.pg]) {
+    if (pg < 0 || pg >= n) continue;
+    for (let fi = 0; fi < 40; fi++) {
+      let x; try { x = J(doc.getPageFootnoteInfo(pg, fi)); } catch { break; }
+      if (!x || x.ok === false) break;
+      if (x.sectionIdx === pos.s && x.paraIdx === h.bp && x.controlIdx === h.c) return { pg, fi };
+    }
+  }
+  return null;
+}
+function hfRect(doc, pos) {
+  let r;
+  if (isFn(pos)) { const f = fnLoc(doc, pos); if (!f) return null; r = J(doc.getCursorRectInFootnote(f.pg, f.fi, pos.p, pos.o)); }
+  else r = J(doc.getCursorRectInHeaderFooter(pos.s, isHd(pos), pos.hf.a, pos.p, pos.o, pos.hf.pg));
+  return { page: r.pageIndex, x: r.x, y: r.y, h: r.height };
+}
+/** 머리글·바닥글·각주 안 편집 API 묶음(위치 pos의 문단 기준). */
+const HF = {
+  insert: (d, pos, t) => J(isFn(pos) ? d.insertTextInFootnote(pos.s, pos.hf.bp, pos.hf.c, pos.p, pos.o, t) : d.insertTextInHeaderFooter(pos.s, isHd(pos), pos.hf.a, pos.p, pos.o, t)),
+  del: (d, pos, n) => (isFn(pos) ? d.deleteTextInFootnote(pos.s, pos.hf.bp, pos.hf.c, pos.p, pos.o, n) : d.deleteTextInHeaderFooter(pos.s, isHd(pos), pos.hf.a, pos.p, pos.o, n)),
+  split: (d, pos, o) => J(isFn(pos) ? d.splitParagraphInFootnote(pos.s, pos.hf.bp, pos.hf.c, pos.p, o) : d.splitParagraphInHeaderFooter(pos.s, isHd(pos), pos.hf.a, pos.p, o)),
+  merge: (d, pos) => J(isFn(pos) ? d.mergeParagraphInFootnote(pos.s, pos.hf.bp, pos.hf.c, pos.p) : d.mergeParagraphInHeaderFooter(pos.s, isHd(pos), pos.hf.a, pos.p)),
+};
+function paraLen(doc, pos) { if (inHf(pos)) return [...hfText(doc, pos)].length; return inCell(pos) ? doc.getCellParagraphLengthByPath(pos.s, pos.p, pj(pos)) : doc.getParagraphLength(pos.s, pos.p); }
+function paraCount(doc, pos) { if (inHf(pos)) return isFn(pos) ? fnInfo(doc, pos).paraCount : hfInfo(doc, pos, 0).paraCount; return inCell(pos) ? doc.getCellParagraphCountByPath(pos.s, pos.p, pj(pos)) : doc.getParagraphCount(pos.s); }
 /** 캐럿 좌표. 개체만 있는 문단 등 좌표를 구할 수 없는 자리면 null(편집 자체는 이미 적용된 상태이므로 예외로 만들지 않는다). */
+/** 머리글·바닥글·각주 영역을 누른 자리의 위치. 영역이 아니거나(머리글이 없으면 들어가지 않는다) 못 찾으면 null. */
+function hfHit(doc, m) {
+  try {
+    const t = J(doc.hitTestHeaderFooter(m.page, m.x, m.y));
+    if (t.hit && J(doc.getHeaderFooter(t.sectionIndex, t.isHeader, t.applyTo)).exists) {
+      const r = J(doc.hitTestInHeaderFooterTarget(m.page, t.sectionIndex, t.isHeader, t.applyTo, m.x, m.y));
+      if (r.hit) { const pos = { s: t.sectionIndex, p: r.paraIndex, o: r.charOffset, path: null, hf: { k: t.isHeader ? 'h' : 'f', a: t.applyTo, pg: m.page } }; return { pos, rect: rectOf(doc, pos) }; }
+    }
+  } catch { /* 머리글·바닥글이 아님 */ }
+  try {
+    const f = J(doc.hitTestFootnote(m.page, m.x, m.y));
+    if (f.hit) {
+      const at = J(doc.getPageFootnoteInfo(m.page, f.footnoteIndex)), r = J(doc.hitTestInFootnote(m.page, m.x, m.y));
+      if (r.hit) { const pos = { s: at.sectionIdx, p: r.fnParaIndex, o: r.charOffset, path: null, hf: { k: 'n', pg: m.page, bp: at.paraIdx, c: at.controlIdx } }; return { pos, rect: rectOf(doc, pos) }; }
+    }
+  } catch { /* 각주가 아님 */ }
+  return null;
+}
 function rectOf(doc, pos) {
   try {
+    if (inHf(pos)) return hfRect(doc, pos);
     const r = J(inCell(pos) ? doc.getCursorRectByPath(pos.s, pos.p, pj(pos), pos.o) : doc.getCursorRect(pos.s, pos.p, pos.o));
     return { page: r.pageIndex, x: r.x, y: r.y, h: r.height };
   } catch { return null; }
 }
-function textOf(doc, pos, count) { return inCell(pos) ? doc.getTextInCellByPath(pos.s, pos.p, pj(pos), pos.o, count) : doc.getTextRange(pos.s, pos.p, pos.o, count); }
+function textOf(doc, pos, count) { if (inHf(pos)) return [...hfText(doc, pos)].slice(pos.o, pos.o + count).join(''); return inCell(pos) ? doc.getTextInCellByPath(pos.s, pos.p, pj(pos), pos.o, count) : doc.getTextRange(pos.s, pos.p, pos.o, count); }
 
 // ── 변경 기본 동작 (모두 새 위치를 돌려준다) ──
 function opInsert(doc, pos, text) {
+  if (inHf(pos)) return { ...pos, o: HF.insert(doc, pos, text).charOffset ?? pos.o + len(text) };
   const r = J(inCell(pos) ? doc.insertTextInCellByPath(pos.s, pos.p, pj(pos), pos.o, text) : doc.insertText(pos.s, pos.p, pos.o, text));
   return { ...pos, o: r.charOffset ?? pos.o + len(text) };
 }
 function opDeleteChars(doc, pos, count) {
+  if (inHf(pos)) { HF.del(doc, pos, count); return pos; }
   if (inCell(pos)) doc.deleteTextInCellByPath(pos.s, pos.p, pj(pos), pos.o, count); else doc.deleteText(pos.s, pos.p, pos.o, count);
   return pos;
 }
@@ -61,6 +118,7 @@ function rawSplit(doc, pos, off) {
   return J(inCell(pos) ? doc.splitParagraphInCellByPath(pos.s, pos.p, pj(pos), off) : doc.splitParagraph(pos.s, pos.p, off));
 }
 function opSplit(doc, pos) {
+  if (inHf(pos)) { HF.split(doc, pos, pos.o); return { ...pos, p: pos.p + 1, o: 0 }; }
   const inCellP = inCell(pos);
   const ctrls = inCellP ? 4 : (() => { try { return J(doc.getControlTextPositions(pos.s, pos.p)).length; } catch { return 0; } })();
   let r;
@@ -86,6 +144,7 @@ function opSplit(doc, pos) {
 }
 /** pos의 문단을 앞 문단에 합친다(Backspace at start). 합친 지점이 새 위치. 합쳐지지 않으면(표가 든 문단 등) null. */
 function opMergeBack(doc, pos) {
+  if (inHf(pos)) { const at = paraLen(doc, { ...pos, p: pos.p - 1 }); HF.merge(doc, pos); return { ...pos, p: pos.p - 1, o: at }; }
   const prev = inCell(pos) ? withCellPara(pos, cellPara(pos) - 1) : { ...pos, p: pos.p - 1 };
   const at = paraLen(doc, { ...prev, o: 0 }), before = paraCount(doc, pos);
   if (inCell(pos)) doc.mergeParagraphInCellByPath(pos.s, pos.p, pj(pos)); else doc.mergeParagraph(pos.s, pos.p);
@@ -93,6 +152,13 @@ function opMergeBack(doc, pos) {
   return { ...prev, o: at };
 }
 function opDeleteRange(doc, a, b) {
+  if (inHf(a)) {   // 문단 안이면 글자만, 여러 문단이면 가운데 문단 글을 비우고 앞뒤를 지운 다음 문단을 합친다
+    const at = (p) => ({ ...a, p, o: 0 });
+    for (let p = a.p + 1; p < b.p; p++) { const n = paraLen(doc, at(p)); if (n) HF.del(doc, at(p), n); }
+    if (b.p > a.p) { if (b.o) HF.del(doc, at(b.p), b.o); const n = paraLen(doc, a) - a.o; if (n > 0) HF.del(doc, a, n); for (let k = a.p + 1; k <= b.p; k++) HF.merge(doc, at(a.p + 1)); }
+    else if (b.o > a.o) HF.del(doc, a, b.o - a.o);
+    return a;
+  }
   if (inCell(a)) { const r = J(doc.deleteRangeInCellByPath(a.s, a.p, pj(a), cellPara(a), a.o, cellPara(b), b.o)); return { ...withCellPara(a, r.paraIdx ?? cellPara(a)), o: r.charOffset ?? a.o }; }
   const r = J(doc.deleteRange(a.s, a.p, a.o, b.p, b.o));
   return { ...a, p: r.paraIdx ?? a.p, o: r.charOffset ?? a.o };
@@ -133,6 +199,7 @@ function charJson(doc, props) {
 
 /** 캐럿이 있는 줄의 {lineIndex,lineCount,charStart,charEnd}. 못 구하면 null. */
 function lineInfo(doc, pos) {
+  if (inHf(pos)) return null;
   try {
     const r = inCell(pos) && pos.path.length === 1
       ? J(doc.getLineInfoInCell(pos.s, pos.p, pos.path[0].controlIndex, pos.path[0].cellIndex, cellPara(pos), pos.o))
@@ -143,6 +210,7 @@ function lineInfo(doc, pos) {
 /** 위치를 지금 문서 안으로 끌어온다(되돌리기 뒤 문단이 짧아졌거나 칸이 없어졌을 수 있다): 문단 번호·글자 위치를 범위 안으로, 칸이 없어졌으면 그 칸을 가진 문단으로. */
 function clampPos(doc, pos) {
   if (!pos) return null;
+  if (inHf(pos)) { try { const p = Math.max(0, Math.min(pos.p, paraCount(doc, pos) - 1)); return { ...pos, p, o: Math.min(pos.o, paraLen(doc, { ...pos, p })) }; } catch { return null; } }
   try {
     const n = doc.getParagraphCount(pos.s);
     if (pos.p >= n) return { s: pos.s, p: Math.max(0, n - 1), o: 0, path: null };
@@ -198,10 +266,18 @@ function viewInfo(doc, st) {
   return out;
 }
 
+/** [from,to) 글자에 글자 서식(JSON)을 입힌다. 각주 안은 엔진에 글자 서식 API가 없어 false. */
+function applyChar(doc, at, from, to, json) {
+  if (inHf(at)) { if (isFn(at)) return false; doc.applyCharFormatInHeaderFooter(at.s, isHd(at), at.hf.a, at.p, from, at.p, to, json); return true; }
+  if (inCell(at)) doc.applyCharFormatInCellByPath(at.s, at.p, pj(at), from, to, json); else doc.applyCharFormat(at.s, at.p, from, to, json);
+  return true;
+}
 function charProps(doc, pos) {
+  if (inHf(pos)) { try { return isFn(pos) ? null : J(doc.getCharPropertiesInHeaderFooter(pos.s, isHd(pos), pos.hf.a, pos.p, pos.o)); } catch { return null; } }
   try { return J(inCell(pos) ? doc.getCellCharPropertiesAtByPath(pos.s, pos.p, pj(pos), pos.o) : doc.getCharPropertiesAt(pos.s, pos.p, pos.o)); } catch { return null; }
 }
 function paraProps(doc, pos) {
+  if (inHf(pos)) { try { return isFn(pos) ? J(doc.getParaPropertiesInFootnote(pos.s, pos.hf.bp, pos.hf.c, pos.p)) : null; } catch { return null; } }
   try { return inCell(pos) ? (pos.path.length === 1 ? J(doc.getCellParaPropertiesAt(pos.s, pos.p, pos.path[0].controlIndex, pos.path[0].cellIndex, cellPara(pos))) : null) : J(doc.getParaPropertiesAt(pos.s, pos.p)); } catch { return null; }
 }
 
@@ -262,6 +338,7 @@ export function run(doc, HwpDocument, m) {
   };
   switch (m.op) {
     case 'hit': {
+      if (m.hf || m.enter) { const r = hfHit(doc, m); if (r) return r; if (m.enter) return { pos: null, rect: null }; }
       const h = J(doc.hitTest(m.page, m.x, m.y));
       // 양식 개체(선택 상자·라디오·입력·콤보·단추)를 누른 것인지
       if (m.objs) { try { const fo = J(doc.getFormObjectAt(m.page, m.x, m.y)); if (fo.found) return { form: fo }; } catch { /* 양식 아님 */ } }
@@ -281,7 +358,7 @@ export function run(doc, HwpDocument, m) {
       while (b < chars.length && !isSp(chars[b])) b++;
       return { a: { ...m.pos, o: a }, b: { ...m.pos, o: b } };
     }
-    case 'props': return { char: charProps(doc, m.pos), para: paraProps(doc, m.pos), table: tableAt({ doc, J }, m.pos) };
+    case 'props': return { char: charProps(doc, m.pos), para: paraProps(doc, m.pos), table: inHf(m.pos) ? null : tableAt({ doc, J }, m.pos) };
     case 'text': return { text: selectionText(doc, m.a, m.b) };
     case 'mark': st.groupOpen = false; return {};
     case 'endOf': {
@@ -304,10 +381,14 @@ export function run(doc, HwpDocument, m) {
         const L = lineInfo(doc, pos);
         if (k === 'home') pos = { ...pos, o: L ? L.charStart : 0 };
         else pos = { ...pos, o: L ? (L.lineIndex < L.lineCount - 1 ? Math.max(L.charStart, L.charEnd - 1) : L.charEnd) : paraLen(doc, pos) };
-      } else if (k === 'docstart') pos = { s: pos.s, p: 0, o: 0, path: null };
+      } else if (k === 'docstart') pos = inHf(pos) ? { ...pos, p: 0, o: 0 } : { s: pos.s, p: 0, o: 0, path: null };
+      else if (k === 'docend' && inHf(pos)) { const p = paraCount(doc, pos) - 1; pos = { ...pos, p, o: paraLen(doc, { ...pos, p }) }; }
       else if (k === 'docend') { const n = doc.getParagraphCount(pos.s) - 1; pos = { s: pos.s, p: n, o: doc.getParagraphLength(pos.s, n), path: null }; }
       else if (k === 'wordleft' || k === 'wordright') pos = wordMove(doc, pos, k === 'wordright');
-      else if (k === 'up' || k === 'down') {
+      else if ((k === 'up' || k === 'down') && inHf(pos)) {   // 줄 위·아래: 캐럿 위·아래 한 줄 자리를 눌러 본다
+        const rc = rectOf(doc, pos);
+        if (rc) { const h = hfHit(doc, { page: rc.page, x: m.px >= 0 ? m.px : rc.x, y: rc.y + (k === 'up' ? -rc.h * 0.5 : rc.h * 1.5) }); if (h?.pos && hfKey(h.pos) === hfKey(pos) && (h.pos.p !== pos.p || h.pos.o !== pos.o)) { pos = { ...h.pos, hf: { ...pos.hf, pg: rc.page } }; px = rc.x; } }
+      } else if (k === 'up' || k === 'down') {
         const delta = k === 'up' ? -1 : 1;
         const r = J(inCell(pos)
           ? doc.moveVerticalByPath(pos.s, pos.p, pj(pos), pos.o, delta, m.px ?? -1)
@@ -325,7 +406,7 @@ export function run(doc, HwpDocument, m) {
         const end = m.text ? opInsert(doc, at, m.text) : at;
         if (m.fmt && end.o > at.o) {
           const json = charJson(doc, m.fmt);
-          if (inCell(at)) doc.applyCharFormatInCellByPath(at.s, at.p, pj(at), at.o, end.o, json); else doc.applyCharFormat(at.s, at.p, at.o, end.o, json);
+          applyChar(doc, at, at.o, end.o, json);
         }
         return end;
       }, m.group);
@@ -334,7 +415,9 @@ export function run(doc, HwpDocument, m) {
     case 'selrects': {
       if (!sameContainer(m.a, m.b)) return { rects: [] };
       const [a, b] = ordered(m.a, m.b);
-      const raw = J(inCell(a)
+      const raw = J(inHf(a)
+        ? (isFn(a) ? (() => { const f = fnLoc(doc, a); return f ? doc.getSelectionRectsInFootnote(f.pg, f.fi, a.p, a.o, b.p, b.o) : '[]'; })() : doc.getSelectionRectsInHeaderFooter(a.s, isHd(a), a.hf.a, a.hf.pg, a.p, a.o, b.p, b.o))
+        : inCell(a)
         ? doc.getSelectionRectsInCellByPath(a.s, a.p, pj(a), cellPara(a), a.o, cellPara(b), b.o)
         : doc.getSelectionRects(a.s, a.p, a.o, b.p, b.o));
       return { rects: (Array.isArray(raw) ? raw : raw.rects ?? []).map((r) => ({ page: r.pageIndex, x: r.x, y: r.y, w: r.width, h: r.height })) };
@@ -376,17 +459,18 @@ export function run(doc, HwpDocument, m) {
     }
     case 'fmt': {
       if (!sameContainer(m.a, m.b)) return { skipped: true, ...viewInfo(doc, st) };
-      let json;
+      let json, unsupported = false;
       mutate(() => { json = charJson(doc, m.props); eachParaRange(doc, m.a, m.b, (at, from, to) => {
         if (to <= from) return;
-        if (inCell(at)) doc.applyCharFormatInCellByPath(at.s, at.p, pj(at), from, to, json); else doc.applyCharFormat(at.s, at.p, from, to, json);
-      }); }, false);
-      return { ...viewInfo(doc, st) };
+        if (!applyChar(doc, at, from, to, json)) unsupported = true;
+      }); if (unsupported) return NOOP; }, false);
+      return { ...viewInfo(doc, st), unsupported };
     }
     case 'parafmt': {
       const json = JSON.stringify(m.props);
       mutate(() => eachParaRange(doc, m.a, m.b, (at) => {
-        if (inCell(at)) { if (at.path.length === 1) doc.applyParaFormatInCell(at.s, at.p, at.path[0].controlIndex, at.path[0].cellIndex, cellPara(at), json); } else doc.applyParaFormat(at.s, at.p, json);
+        if (inHf(at)) { if (isFn(at)) doc.applyParaFormatInFootnote(at.s, at.hf.bp, at.hf.c, at.p, json); else doc.applyParaFormatInHf(at.s, at.hf.k === 'h', at.hf.a, at.p, json); }
+        else if (inCell(at)) { if (at.path.length === 1) doc.applyParaFormatInCell(at.s, at.p, at.path[0].controlIndex, at.path[0].cellIndex, cellPara(at), json); } else doc.applyParaFormat(at.s, at.p, json);
       }), false);
       return { ...viewInfo(doc, st) };
     }

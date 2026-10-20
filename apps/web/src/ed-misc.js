@@ -114,7 +114,7 @@ export function installMisc(api) {
   loadStyles();
   fg.append(styleSel, mk(TM.styleBtn, null, () => run(styleManage)));
   api.onContext(async () => {
-    const p = api.pos; if (!p || p.path) return;
+    const p = api.pos; if (!p || p.path || p.hf) return;
     try { const st = await q('getStyleAt', [p.s, p.p]); if (st && styleSel.value !== String(st.id)) api.fillSelect(styleSel, styles.map((s) => [String(s.id), s.name]), String(st.id)); } catch { /* 표시만 */ }
   });
   async function styleManage() {

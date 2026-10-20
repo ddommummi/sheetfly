@@ -27,7 +27,53 @@ const PAGER = Number(arg('page', 0));        // 쪽·머리글·각주 편집을
 const PAGEP = PAGER > 0;
 const MISCR = Number(arg('misc', 0));        // 링크·책갈피·필드·스타일·번호·찾아 바꾸기·붙여넣기를 섞는다
 const MISCP = MISCR > 0;
+const HFR = Number(arg('hf', 0));          // 머리글·바닥글·각주 안(제자리) 편집 묶음을 섞는다
 const TBLP = Number(arg('tbl', 0));        // 편집 한 번이 표 구조 편집일 확률(0이면 기본 비율)
+
+/** 머리글·바닥글·각주 안 편집 묶음: 그 안에서 입력·줄바꿈·지우기·서식·이동을 무작위로 하고, 본문이 바뀌지 않았는지·엔진이 거부한 편집 뒤 그 안이 그대로인지 본다. 어긋나면 문장, 아니면 'ok'/'rejected'. */
+const safeJ = (x) => { try { return JSON.parse(x); } catch { return JSON.parse(x.replace(/[\u0000-\u001f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)); } };   // 엔진이 각주 정보의 제어 문자를 이스케이프하지 않는다
+function hfOp(doc, m, rand, at) {
+  const kind = ['h', 'f', 'n'][Math.floor(rand() * 3)];
+  const pg = m('caret', { pos: at }).rect?.page ?? 0;
+  let pos;
+  try {
+    if (kind === 'n') {
+      const r = m('api', { fn: 'insertFootnote', args: [0, at.p, at.o] }).result;
+      m('fnset', { s: 0, p: r.paraIdx, ctrl: r.controlIdx, lines: ['각주 하나', '둘째 줄'] });
+      pos = { s: 0, p: 0, o: 0, path: null, hf: { k: 'n', pg, bp: r.paraIdx, c: r.controlIdx } };
+    } else {
+      m('hfset', { s: 0, header: kind === 'h', applyTo: 0, lines: ['머리글 가나다', '둘째 줄'] });
+      pos = { s: 0, p: 0, o: 0, path: null, hf: { k: kind, a: 0, pg } };
+    }
+  } catch { return 'rejected'; }
+  const body = JSON.stringify(paras(doc));
+  const text = () => { const t = pos.hf; return JSON.stringify(t.k === 'n' ? safeJ(doc.getFootnoteInfo(0, t.bp, t.c)).texts : [0, 1, 2, 3, 4, 5].map((i) => { try { return JSON.parse(doc.getHeaderFooterParaInfo(0, t.k === 'h', 0, i)).text; } catch { return null; } })); };
+  const len = (q) => [...(pos.hf.k === 'n' ? safeJ(doc.getFootnoteInfo(0, pos.hf.bp, pos.hf.c)).texts[q.p] : JSON.parse(doc.getHeaderFooterParaInfo(0, pos.hf.k === 'h', 0, q.p)).text)].length;
+  let res = 'ok';
+  for (let i = 0; i < 10; i++) {
+    const before = text(), k = rand();
+    try {
+      let r;
+      if (k < 0.35) r = m('insert', { pos, text: POOL[Math.floor(rand() * POOL.length)], group: false });
+      else if (k < 0.45) r = m('enter', { pos });
+      else if (k < 0.6) r = m('del', { pos, dir: rand() < 0.5 ? 'back' : 'fwd', group: false });
+      else if (k < 0.7) { const b = { ...pos, o: Math.min(len(pos), pos.o + 1 + Math.floor(rand() * 8)) }; r = m('delrange', { a: pos, b }); }
+      else if (k < 0.8) { const b = { ...pos, o: Math.min(len(pos), pos.o + 1 + Math.floor(rand() * 8)) }; m('fmt', { a: pos, b, props: { bold: rand() < 0.5, textColor: '#ff0000' } }); r = { pos }; }
+      else if (k < 0.85) { m('parafmt', { a: pos, b: pos, props: { alignment: ['left', 'center', 'right'][Math.floor(rand() * 3)] } }); r = { pos }; }
+      else { r = m('move', { pos, kind: ['left', 'right', 'up', 'down', 'home', 'end', 'wordleft', 'wordright', 'docstart', 'docend'][Math.floor(rand() * 10)], px: -1 }); }
+      if (r?.pos) pos = r.pos;
+      const lp = len(pos);
+      if (pos.o > lp) return `캐럿 o=${pos.o} > 안쪽 문단 길이 ${lp} (${k.toFixed(2)})`;
+      m('selrects', { a: { ...pos, o: 0 }, b: pos });
+    } catch (e) {
+      res = 'rejected';
+      if (text() !== before) return `엔진이 거부한 안쪽 편집 뒤 내용이 바뀌어 있다: ${String(e && (e.message || e.code) || e).slice(0, 80)}`;
+      pos = { ...pos, p: 0, o: 0 };
+    }
+    if (JSON.stringify(paras(doc)) !== body) return '머리글·바닥글·각주 편집이 본문을 바꿨다';
+  }
+  return res;
+}
 
 function* walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -154,7 +200,7 @@ function miscOp(doc, m, rand, pos) {
   ];
   try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) { return rejectOk(e); }
 }
-let failures = 0, totalOps = 0, noRect = 0, miscOps = 0, pageOps = 0, objOps = 0, tblOps = 0, rejected = 0, apiOps = 0;
+let failures = 0, totalOps = 0, noRect = 0, miscOps = 0, pageOps = 0, objOps = 0, tblOps = 0, rejected = 0, apiOps = 0, zoneOps = 0;
 const fail = (f, msg) => { failures++; console.log('  ✗', f.rel, msg); };
 
 for (const f of files) {
@@ -174,7 +220,7 @@ for (const f of files) {
   let pos = randPos(), muts = 0, ok = true, lastOp = '';
   try {
     for (let i = 0; i < STEPS && ok; i++) {
-      const k = TBLP && rand() < TBLP ? 0.95 : (OBJR && rand() < OBJR ? 0.98 : (PAGER && rand() < PAGER ? 0.99 : (MISCR && rand() < MISCR ? 0.995 : rand())));
+      const k = HFR && rand() < HFR ? 0.9951 : TBLP && rand() < TBLP ? 0.95 : (OBJR && rand() < OBJR ? 0.98 : (PAGER && rand() < PAGER ? 0.99 : (MISCR && rand() < MISCR ? 0.995 : rand())));
       let r = null, op = ''; lastOp = '';
       if (k < 0.34) { op = lastOp = 'insert'; r = m('insert', { pos, text: POOL[Math.floor(rand() * POOL.length)], group: rand() < 0.5 }); }
       else if (k < 0.44) { op = lastOp = 'enter'; r = m('enter', { pos }); }
@@ -198,6 +244,14 @@ for (const f of files) {
         if (res === 'rejected') { rejected++; if (JSON.stringify(paras(doc)) !== before) { fail(f, `step ${i}: 엔진이 거부한 표 편집 뒤 문서가 바뀌어 있다`); ok = false; break; } }
         else { muts++; tblOps++; }
         pos = { s: 0, p: Math.min(doc.getParagraphCount(0) - 1, T.p), o: 0, path: null };
+        continue;
+      }
+      else if (HFR && k >= 0.995) {
+        op = 'zone';
+        const res = hfOp(doc, m, rand, { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: 0, path: null });
+        if (res !== 'ok' && res !== 'rejected') { fail(f, `step ${i}: ${res}`); ok = false; break; }
+        if (res === 'rejected') rejected++; else { muts += 12; zoneOps++; }   // 한 묶음이 되돌리기 항목을 여러 개 만든다
+        pos = { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: 0, path: null };
         continue;
       }
       else if (MISCP && k >= 0.99) {
@@ -229,7 +283,7 @@ for (const f of files) {
       }
       else { op = 'jump'; pos = randPos(); continue; }
       if (op !== 'undo' && op !== 'redo') muts++;
-      if (r?.pos) pos = r.pos;
+      if (r?.pos && !r.pos.hf) pos = r.pos;   // 되돌리기가 머리글·각주 안 위치를 돌려줄 수 있다(본문 위치가 아니므로 쓰지 않는다)
       else if (op === 'undo' || op === 'redo') pos = randPos();
       // 불변식: 캐럿이 문단 안에 있고 좌표를 구할 수 있다
       const n = doc.getParagraphCount(0);
@@ -262,5 +316,5 @@ for (const f of files) {
   } catch (e) { fail(f, `되돌리기 예외: ${String(e && (e.message || e.code) || e).slice(0, 140)}`); }
   try { doc.free(); } catch {}
 }
-console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·개체 편집 ${objOps}·쪽 편집 ${pageOps}·기타 편집 ${miscOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
+console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·개체 편집 ${objOps}·쪽 편집 ${pageOps}·기타 편집 ${miscOps}·머리글·각주 안 편집 ${zoneOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
 process.exit(failures ? 1 : 0);
