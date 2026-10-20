@@ -5,7 +5,7 @@ const TT = {
   rowAbove: '위에 줄 넣기', rowBelow: '아래에 줄 넣기', rowDel: '줄 지우기', colLeft: '왼쪽에 칸 넣기', colRight: '오른쪽에 칸 넣기', colDel: '칸 지우기(열)',
   merge: '칸 합치기', split: '칸 나누기', cellProps: '칸 속성…', cellClear: '칸 글 지우기', eqW: '너비 같게', eqH: '높이 같게',
   tblProps: '표 속성…', tblSplit: '표 나누기', tblMerge: '아래 표와 합치기', transpose: '줄·칸 바꾸기', tblDel: '표 지우기',
-  needTable: '표 안에서만 쓸 수 있습니다', needBlock: '합치려면 둘 이상의 칸을 끌어 선택하세요', notInCell: '표 안에서는 표를 새로 넣을 수 없습니다',
+  nestedNo: '안쪽(중첩) 표에서는 쓸 수 없습니다(칸 크기 맞추기·표 지우기만 됩니다)', needTable: '표 안에서만 쓸 수 있습니다', needBlock: '합치려면 둘 이상의 칸을 끌어 선택하세요', notInCell: '표 안에서는 표를 새로 넣을 수 없습니다',
   lastRow: '마지막 줄은 지울 수 없습니다. 표 전체를 지우려면 "표 지우기"를 누르세요.', lastCol: '마지막 칸(열)은 지울 수 없습니다. 표 전체를 지우려면 "표 지우기"를 누르세요.',
   nRows: '나눌 줄 수', mCols: '나눌 칸 수', equal: '줄 높이를 같게', mergeFirst: '합친 뒤 나누기',
   fill: '배경', fillNone: '없음', fillSolid: '색', fillColor: '배경 색', borderTarget: '테두리 적용 위치', bt: { all: '모두', outer: '바깥', top: '위', bottom: '아래', left: '왼쪽', right: '오른쪽', none: '모두 없음' },
@@ -21,6 +21,7 @@ export function installTable(api) {
   const btns = {};
   const mk = (key, label, title, fn) => { const b = api.btn('', label, title ?? label, fn); b.setAttribute('aria-label', label); btns[key] = b; return b; };
   const run = (fn) => api.enqueue(fn);
+  const NESTED_OK = new Set(['eqW', 'eqH', 'tblDel']);
 
   /** 지금 고른 칸(들)의 표 좌표. 칸 블록이면 그 사각형, 아니면 캐럿이 든 한 칸. 도구줄 상태는 한 박자 늦게 갱신되므로 실행 시점에 Worker에서 새로 읽는다. */
   const sel = async () => {
@@ -31,6 +32,7 @@ export function installTable(api) {
     }
     const t = p ? (await api.req('tableAt', { pos: p })).table : null;
     if (!t) return null;
+    if (t.nested) return { nested: true, s: t.s, p: t.p, path: t.path, rows: t.rows, cols: t.cols, block: false, cells: [t.cell] };   // 안쪽 표: 크기 맞추기·표 지우기만 된다
     return { s: t.s, p: t.p, ctrl: t.ctrl, r1: t.row, c1: t.col, r2: t.row + t.rowSpan - 1, c2: t.col + t.colSpan - 1, rows: t.rows, cols: t.cols, block: false, cells: [t.cell] };
   };
   /** (작업 안에서) 표 칸 번호는 줄 우선 순서라 줄·칸을 넣고 빼면 바뀐다: (줄, 칸)에 있는 칸으로 캐럿을 옮긴다. */
@@ -145,7 +147,14 @@ export function installTable(api) {
     const t = await sel(); if (!t) return;
     const cells = t.block ? t.cells : Array.from({ length: t.rows * t.cols }, (_, i) => i);   // 한 칸만 골랐으면 표 전체
     const info = [];
+    const withCell = (c) => JSON.stringify(t.path.map((x, i) => (i === t.path.length - 1 ? { ...x, cellIndex: c } : x)));
     for (const c of cells) {
+      if (t.nested) {
+        const ci = (await api.req('q', { fn: 'getCellInfoByPath', args: [t.s, t.p, withCell(c)] })).result;
+        const pr = (await api.req('q', { fn: 'getCellPropertiesByPath', args: [t.s, t.p, JSON.stringify(t.path), c] })).result;
+        if (ci && pr) info.push({ c, span: axis === 'w' ? ci.colSpan : ci.rowSpan, size: axis === 'w' ? pr.width : pr.height });
+        continue;
+      }
       const ci = (await api.req('q', { fn: 'getCellInfo', args: [t.s, t.p, t.ctrl, c] })).result;
       const pr = (await api.req('q', { fn: 'getCellProperties', args: [t.s, t.p, t.ctrl, c] })).result;
       if (!ci || !pr) continue;
@@ -156,7 +165,8 @@ export function installTable(api) {
     const avg = Math.round(single.reduce((a, x) => a + x.size, 0) / single.length);
     const deltas = single.map((x) => ({ cellIdx: x.c, [axis === 'w' ? 'widthDelta' : 'heightDelta']: avg - x.size })).filter((d) => d[axis === 'w' ? 'widthDelta' : 'heightDelta'] !== 0);
     if (!deltas.length) return;
-    await api.mutateApi('resizeTableCells', [t.s, t.p, t.ctrl, JSON.stringify(deltas)]);
+    if (t.nested) await api.mutateApi('resizeTableCellsByPath', [t.s, t.p, JSON.stringify(t.path), JSON.stringify(deltas)]);
+    else await api.mutateApi('resizeTableCells', [t.s, t.p, t.ctrl, JSON.stringify(deltas)]);
   }
 
   // ── 표 ──
@@ -193,6 +203,7 @@ export function installTable(api) {
     mk('tblDel', TT.tblDel, TT.tblDel, () => run(async () => {
       const t = await sel(); if (!t) return;
       if (!(await api.ask(TT.tblDelAsk, [TT.tblDelBody], TT.yesDel, TT.no))) return;
+      if (t.nested) { const up = t.path.slice(0, -1); await api.mutateApi('deleteCellTableControlByPath', [t.s, t.p, JSON.stringify(up), t.path[t.path.length - 1].controlIndex], { pos: { s: t.s, p: t.p, o: 0, path: up.length ? up : null } }); return; }
       await api.mutateApi('deleteTableControl', [t.s, t.p, t.ctrl], { pos: { s: t.s, p: t.p, o: 0, path: null } });
     })),
   );
@@ -202,7 +213,8 @@ export function installTable(api) {
     const inTable = !!api.tbl;
     for (const [k, b] of Object.entries(btns)) {
       if (k === 'create') { b.disabled = !!api.pos?.path; b.title = b.disabled ? TT.notInCell : TT.createTitle; continue; }
-      b.disabled = !inTable;
+      b.disabled = !inTable || (api.tbl?.nested && !NESTED_OK.has(k));
+      if (api.tbl?.nested && !NESTED_OK.has(k)) { b.title = `${b.getAttribute('aria-label')} — ${TT.nestedNo}`; continue; }
       if (!inTable) b.title = `${b.getAttribute('aria-label')} — ${TT.needTable}`; else b.title = b.getAttribute('aria-label');
     }
     if (inTable && btns.merge) btns.merge.disabled = !api.cellBlock;

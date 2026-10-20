@@ -7,7 +7,7 @@ const TO = {
   props: '속성…', front: '맨 앞으로', back: '맨 뒤로', forward: '앞으로', backward: '뒤로', copy: '복사', paste: '붙이기', ungroup: '묶음 풀기', group: '묶기', groupTitle: 'Shift+누르기로 고른 개체 여러 개를 하나로 묶습니다', del: '개체 지우기',
   textIn: '글 넣기', textInTitle: '이 도형 안에 글을 쓸 수 있게 하고 캐럿을 둡니다(글상자 붙이기)', textOut: '글 떼기', textOutTitle: '도형에서 글상자를 떼어 냅니다(글은 없어집니다)',
   textOutAsk: '도형 안의 글이 없어집니다', textOutYes: '글 떼기', textOutNo: '취소', textSec0: '글 넣기는 아직 첫 구역의 도형에서만 됩니다.', textNotShape: '도형을 고른 뒤 쓸 수 있습니다.',
-  needTwo: '묶을 개체를 Shift+누르기로 두 개 이상 고르세요', groupSec: '같은 구역의 개체만 묶을 수 있습니다', groupFail: '이 개체들은 묶을 수 없습니다.', rotate: '돌리기(끌어서 회전, Shift는 15도씩)',
+  needTwo: '묶을 개체를 Shift+누르기로 두 개 이상 고르세요', groupSec: '같은 구역의 개체만 묶을 수 있습니다', groupFail: '이 개체들은 묶을 수 없습니다.', rotate: '돌리기(끌어서 회전, Shift는 15도씩)', cellNoDel: '표 칸 안의 도형은 지울 수 없습니다(그림만 지울 수 있습니다).', cellNo: '표 칸 안의 개체에는 쓸 수 없는 기능입니다.', lineStart: '시작 점(끌어서 옮기기)', lineEnd: '끝 점(끌어서 옮기기)',
   needObj: '그림·도형을 클릭해 고르세요', noPaste: '붙일 개체가 없습니다(먼저 개체를 복사하세요)',
   w: '너비(mm)', h: '높이(mm)', wrap: '배치', wraps: [['TreatAsChar', '글자처럼'], ['TopAndBottom', '자리 차지'], ['Square', '어울림'], ['InFrontOfText', '글 앞으로'], ['BehindText', '글 뒤로']],
   hflip: '좌우 뒤집기', vflip: '상하 뒤집기', rot: '회전(도)', desc: '설명(대체 글)', bright: '밝기', contrast: '대비', effect: '효과', effects: [['RealPic', '원래 그림'], ['GrayScale', '회색조'], ['BlackWhite', '흑백']],
@@ -121,13 +121,18 @@ export function installObjects(api) {
   let copied = false;
 
   async function reselect(o) {
-    const r = await api.req('objfind', { page: o.page, s: o.s, p: o.p, ctrl: o.ctrl });
+    const r = await api.req('objfind', { page: o.page, s: o.s, p: o.p, ctrl: o.ctrl, cell: o.cell });
     if (r.obj) api.selectObj(r.obj);
   }
   async function deleteObj() {
     // 여러 개를 골랐으면 모두 지운다(같은 문단 안에서 뒤의 개체부터 지워야 번호가 어긋나지 않는다)
     const list = (api.objs.length ? [...api.objs] : (api.obj ? [api.obj] : [])).sort((a, b) => (b.s - a.s) || (b.p - a.p) || (b.ctrl - a.ctrl));
-    for (const o of list) await api.mutateApi(DEL[o.type] ?? 'deleteShapeControl', [o.s, o.p, o.ctrl], { pos: api.pos });
+    for (const o of list) {
+      if (o.cell) {   // 칸 안 개체: 그림만 지울 수 있다(엔진에 칸 안 도형 삭제가 없다)
+        if (o.type !== 'image') { api.status(TO.cellNoDel); continue; }
+        await api.mutateApi('deleteCellPictureControlByPath', [o.s, o.p, JSON.stringify(o.cell.path), o.ctrl], { pos: api.pos });
+      } else await api.mutateApi(DEL[o.type] ?? 'deleteShapeControl', [o.s, o.p, o.ctrl], { pos: api.pos });
+    }
   }
   /** 고른 개체 여러 개를 하나의 묶음으로. */
   async function groupSel() {
@@ -161,6 +166,11 @@ export function installObjects(api) {
     await reselect(o);
   }
   const getProps = async (o) => (await api.req('objprops', { obj: o })).props;
+  /** 개체 속성을 쓰는 API 호출(최상위 개체와 표 칸 안 개체의 이름·인자가 다르다). */
+  const setProps = (o, kind, json) => (o.cell
+    ? [kind === 'picture' ? 'setCellPicturePropertiesByPath' : 'setCellShapePropertiesByPath', [o.s, o.p, JSON.stringify(o.cell.path), o.ctrl, json]]
+    : [kind === 'picture' ? 'setPictureProperties' : 'setShapeProperties', [o.s, o.p, o.ctrl, json]]);
+  const writeProps = (o, kind, out) => { const [fn, args] = setProps(o, kind, JSON.stringify(out)); return api.mutateApi(fn, args, { pos: api.pos }); };
 
   async function objProps() {
     const o = api.obj; if (!o) return;
@@ -209,7 +219,7 @@ export function installObjects(api) {
       out.borderColor = bgr(v.lc); out.borderWidth = v.lw;
       if (v.fill === 'solid') { out.fillType = 'solid'; out.fillColor = bgr(v.fc); } else if (v.fill === 'none') out.fillType = 'none';
     }
-    await api.mutateApi(p.kind === 'picture' ? 'setPictureProperties' : 'setShapeProperties', [o.s, o.p, o.ctrl, JSON.stringify(out)], { pos: api.pos });
+    await writeProps(o, p.kind, out);
     await reselect(o);
   }
 
@@ -232,16 +242,71 @@ export function installObjects(api) {
       place(q);
       if (!multi) {
         for (const h of handles) { const d = document.createElement('div'); d.className = `obj-handle h-${h}`; d.dataset.h = h; f.append(d); }
+        if (q.type === 'line') {   // 선: 시작·끝 점을 끌어 옮긴다(엔진이 점 좌표를 받는다)
+          getProps(q).then((p) => {
+            if (!p || !layers.includes(layer)) return;
+            const hf = !!p.horzFlip, vf = !!p.vertFlip;
+            for (const [k, fx, fy] of [['start', hf ? 1 : 0, vf ? 1 : 0], ['end', hf ? 0 : 1, vf ? 0 : 1]]) {
+              const d = document.createElement('div'); d.className = 'obj-endpoint'; d.dataset.h = 'end'; d.dataset.end = k; d.title = k === 'start' ? TO.lineStart : TO.lineEnd;
+              d.style.left = `${fx * 100}%`; d.style.top = `${fy * 100}%`; f.append(d);
+            }
+          }).catch(() => {});
+        }
         if (q.type === 'shape' || q.type === 'image') {
           const rh = document.createElement('div'); rh.className = 'obj-rot'; rh.title = TO.rotate; rh.dataset.h = 'rot'; f.append(rh);
           getProps(q).then((p) => { if (p?.rotationAngle && layers.includes(layer)) f.style.transform = `rotate(${p.rotationAngle}deg)`; }).catch(() => {});
         }
-        f.addEventListener('pointerdown', (e) => (e.target.dataset?.h === 'rot' ? startRotate(e, q, f) : startDrag(e, q, f, place)));
-      } else f.style.pointerEvents = 'none';
+        f.addEventListener('pointerdown', (e) => (e.target.dataset?.h === 'rot' ? startRotate(e, q, f) : e.target.dataset?.h === 'end' ? startEndpoint(e, q, f) : startDrag(e, q, f, place)));
+      } else { f.style.cursor = 'move'; f.addEventListener('pointerdown', (e) => startMulti(e, list)); }
       layer.append(f); el.append(layer); layers.push(layer);
     }
   }
   api.onObject((o, all) => { drawFrame(o, all); refreshState(); });
+
+  /** 선의 시작·끝 점 끌기: 쪽 좌표(px)로 새 점을 구해 엔진에 HWPUNIT 절대 좌표로 넘긴다. */
+  function startEndpoint(e, o, f) {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const which = e.target.dataset.end, el = api.viewer.pageEls[o.page], z = api.zoom, h = e.target;
+    getProps(o).then((p) => {
+      const hf = !!p?.horzFlip, vf = !!p?.vertFlip;
+      const startPt = { x: hf ? o.x + o.w : o.x, y: vf ? o.y + o.h : o.y }, endPt = { x: hf ? o.x : o.x + o.w, y: vf ? o.y : o.y + o.h };
+      const at = (ev) => { const b = el.getBoundingClientRect(); return { x: (ev.clientX - b.left) / z, y: (ev.clientY - b.top) / z }; };
+      let pt = which === 'start' ? startPt : endPt;
+      const move = (ev) => { pt = at(ev); const b = f.getBoundingClientRect(), eb = el.getBoundingClientRect(); h.style.left = `${((pt.x * z + eb.left - b.left) / b.width) * 100}%`; h.style.top = `${((pt.y * z + eb.top - b.top) / b.height) * 100}%`; };
+      const up = (ev) => {
+        window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+        pt = at(ev);
+        const a = which === 'start' ? pt : startPt, b = which === 'start' ? endPt : pt;
+        run(async () => { await api.mutateApi('moveLineEndpoint', [o.s, o.p, o.ctrl, Math.round(a.x * HU), Math.round(a.y * HU), Math.round(b.x * HU), Math.round(b.y * HU)], { pos: api.pos }); await reselect(o); });
+      };
+      window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+    }).catch(() => {});
+  }
+  /** 여러 개를 고른 채 하나를 끌면 모두 같은 만큼 옮긴다(글자처럼 놓인 개체는 옮기지 않는다). */
+  function startMulti(e, list) {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const z = api.zoom, x0 = e.clientX, y0 = e.clientY, frames = [...layers].map((l) => l.firstChild);
+    const move = (ev) => { const dx = ev.clientX - x0, dy = ev.clientY - y0; for (const f of frames) f.style.transform = `translate(${dx}px, ${dy}px)`; };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      const dx = (ev.clientX - x0) / z, dy = (ev.clientY - y0) / z;
+      if (Math.abs(dx) + Math.abs(dy) < 1) { for (const f of frames) f.style.transform = ''; return; }
+      run(() => moveMany(list, dx, dy));
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  }
+  async function moveMany(list, dx, dy) {
+    for (const o of list) {
+      const p = await getProps(o); if (!p || p.treatAsChar) continue;
+      const out = { horzRelTo: 'Paper', horzAlign: 'Left', horzOffset: Math.max(0, Math.round((o.x + dx) * HU)), vertRelTo: 'Paper', vertAlign: 'Top', vertOffset: Math.max(0, Math.round((o.y + dy) * HU)) };
+      await writeProps(o, p.kind, out);
+    }
+    // 옮긴 개체들을 다시 고른다(처음 것은 새로 고르고 나머지는 더한다)
+    let first = true;
+    for (const o of list) { const r = await api.req('objfind', { page: o.page, s: o.s, p: o.p, ctrl: o.ctrl, cell: o.cell }); if (r.obj) { api.selectObj(r.obj, !first); first = false; } }
+  }
 
   /** 회전 손잡이: 틀 가운데에서 포인터까지의 각도로 돌린다(위쪽이 0도, 시계 방향). Shift는 15도 단위. */
   function startRotate(e, o, f) {
@@ -255,7 +320,7 @@ export function installObjects(api) {
     const up = (ev) => {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
       deg = angle(ev);
-      run(async () => { await api.mutateApi(o.type === 'image' ? 'setPictureProperties' : 'setShapeProperties', [o.s, o.p, o.ctrl, JSON.stringify({ rotationAngle: deg })], { pos: api.pos }); await reselect(o); });
+      run(async () => { await writeProps(o, o.type === 'image' ? 'picture' : 'shape', { rotationAngle: deg }); await reselect(o); });
     };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   }
@@ -300,7 +365,7 @@ export function installObjects(api) {
       Object.assign(out, { horzRelTo: 'Paper', horzAlign: 'Left', horzOffset: Math.max(0, Math.round(box.x * HU)), vertRelTo: 'Paper', vertAlign: 'Top', vertOffset: Math.max(0, Math.round(box.y * HU)) });
     }
     if (!Object.keys(out).length) return;
-    await api.mutateApi(p.kind === 'picture' ? 'setPictureProperties' : 'setShapeProperties', [o.s, o.p, o.ctrl, JSON.stringify(out)], { pos: api.pos });
+    await writeProps(o, p.kind, out);
     await reselect(o);
   }
 
@@ -319,10 +384,12 @@ export function installObjects(api) {
   // 개체를 골랐는지에 따라 단추를 켜고 끈다
   function refreshState() {
     const has = !!api.obj;
-    btns.group.disabled = api.objs.length < 2;
-    btns.textIn.disabled = !(has && api.obj.type === 'shape'); btns.textOut.disabled = btns.textIn.disabled;
+    const cellObj = has && api.objs.some((q) => q.cell);
     for (const k of ['props', 'front', 'back', 'forward', 'backward', 'copy', 'del']) { btns[k].disabled = !has; btns[k].title = has ? btns[k].getAttribute('aria-label') : `${btns[k].getAttribute('aria-label')} — ${TO.needObj}`; }
-    btns.ungroup.disabled = !(has && api.obj.type === 'group');
+    btns.group.disabled = api.objs.length < 2 || cellObj;
+    btns.textIn.disabled = !(has && api.obj.type === 'shape') || cellObj; btns.textOut.disabled = btns.textIn.disabled;
+    btns.ungroup.disabled = !(has && api.obj.type === 'group') || cellObj;
+    for (const k of ['front', 'back', 'forward', 'backward', 'copy']) if (cellObj) { btns[k].disabled = true; btns[k].title = `${btns[k].getAttribute('aria-label')} — ${TO.cellNo}`; }
     btns.paste.disabled = false;
   }
   api.onContext(refreshState);

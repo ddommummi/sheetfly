@@ -430,6 +430,131 @@ test('개체: 도형에 글 넣기(글상자 붙이기)로 안에 글을 쓴다'
   await done(page);
 });
 
+test('눈금자: 문단 왼쪽 여백 표지를 끌어 들여쓴다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await page.keyboard.type('RulerPara', { delay: 40 }); await settle(page);
+  await tab(page, 'view'); await page.waitForTimeout(200);
+  await tbtn(page, '눈금자').click(); await settle(page);
+  await page.waitForSelector('.ruler-mk.left', { timeout: 10000 });
+  const z = await page.evaluate(() => Number(document.querySelector('.page').getBoundingClientRect().width) / 793.7);
+  const m = await page.locator('.ruler-mk.left').boundingBox();
+  await page.mouse.move(m.x + m.width / 2, m.y + m.height / 2); await page.mouse.down();
+  await page.mouse.move(m.x + m.width / 2 + 40 * z, m.y + m.height / 2, { steps: 6 }); await page.mouse.up(); await settle(page);
+  const r = await saveAndParse(page);
+  const f = find(r.doc, 'RulerPara'); assert.ok(f.found);
+  const para = JSON.parse(r.doc.getParaPropertiesAt(f.sec, f.para));
+  assert.ok(para.marginLeft > 30 && para.marginLeft < 50, `왼쪽 여백 ${para.marginLeft}`);
+  await done(page);
+});
+
+test('목차 넣기: 개요(번호 있는 제목)로 목차 글을 캐럿 자리에 넣는다', async () => {
+  const page = await newPage();
+  await open(page, 'hwp-multi-002.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await tbtn(page, '목차 넣기…').click(); await page.waitForSelector('dialog[open]');
+  await submit(page); await settle(page);
+  const r = await saveAndParse(page, { warn: true });
+  const f = find(r.doc, '목 차'); assert.ok(f.found, '목차 제목');
+  let dots = false;
+  for (let p = f.para; p < Math.min(f.para + 12, r.doc.getParagraphCount(f.sec)) && !dots; p++) { const l = r.doc.getParagraphLength(f.sec, p); if (l && r.doc.getTextRange(f.sec, p, 0, l).includes('···')) dots = true; }
+  assert.ok(dots, '점 줄로 이은 항목');
+  await done(page);
+});
+
+test('개체: 선의 끝 점을 끌어 옮긴다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-shape', 'line'); await page.waitForSelector('.obj-endpoint[data-end="end"]'); await settle(page);
+  const z = await page.evaluate(() => Number(document.querySelector('.page').getBoundingClientRect().width) / 793.7);
+  const h = await page.locator('.obj-endpoint[data-end="end"]').boundingBox();
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2); await page.mouse.down();
+  await page.mouse.move(h.x + h.width / 2 + 80 * z, h.y + h.height / 2 + 40 * z, { steps: 6 }); await page.mouse.up(); await settle(page);
+  const r = await saveAndParse(page);
+  const ln = controlsOf(r.doc, 'line'); assert.ok(ln.length >= 1, '선');
+  const c = ln[ln.length - 1];
+  assert.ok(c.w > 200 && c.h > 100, `끝 점을 옮긴 뒤 선 크기 ${c.w}x${c.h}`);
+  await done(page);
+});
+
+test('개체: 여러 개를 고른 채 하나를 끌면 모두 함께 옮겨진다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-shape', 'ellipse'); await page.waitForSelector('.obj-frame'); await settle(page);
+  const z = await page.evaluate(() => Number(document.querySelector('.page').getBoundingClientRect().width) / 793.7);
+  const fa = await page.locator('.obj-frame').boundingBox();
+  await page.mouse.move(fa.x + fa.width / 2, fa.y + fa.height / 2); await page.mouse.down();
+  await page.mouse.move(fa.x + fa.width / 2 + 250 * z, fa.y + fa.height / 2, { steps: 6 }); await page.mouse.up(); await settle(page);
+  await page.waitForFunction((x0) => { const f = document.querySelector('.obj-frame'); return f && f.getBoundingClientRect().x > x0 + 100; }, fa.x, { timeout: 10000 });
+  const aBox = await page.locator('.obj-frame').boundingBox();
+  await page.keyboard.press('Escape'); await settle(page);
+  await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(aBox.x + aBox.width / 2, aBox.y + aBox.height / 2);
+  await page.keyboard.up('Shift'); await settle(page);
+  await page.waitForFunction(() => document.querySelectorAll('.obj-frame.multi').length === 2, null, { timeout: 10000 });
+  const before = await page.locator('.obj-frame.multi').first().boundingBox();
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2); await page.mouse.down();
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2 + 60 * z, { steps: 6 }); await page.mouse.up(); await settle(page);
+  await page.waitForFunction((y0) => { const fs = [...document.querySelectorAll('.obj-frame')]; return fs.length === 2 && fs.every((f) => f.getBoundingClientRect().y > y0 + 40); }, before.y, { timeout: 10000 });
+  const r = await saveAndParse(page);
+  const sh = controlsOf(r.doc, 'shape').slice(-2);
+  assert.equal(sh.length, 2);
+  for (const c of sh) assert.ok(c.y > 340, `두 개체가 함께 아래로 갔다(y=${c.y})`);
+  await done(page);
+});
+
+test('표 칸 안의 그림을 눌러 고르고, 크기를 바꾸고, 지운다', async () => {
+  const page = await newPage();
+  await open(page, 'KTX.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+  await page.fill('#page-input', '1'); await page.keyboard.press('Enter'); await page.waitForTimeout(800);
+  const pb = await page.locator('.page').first().boundingBox(); const sc = pb.width / 793.7;
+  // 첫 쪽 아래쪽(표 칸 안) 그림: 쪽 좌표 (200, 945)
+  await page.locator('.page').first().evaluate((el) => el.scrollIntoView({ block: 'end' })); await page.waitForTimeout(500);
+  const pb2 = await page.locator('.page').first().boundingBox();
+  await page.mouse.click(pb2.x + 200 * sc, pb2.y + 945 * sc); await settle(page);
+  await page.waitForSelector('.obj-frame', { timeout: 8000 });
+  assert.equal(await page.locator('.obj-frame').first().getAttribute('data-type'), 'image');
+  // 크기: 오른쪽 아래 손잡이를 안쪽으로 끌기(칸 안 그림은 글자처럼 놓여 크기만 바뀐다)
+  const h = await page.locator('.obj-frame .obj-handle.h-se').boundingBox(), fb = await page.locator('.obj-frame').boundingBox();
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2); await page.mouse.down();
+  await page.mouse.move(h.x + h.width / 2 - 60 * sc, h.y + h.height / 2 - 12 * sc, { steps: 6 }); await page.mouse.up(); await settle(page);
+  await page.waitForFunction((w0) => document.querySelector('.obj-frame')?.getBoundingClientRect().width < w0 - 20, fb.width, { timeout: 10000 });
+  await page.keyboard.press('Delete'); await settle(page);
+  const r = await saveAndParse(page, { warn: true });
+  const imgs = controlsOf(r.doc, 'image').filter((c) => c.page === 0);
+  assert.equal(imgs.length, 1, `칸 안 그림 하나가 남았다(${imgs.length})`);
+  await done(page);
+});
+
+test('중첩(안쪽) 표: 칸 너비를 같게 맞추고, 안쪽 표를 지운다', async () => {
+  const page = await newPage();
+  await open(page, 'inner-table-01.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+  await page.fill('#page-input', '2'); await page.keyboard.press('Enter'); await page.waitForTimeout(1000);
+  let box, prev = null;
+  for (let i = 0; i < 40; i++) { await page.waitForTimeout(150); box = await page.locator('.page').nth(1).boundingBox(); if (prev && Math.abs(prev.y - box.y) < 0.5 && box.y > 0 && box.y < 300) break; prev = box; }
+  const sc = box.width / 793.7;
+  await page.mouse.click(box.x + 230 * sc, box.y + 447 * sc); await settle(page);
+  await tab(page, 'table'); await page.waitForTimeout(300);
+  assert.equal(await tbtn(page, '표 지우기').isDisabled(), false, '안쪽 표에서 표 지우기를 쓸 수 있다');
+  assert.equal(await tbtn(page, '아래에 줄 넣기').isDisabled(), true, '안쪽 표에서 줄 넣기는 막힌다');
+  await tbtn(page, '너비 같게').click(); await settle(page);
+  const r = await saveAndParse(page, { warn: true });
+  const path = JSON.stringify([{ controlIndex: 2, cellIndex: 13, cellParaIndex: 4 }, { controlIndex: 0, cellIndex: 0, cellParaIndex: 0 }]);
+  const w = (c) => JSON.parse(r.doc.getCellPropertiesByPath(0, 0, path, c)).width;
+  assert.ok(Math.abs(w(0) - w(1)) < 400, `두 칸 너비가 비슷하다(${w(0)} / ${w(1)})`);
+  await tbtn(page, '표 지우기').click(); await page.waitForSelector('dialog[open]');
+  await page.click('dialog[open] .btn.primary'); await settle(page);
+  const r2 = await saveAndParse(page, { warn: true });
+  assert.throws(() => r2.doc.getTableDimensionsByPath(0, 0, path), '안쪽 표가 지워졌다');
+  await done(page);
+});
+
 // ── 쪽·머리글·각주 ──
 const clickBtn = (page, label) => page.locator(`#edit-bar [aria-label="${label}"]`).click();
 async function submit(page) { await page.click('dialog[open] button[type=submit]'); await settle(page); }
