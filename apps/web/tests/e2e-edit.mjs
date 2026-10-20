@@ -469,6 +469,44 @@ test('입력: 하이퍼링크·책갈피·누름틀, 서식: 스타일·번호',
   await done(page);
 });
 
+test('번호 모양(가. 나.)·스타일 갱신·개요 이동', async () => {
+  const page = await newPage();
+  await open(page, 'hwp_table_test.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+  await page.keyboard.type('번호문단', { delay: 40 }); await settle(page);
+  await tab(page, 'format'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-list', 'n8'); await settle(page);
+  // 현재(굵게) 모양으로 '본문'(0번) 스타일 갱신
+  await page.keyboard.down('Shift'); for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft', { delay: 40 }); await page.keyboard.up('Shift'); await settle(page);
+  await page.click('#edit-bar .fmt-b'); await settle(page);
+  await page.keyboard.press('ArrowRight'); await settle(page);
+  await clickBtn(page, '스타일…'); await page.waitForSelector('dialog[open]');
+  const sels = page.locator('dialog[open] select');
+  await sels.nth(0).selectOption('shape'); await sels.nth(1).selectOption({ label: '본문' }); await submit(page); await settle(page);
+  const r = await saveAndParse(page, { warn: true });
+  const f = find(r.doc, '번호문단'); assert.ok(f.found);
+  const pa = JSON.parse(r.doc.getParaPropertiesAt(f.sec, f.para));
+  assert.equal(pa.headType, 'Number');
+  const nums = JSON.parse(r.doc.getNumberingList());
+  assert.ok(nums.length >= 2, '번호 정의가 새로 만들어졌다');
+  const body = JSON.parse(r.doc.getStyleList()).find((x) => x.name === '본문');
+  assert.ok(body, '본문 스타일');
+  assert.equal(JSON.parse(r.doc.getStyleDetail(body.id)).charProps.bold, true);
+  await done(page);
+});
+
+test('개요…: 번호 있는 제목 목록에서 골라 이동', async () => {
+  const page = await newPage();
+  await open(page, 'hwp-multi-002.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+  await tab(page, 'view'); await page.waitForTimeout(200);
+  await clickBtn(page, '개요…'); await page.waitForSelector('dialog[open]');
+  const n = await page.locator('dialog[open] select option').count();
+  assert.ok(n > 1, `개요 항목 ${n}`);
+  await page.locator('dialog[open] select').selectOption(String(n - 1)); await submit(page); await settle(page);
+  await done(page);
+});
+
 // ── 새 문서·저장 옵션 ──
 test('새 문서: 만들자마자 편집·저장(이름은 "새 문서.hwp"), 암호 저장, 텍스트로 저장', async () => {
   const page = await newPage();

@@ -5,19 +5,21 @@ const TM = {
   linkFail: '이 문단에는 링크를 붙일 수 없습니다(개체·여러 문단 필드가 있는 문단).',
   action: '작업', bmActions: [['add', '캐럿 자리에 추가'], ['goto', '책갈피로 이동'], ['rename', '이름 바꾸기'], ['delete', '지우기']], bmName: '이름', bmPick: '책갈피 고르기', noBm: '(책갈피 없음)',
   fActions: [['new', '누름틀 만들기'], ['fill', '값 넣기'], ['remove', '캐럿의 누름틀 지우기']], guide: '안내문', memo: '메모', fname: '이름', fpick: '누름틀 고르기', fvalue: '값', noField: '(누름틀 없음)',
-  style: '스타일', styleBtn: '스타일…', styleActions: [['new', '새 스타일'], ['rename', '이름 바꾸기'], ['delete', '지우기']], styleName: '스타일 이름', stylePick: '대상 스타일',
-  list: '번호·글머리', lists: [['', '목록 모양'], ['none', '없음'], ['num', '1. 2. 3.'], ['b●', '● 글머리'], ['b■', '■ 글머리'], ['b◆', '◆ 글머리'], ['b○', '○ 글머리'], ['b▶', '▶ 글머리'], ['b-', '- 글머리']],
+  style: '스타일', styleBtn: '스타일…', styleActions: [['new', '새 스타일'], ['rename', '이름 바꾸기'], ['shape', '현재 모양으로 스타일 갱신'], ['delete', '지우기']], styleName: '스타일 이름', stylePick: '대상 스타일',
+  list: '번호·글머리', lists: [['', '목록 모양'], ['none', '없음'], ['num', '1. 2. 3.'], ['n8', '가. 나. 다.'], ['n1', '① ② ③'], ['n2', 'I. II. III.'], ['n4', 'A. B. C.'], ['n10', 'ㄱ. ㄴ. ㄷ.'], ['n12', '일. 이. 삼.'], ['b●', '● 글머리'], ['b■', '■ 글머리'], ['b◆', '◆ 글머리'], ['b○', '○ 글머리'], ['b▶', '▶ 글머리'], ['b-', '- 글머리']],
   lvUp: '수준 올리기', lvDown: '수준 내리기',
   findTab: '찾기', findLabel: '찾을 말', replLabel: '바꿀 말', next: '다음', prev: '이전', repl: '바꾸기', replAll: '모두 바꾸기', cs: '대소문자 구분', noMatch: '찾지 못했습니다.', replaced: (n) => `${n}곳을 바꿨습니다.`,
   wrapped: '문서 처음(끝)으로 돌아가 찾았습니다.', found: (n) => `${n}곳 중에서 찾았습니다.`,
   formula: '계산식…', formulaLabel: '계산식', formulaHint: '예) =SUM(A1:A4), =A1+B2*3 (칸 이름은 열 A·B…, 줄 1·2…)', formulaFail: '계산식을 계산하지 못했습니다.',
   chart: '차트 값…', noChart: '차트를 클릭해 고른 뒤 누르세요.', chartHint: '값만 고칩니다. 줄마다 "계열 이름: 값, 값, …" — 개수는 그대로여야 합니다.', chartFail: '차트 값을 바꾸지 못했습니다(개수가 달라졌거나 숫자가 아닙니다).',
+  outline: '개요…', outlineTitle: '번호가 매겨진 제목 목록에서 골라 이동합니다', outlinePick: '제목', noOutline: '번호가 매겨진 제목(개요)이 없습니다.',
   ok: '확인', del: '지우기', no: '취소',
 };
 
 export function installMisc(api) {
   const run = (fn) => api.enqueue(fn);
   const mk = (label, title, fn) => { const b = api.btn('', label, title ?? label, fn); b.setAttribute('aria-label', label); return b; };
+  const numIds = new Map();
   const q = async (fn, args) => (await api.req('q', { fn, args })).result;
   const target = (pos) => ({ section: pos.s, para: pos.p, cellPath: (pos.path ?? []).map((x) => [x.controlIndex, x.cellIndex, x.cellParaIndex]) });
 
@@ -125,6 +127,10 @@ export function installMisc(api) {
     if (!v) return;
     if (v.act === 'new' && v.name.trim()) await api.mutateApi('createStyle', [JSON.stringify({ name: v.name.trim(), englishName: v.name.trim(), type: 0, nextStyleId: 0 })]);
     else if (v.act === 'rename' && v.name.trim()) await api.mutateApi('updateStyle', [Number(v.pick), JSON.stringify({ name: v.name.trim() })]);
+    else if (v.act === 'shape' && api.pos) {
+      const r = await api.req('stylefromcaret', { style: Number(v.pick), pos: api.pos });
+      api.setDirty(true); api.viewer.refresh(r.sizes, {}); await api.placeCaret(api.pos);
+    }
     else if (v.act === 'delete' && Number(v.pick) !== 0) await api.mutateApi('deleteStyle', [Number(v.pick)]);
     await loadStyles();
   }
@@ -136,7 +142,14 @@ export function installMisc(api) {
     if (!kind) return;
     let props;
     if (kind === 'none') props = { headType: 'None', numberingId: 0, paraLevel: 0 };
-    else if (kind === 'num') { const id = (await api.mutateApi('ensureDefaultNumbering', [])) ?? 1; props = { headType: 'Number', numberingId: Number(id) || 1, paraLevel: 0 }; }
+    else if (/^n\d+$/.test(kind)) {   // 번호 모양 만들기(한 번 만든 모양은 다시 쓴다)
+      const code = Number(kind.slice(1));
+      const levelFormats = code === 1 ? ['^1', '^2', '^3', '^4', '^5', '^6', '^7'] : ['^1.', '^2)', '(^3)', '^4', '^5', '^6', '^7'];
+      const numberFormats = [code, 0, 8, 0, 0, 0, 0];
+      let id = numIds.get(code);                       // getNumberingList는 숫자 모양을 알려주지 않아, 만든 것을 기억해 재사용한다
+      if (id == null) { id = Number(await api.mutateApi('createNumbering', [JSON.stringify({ levelFormats, numberFormats, startNumber: 1 })])); numIds.set(code, id); }
+      props = { headType: 'Number', numberingId: id || 1, paraLevel: 0 };
+    } else if (kind === 'num') { const id = (await api.mutateApi('ensureDefaultNumbering', [])) ?? 1; props = { headType: 'Number', numberingId: Number(id) || 1, paraLevel: 0 }; }
     else { const id = (await api.mutateApi('ensureDefaultBullet', [kind.slice(1)])) ?? 1; props = { headType: 'Bullet', numberingId: Number(id) || 1, paraLevel: 0 }; }
     const [x, y] = await paraRange();
     const r = await api.req('parafmt', { a: x, b: y, props });
@@ -203,6 +216,17 @@ export function installMisc(api) {
   }));
   tg.append(fBtn);
   api.onContext(() => { fBtn.disabled = !api.tbl; });
+
+  // ── 보기 탭: 개요(번호 있는 제목으로 이동) ──
+  const vg = api.group('view');
+  vg.append(mk(TM.outline, TM.outlineTitle, () => run(async () => {
+    const o = (await q('getOutlineNavigation', []))?.outline ?? [];
+    if (!o.length) { api.status(TM.noOutline); return; }
+    const v = await api.form(TM.outline, [{ key: 'i', label: TM.outlinePick, type: 'select', size: 10, value: '0', options: o.map((x, i) => [String(i), `${'　'.repeat(Math.max(0, x.level - 1))}${x.number} ${x.title} (${x.page}쪽)`]) }]);
+    if (!v) return;
+    const x = o[Number(v.i)];
+    if (x) await api.placeCaret({ s: x.section, p: x.paragraph, o: 0, path: null });
+  })));
 
   // ── 양식 개체(선택 상자·라디오·입력·콤보): 누르면 값이 바뀐다 ──
   api.onForm(async (f) => {

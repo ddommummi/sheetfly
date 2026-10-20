@@ -26,6 +26,7 @@ export function askForm(title, fields, labels) {
         if (f.type === 'select') {
           i = document.createElement('select'); i.className = 'select';
           for (const [v, text] of f.options ?? []) { const o = document.createElement('option'); o.value = v; o.textContent = text; i.append(o); }
+          if (f.size) i.size = f.size;
           i.value = String(f.value ?? '');
         } else if (f.type === 'textarea') {
           i = document.createElement('textarea'); i.className = 'search-input dialog-text'; i.rows = f.rows ?? 5; i.value = String(f.value ?? '');

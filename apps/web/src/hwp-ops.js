@@ -17,12 +17,12 @@ export const MUT = new Set([
   // 링크·책갈피·필드·양식·스타일·번호·차트
   'insertHyperlinkEx', 'updateHyperlinkEx', 'removeHyperlinkEx', 'replaceHyperlinkTextEx', 'addBookmark', 'deleteBookmark', 'renameBookmark',
   'insertClickHereField', 'updateClickHereProps', 'removeFieldAt', 'renameField', 'setFieldValue', 'setFieldValueByName', 'setFormValue',
-  'applyStyle', 'createStyle', 'updateStyle', 'deleteStyle', 'ensureDefaultNumbering', 'ensureDefaultBullet', 'createNumbering', 'setNumberingRestart', 'setChartData', 'setChartDataByIndex',
+  'applyStyle', 'updateStyleShapes', 'createStyle', 'updateStyle', 'deleteStyle', 'ensureDefaultNumbering', 'ensureDefaultBullet', 'createNumbering', 'setNumberingRestart', 'setChartData', 'setChartDataByIndex',
   'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt',
 ]);
 /** 문서를 바꾸지 않는 조회 API. */
 export const QRY = new Set([
-  'getHyperlinkContext', 'getBookmarks', 'getFieldList', 'getFieldValue', 'getClickHereProps', 'getFormObjectAt', 'getFormValue', 'getStyleList', 'getStyleAt', 'getStyleDetail',
+  'getOutlineNavigation', 'getHyperlinkContext', 'getBookmarks', 'getFieldList', 'getFieldValue', 'getClickHereProps', 'getFormObjectAt', 'getFormValue', 'getStyleList', 'getStyleAt', 'getStyleDetail',
   'getNumberingList', 'getBulletList', 'listCharts', 'getChartData', 'getChartDataByIndex', 'getLineInfo', 'getHyperlinkContext',
   'getPageDef', 'getSectionDef', 'getColumnDef', 'getPageBorderFill', 'getPageHide', 'getPageInfo', 'getHeaderFooter', 'getHeaderFooterParaInfo', 'getHeaderFooterList', 'getFootnoteInfo',
   'copyControl', 'clipboardHasControl', 'getPictureProperties', 'getShapeProperties', 'getEquationProperties', 'getShapeBBox', 'getPageControlLayout', 'getObjects',
@@ -52,6 +52,7 @@ export function ext(c, m) {
     }
     case 'objfind': return { obj: findObject(doc, J, m.page, m.s, m.p, m.ctrl) };
     case 'objprops': return { props: objProps(doc, J, m.obj) };
+    case 'stylefromcaret': return styleFromCaret(c, m);
     case 'find': return find(c, m);
     case 'repl': return repl(c, m);
     case 'replall': return replAll(c, m);
@@ -363,4 +364,21 @@ function pasteRich(c, m) {
   function J2(v) { return typeof v === 'string' ? JSON.parse(v) : v; }
   if (!r) return { fallback: true, ...viewInfo(doc, st) };
   return { pos: r, rect: c.rectOf(doc, r), ...viewInfo(doc, st) };
+}
+
+// ── 스타일: 캐럿 자리의 글자·문단 모양으로 스타일 정의를 갱신한다 ──
+const CHAR_KEYS = ['bold', 'italic', 'underline', 'strikethrough', 'fontSize', 'textColor', 'shadeColor', 'underlineType', 'subscript', 'superscript', 'ratios', 'spacings', 'relativeSizes'];
+const PARA_KEYS = ['alignment', 'lineSpacing', 'lineSpacingType', 'indent', 'marginLeft', 'marginRight', 'spacingBefore', 'spacingAfter'];
+function styleFromCaret(c, m) {
+  const { doc, J, mutate, viewInfo, st } = c;
+  const ch = J(doc.getCharPropertiesAt(m.pos.s, m.pos.p, m.pos.o)), pa = J(doc.getParaPropertiesAt(m.pos.s, m.pos.p));
+  const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
+  const cm = pick(ch, CHAR_KEYS);
+  if (ch.fontFamilies) { const ids = [0, 1, 2, 3, 4, 5, 6].map((l) => doc.findOrCreateFontIdForLang(l, ch.fontFamilies[l])); if (ids.every((x) => x >= 0)) cm.fontIds = ids; }
+  // rhwp는 들여쓰기·여백을 96dpi 픽셀로 돌려주지만 쓸 때는 HWPUNIT(=150배)을 받는다
+  const pm = pick(pa, PARA_KEYS);
+  for (const k of ['indent', 'marginLeft', 'marginRight', 'spacingBefore', 'spacingAfter']) if (pm[k] !== undefined) pm[k] = Math.round(pm[k] * 150);
+  let ok = false;
+  mutate(() => { ok = doc.updateStyleShapes(m.style, JSON.stringify(cm), JSON.stringify(pm)); if (!ok) throw new Error('style update refused'); }, false);
+  return { ok, ...viewInfo(doc, st) };
 }
