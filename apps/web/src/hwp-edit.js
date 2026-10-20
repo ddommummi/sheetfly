@@ -76,18 +76,19 @@ function paraCount(doc, pos) { if (inHf(pos)) return isFn(pos) ? fnInfo(doc, pos
 /** 캐럿 좌표. 개체만 있는 문단 등 좌표를 구할 수 없는 자리면 null(편집 자체는 이미 적용된 상태이므로 예외로 만들지 않는다). */
 /** 머리글·바닥글·각주 영역을 누른 자리의 위치. 영역이 아니거나(머리글이 없으면 들어가지 않는다) 못 찾으면 null. */
 function hfHit(doc, m) {
+  const out = (pos) => { const c = clampPos(doc, pos) ?? pos; return { pos: c, rect: rectOf(doc, c) }; };   // 엔진이 빈 문단에서 글자 위치 1을 돌려주는 일이 있어 범위로 끌어온다
   // 끌어서 선택하는 중이면 영역을 벗어나도 그 머리글·바닥글 안에서 가장 가까운 자리로 잡는다(바깥으로 나가면 선택이 끊긴다)
   if (m.drag && m.hf && m.hf.k !== 'n') {
     try {
       const r = J(doc.hitTestInHeaderFooterTarget(m.page, m.s ?? 0, m.hf.k === 'h', m.hf.a, m.x, m.y));
-      if (r.hit) { const pos = { s: r.sectionIndex, p: r.paraIndex, o: r.charOffset, path: null, hf: { ...m.hf, pg: m.page } }; return { pos, rect: rectOf(doc, pos) }; }
+      if (r.hit) { const pos = { s: r.sectionIndex, p: r.paraIndex, o: r.charOffset, path: null, hf: { ...m.hf, pg: m.page } }; return out(pos); }
     } catch { /* 아래로 */ }
   }
   try {
     const t = J(doc.hitTestHeaderFooter(m.page, m.x, m.y));
     if (t.hit && J(doc.getHeaderFooter(t.sectionIndex, t.isHeader, t.applyTo)).exists) {
       const r = J(doc.hitTestInHeaderFooterTarget(m.page, t.sectionIndex, t.isHeader, t.applyTo, m.x, m.y));
-      if (r.hit) { const pos = { s: t.sectionIndex, p: r.paraIndex, o: r.charOffset, path: null, hf: { k: t.isHeader ? 'h' : 'f', a: t.applyTo, pg: m.page } }; return { pos, rect: rectOf(doc, pos) }; }
+      if (r.hit) { const pos = { s: t.sectionIndex, p: r.paraIndex, o: r.charOffset, path: null, hf: { k: t.isHeader ? 'h' : 'f', a: t.applyTo, pg: m.page } }; return out(pos); }
     }
   } catch { /* 머리글·바닥글이 아님 */ }
   try {
@@ -95,7 +96,7 @@ function hfHit(doc, m) {
     if (f.hit) {
       const at = J(doc.getPageFootnoteInfo(m.page, f.footnoteIndex)), r = J(doc.hitTestInFootnote(m.page, m.x, m.y));
       if (m.drag && m.hf?.k === 'n' && (at.paraIdx !== m.hf.bp || at.controlIdx !== m.hf.c)) return { keep: true };   // 끌다가 다른 각주 위로 가면 선택을 그대로 둔다
-      if (r.hit) { const pos = { s: at.sectionIdx, p: r.fnParaIndex, o: r.charOffset, path: null, hf: { k: 'n', pg: m.page, bp: at.paraIdx, c: at.controlIdx } }; return { pos, rect: rectOf(doc, pos) }; }
+      if (r.hit) { const pos = { s: at.sectionIdx, p: r.fnParaIndex, o: r.charOffset, path: null, hf: { k: 'n', pg: m.page, bp: at.paraIdx, c: at.controlIdx } }; return out(pos); }
     }
   } catch { /* 각주가 아님 */ }
   if (m.drag && m.hf) return { keep: true };

@@ -4,7 +4,10 @@
 const TO = {
   picture: '그림…', pictureTitle: '그림 파일을 캐럿 위치에 넣습니다', textbox: '글상자', shape: '도형', shapeTitle: '도형을 캐럿 위치 근처에 넣습니다', equation: '수식…',
   shapes: [['rectangle', '사각형'], ['ellipse', '타원'], ['line', '선'], ['arc', '호'], ['polygon', '삼각형'], ['connector-straight', '연결선']],
-  props: '속성…', front: '맨 앞으로', back: '맨 뒤로', forward: '앞으로', backward: '뒤로', copy: '복사', paste: '붙이기', ungroup: '묶음 풀기', del: '개체 지우기',
+  props: '속성…', front: '맨 앞으로', back: '맨 뒤로', forward: '앞으로', backward: '뒤로', copy: '복사', paste: '붙이기', ungroup: '묶음 풀기', group: '묶기', groupTitle: 'Shift+누르기로 고른 개체 여러 개를 하나로 묶습니다', del: '개체 지우기',
+  textIn: '글 넣기', textInTitle: '이 도형 안에 글을 쓸 수 있게 하고 캐럿을 둡니다(글상자 붙이기)', textOut: '글 떼기', textOutTitle: '도형에서 글상자를 떼어 냅니다(글은 없어집니다)',
+  textOutAsk: '도형 안의 글이 없어집니다', textOutYes: '글 떼기', textOutNo: '취소', textSec0: '글 넣기는 아직 첫 구역의 도형에서만 됩니다.', textNotShape: '도형을 고른 뒤 쓸 수 있습니다.',
+  needTwo: '묶을 개체를 Shift+누르기로 두 개 이상 고르세요', groupSec: '같은 구역의 개체만 묶을 수 있습니다', groupFail: '이 개체들은 묶을 수 없습니다.', rotate: '돌리기(끌어서 회전, Shift는 15도씩)',
   needObj: '그림·도형을 클릭해 고르세요', noPaste: '붙일 개체가 없습니다(먼저 개체를 복사하세요)',
   w: '너비(mm)', h: '높이(mm)', wrap: '배치', wraps: [['TreatAsChar', '글자처럼'], ['TopAndBottom', '자리 차지'], ['Square', '어울림'], ['InFrontOfText', '글 앞으로'], ['BehindText', '글 뒤로']],
   hflip: '좌우 뒤집기', vflip: '상하 뒤집기', rot: '회전(도)', desc: '설명(대체 글)', bright: '밝기', contrast: '대비', effect: '효과', effects: [['RealPic', '원래 그림'], ['GrayScale', '회색조'], ['BlackWhite', '흑백']],
@@ -109,7 +112,10 @@ export function installObjects(api) {
       const res = await api.mutateApi('pasteControl', [pos.s, pos.p, pos.o], { pos });
       await selectAfter(pos.s, res?.paraIdx, res?.controlIdx, 'shape');
     })),
+    mk('object', 'group', TO.group, TO.groupTitle, () => run(groupSel)),
     mk('object', 'ungroup', TO.ungroup, TO.ungroup, () => run(async () => { const o = api.obj; if (!o || o.type !== 'group') return; await api.mutateApi('ungroupShape', [o.s, o.p, o.ctrl]); })),
+    mk('object', 'textIn', TO.textIn, TO.textInTitle, () => run(textIn)),
+    mk('object', 'textOut', TO.textOut, TO.textOutTitle, () => run(textOut)),
     mk('object', 'del', TO.del, TO.del, () => run(deleteObj)),
   );
   let copied = false;
@@ -119,8 +125,40 @@ export function installObjects(api) {
     if (r.obj) api.selectObj(r.obj);
   }
   async function deleteObj() {
-    const o = api.obj; if (!o) return;
-    await api.mutateApi(DEL[o.type] ?? 'deleteShapeControl', [o.s, o.p, o.ctrl], { pos: api.pos });
+    // 여러 개를 골랐으면 모두 지운다(같은 문단 안에서 뒤의 개체부터 지워야 번호가 어긋나지 않는다)
+    const list = (api.objs.length ? [...api.objs] : (api.obj ? [api.obj] : [])).sort((a, b) => (b.s - a.s) || (b.p - a.p) || (b.ctrl - a.ctrl));
+    for (const o of list) await api.mutateApi(DEL[o.type] ?? 'deleteShapeControl', [o.s, o.p, o.ctrl], { pos: api.pos });
+  }
+  /** 고른 개체 여러 개를 하나의 묶음으로. */
+  async function groupSel() {
+    const all = api.objs;
+    if (all.length < 2) { api.status(TO.needTwo); return; }
+    if (all.some((o) => o.s !== all[0].s)) { api.status(TO.groupSec); return; }
+    let r;
+    try { r = await api.mutateApi('groupShapes', [JSON.stringify({ sectionIdx: all[0].s, targets: all.map((o) => ({ paraIdx: o.p, controlIdx: o.ctrl })) })], { pos: api.pos }); } catch { api.status(TO.groupFail); return; }
+    if (r?.paraIdx == null) { api.status(TO.groupFail); return; }
+    await selectAfter(all[0].s, r.paraIdx, r.controlIdx, 'group', all[0].page);
+  }
+  /** 도형에 글상자를 붙이고(이미 있으면 그대로) 그 안에 캐럿을 둔다. 엔진 API가 구역을 받지 않아 첫 구역에서만 쓴다. */
+  async function textIn() {
+    const o = api.obj;
+    if (!o || o.type !== 'shape') { api.status(TO.textNotShape); return; }
+    if (o.s !== 0) { api.status(TO.textSec0); return; }
+    const p = await getProps(o); if (!p) return;
+    if (p.tbMarginLeft === undefined) await api.mutateApi('setTextBoxAt', [o.p, o.ctrl, true], { pos: api.pos });
+    const pos = { s: o.s, p: o.p, o: 0, path: [{ controlIndex: o.ctrl, cellIndex: 0, cellParaIndex: 0 }] };
+    const c = await api.req('caret', { pos });
+    // 빈 글상자는 엔진이 캐럿 좌표를 주지 않는다: 틀의 왼쪽 위 안쪽에 둔다(첫 글자를 넣으면 엔진이 좌표를 준다)
+    api.setCaret(pos, c.rect ?? { page: o.page, x: o.x + 4, y: o.y + 4, h: 16 });
+  }
+  async function textOut() {
+    const o = api.obj;
+    if (!o || o.type !== 'shape') { api.status(TO.textNotShape); return; }
+    if (o.s !== 0) { api.status(TO.textSec0); return; }
+    const p = await getProps(o); if (!p || p.tbMarginLeft === undefined) return;
+    if (!(await api.ask(TO.textOut, [TO.textOutAsk], TO.textOutYes, TO.textOutNo))) return;
+    await api.mutateApi('setTextBoxAt', [o.p, o.ctrl, false], { pos: api.pos });
+    await reselect(o);
   }
   const getProps = async (o) => (await api.req('objprops', { obj: o })).props;
 
@@ -179,21 +217,48 @@ export function installObjects(api) {
   const layers = [];
   const clearFrames = () => { for (const l of layers.splice(0)) l.remove(); };
   const handles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
-  function drawFrame(o) {
+  function drawFrame(o, all = []) {
     clearFrames();
     if (!o) return;
-    const el = api.viewer.pageEls[o.page];
-    if (!el) return;
-    const sz = api.viewer.sizes[o.page];
-    const layer = document.createElement('div'); layer.className = 'obj-layer';
-    const f = document.createElement('div'); f.className = 'obj-frame'; f.dataset.type = o.type;
-    const place = (box) => { f.style.left = `${(box.x / sz.w) * 100}%`; f.style.top = `${(box.y / sz.h) * 100}%`; f.style.width = `${(box.w / sz.w) * 100}%`; f.style.height = `${(box.h / sz.h) * 100}%`; };
-    place(o);
-    for (const h of handles) { const d = document.createElement('div'); d.className = `obj-handle h-${h}`; d.dataset.h = h; f.append(d); }
-    layer.append(f); el.append(layer); layers.push(layer);
-    f.addEventListener('pointerdown', (e) => startDrag(e, o, f, place));
+    const list = all.length ? all : [o];
+    const multi = list.length > 1;
+    for (const q of list) {
+      const el = api.viewer.pageEls[q.page];
+      if (!el) continue;
+      const sz = api.viewer.sizes[q.page];
+      const layer = document.createElement('div'); layer.className = 'obj-layer';
+      const f = document.createElement('div'); f.className = multi ? 'obj-frame multi' : 'obj-frame'; f.dataset.type = q.type;
+      const place = (box) => { f.style.left = `${(box.x / sz.w) * 100}%`; f.style.top = `${(box.y / sz.h) * 100}%`; f.style.width = `${(box.w / sz.w) * 100}%`; f.style.height = `${(box.h / sz.h) * 100}%`; };
+      place(q);
+      if (!multi) {
+        for (const h of handles) { const d = document.createElement('div'); d.className = `obj-handle h-${h}`; d.dataset.h = h; f.append(d); }
+        if (q.type === 'shape' || q.type === 'image') {
+          const rh = document.createElement('div'); rh.className = 'obj-rot'; rh.title = TO.rotate; rh.dataset.h = 'rot'; f.append(rh);
+          getProps(q).then((p) => { if (p?.rotationAngle && layers.includes(layer)) f.style.transform = `rotate(${p.rotationAngle}deg)`; }).catch(() => {});
+        }
+        f.addEventListener('pointerdown', (e) => (e.target.dataset?.h === 'rot' ? startRotate(e, q, f) : startDrag(e, q, f, place)));
+      } else f.style.pointerEvents = 'none';
+      layer.append(f); el.append(layer); layers.push(layer);
+    }
   }
-  api.onObject((o) => { drawFrame(o); refreshState(); });
+  api.onObject((o, all) => { drawFrame(o, all); refreshState(); });
+
+  /** 회전 손잡이: 틀 가운데에서 포인터까지의 각도로 돌린다(위쪽이 0도, 시계 방향). Shift는 15도 단위. */
+  function startRotate(e, o, f) {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const r0 = f.getBoundingClientRect();
+    const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+    const angle = (ev) => { let a = (Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI + 90; a = ((a % 360) + 360) % 360; if (ev.shiftKey) a = Math.round(a / 15) * 15 % 360; return Math.round(a); };
+    let deg = 0;
+    const move = (ev) => { deg = angle(ev); f.style.transform = `rotate(${deg}deg)`; };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      deg = angle(ev);
+      run(async () => { await api.mutateApi(o.type === 'image' ? 'setPictureProperties' : 'setShapeProperties', [o.s, o.p, o.ctrl, JSON.stringify({ rotationAngle: deg })], { pos: api.pos }); await reselect(o); });
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  }
 
   function startDrag(e, o, f, place) {
     if (e.button !== 0) return;
@@ -246,6 +311,7 @@ export function installObjects(api) {
     if (k === 'Delete' || k === 'Backspace') { run(deleteObj); return true; }
     if (k === 'Escape') { api.clearObj(); return true; }
     const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+    if (d && api.objs.length > 1) return true;   // 여러 개를 골랐을 때 화살표는 쓰지 않는다(하나씩 옮기려면 하나만 고른다)
     if (d) { const step = e.shiftKey ? 10 : 1; run(() => applyBox(o, { x: o.x + d[0] * step, y: o.y + d[1] * step, w: o.w, h: o.h }, 'move')); return true; }
     return false;
   });
@@ -253,6 +319,8 @@ export function installObjects(api) {
   // 개체를 골랐는지에 따라 단추를 켜고 끈다
   function refreshState() {
     const has = !!api.obj;
+    btns.group.disabled = api.objs.length < 2;
+    btns.textIn.disabled = !(has && api.obj.type === 'shape'); btns.textOut.disabled = btns.textIn.disabled;
     for (const k of ['props', 'front', 'back', 'forward', 'backward', 'copy', 'del']) { btns[k].disabled = !has; btns[k].title = has ? btns[k].getAttribute('aria-label') : `${btns[k].getAttribute('aria-label')} — ${TO.needObj}`; }
     btns.ungroup.disabled = !(has && api.obj.type === 'group');
     btns.paste.disabled = false;

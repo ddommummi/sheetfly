@@ -192,6 +192,9 @@ body[data-dirty] .file-name::after { content: " ●"; color: var(--accent); }
 /* 개체 선택 틀 */
 .obj-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .obj-frame { position: absolute; border: 1.5px solid var(--accent); box-sizing: border-box; pointer-events: auto; cursor: move; touch-action: none; }
+.obj-frame.multi { border-style: dashed; cursor: default; }
+.obj-rot { position: absolute; left: calc(50% - 5px); top: -24px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--surface); box-sizing: border-box; cursor: grab; }
+.obj-rot::after { content: ''; position: absolute; left: 3.5px; top: 8px; width: 1px; height: 14px; background: var(--accent); }
 .obj-handle { position: absolute; width: 9px; height: 9px; background: var(--surface); border: 1.5px solid var(--accent); border-radius: 2px; box-sizing: border-box; }
 .obj-handle.h-nw { left: -5px; top: -5px; cursor: nwse-resize; } .obj-handle.h-n { left: calc(50% - 4px); top: -5px; cursor: ns-resize; }
 .obj-handle.h-ne { right: -5px; top: -5px; cursor: nesw-resize; } .obj-handle.h-e { right: -5px; top: calc(50% - 4px); cursor: ew-resize; }

@@ -69,7 +69,7 @@ export class Editor {
     this.comp = null;                 // { start, len, fmt } 한글 조합 중
     this.pending = {};                // 서식 단추를 먼저 눌렀을 때 다음 입력에 적용할 서식
     this.cur = {};                    // 캐럿 위치의 글자·문단 서식
-    this.tbl = null; this.cellBlock = null; this.obj = null; this.formListeners = []; this.objListeners = []; this.objKey = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
+    this.tbl = null; this.cellBlock = null; this.obj = null; this.objs = []; this.formListeners = []; this.objListeners = []; this.objKey = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
     this.cleanups = [];
     this.lastTyped = 0; this.clicks = 0; this.lastDown = null; this.selText = ''; this.dragging = false; this.hitBusy = false; this.hitNext = null; this.keyHandled = false;
     this.#buildToolbar();
@@ -311,21 +311,22 @@ export class Editor {
     const b = pageEl.getBoundingClientRect(), z = this.viewer.zoom;
     return { page: Number(pageEl.dataset.index), x: (e.clientX - b.left) / z, y: (e.clientY - b.top) / z };
   }
-  #hitAt(h, extend) {
+  #hitAt(h, extend, add = false) {
     // 끌기 중에는 가장 최근 위치만 보낸다
-    if (this.hitBusy) { this.hitNext = [h, extend]; return; }
+    if (this.hitBusy) { this.hitNext = [h, extend, add]; return; }
     h = { ...h, hf: this.pos?.hf ?? null, drag: extend, s: this.pos?.s };
     this.hitBusy = true;
     this.#enqueue(async () => {
-      const r = await this.#req('hit', { ...h, objs: !extend });
+      const r = await this.#req('hit', { ...h, objs: !extend || add });
       if (r.keep) return;
       if (r.form) { this.#flushGroup(); this.#clearObj(); for (const f of this.formListeners) this.#enqueue(() => f(r.form)); return; }
-      if (r.obj) { this.#flushGroup(); this.#selectObj(r.obj); return; }
+      if (r.obj) { this.#flushGroup(); this.#selectObj(r.obj, add); return; }
+      if (add) return;   // Shift+누르기로 개체를 더 고르는 중에 개체가 아닌 곳을 눌렀다: 그대로 둔다
       if (r.pos) { this.#clearObj(); this.#flushGroup(); this.pending = {}; this.#set(r.pos, r.rect, { extend }); }
       else if (!extend) this.status(T.readonlyHere);
     }).finally(() => {
       this.hitBusy = false;
-      if (this.hitNext) { const [nh, ne] = this.hitNext; this.hitNext = null; this.#hitAt(nh, ne); }
+      if (this.hitNext) { const [nh, ne, na] = this.hitNext; this.hitNext = null; this.#hitAt(nh, ne, na); }
     });
   }
   #onDown(e) {
@@ -353,7 +354,7 @@ export class Editor {
       });
       return;
     }
-    this.#hitAt(h, e.shiftKey);
+    this.#hitAt(h, e.shiftKey && !this.obj, e.shiftKey && !!this.obj);   // 개체를 고른 상태에서 Shift+누르기는 개체를 더 고른다(묶기용)
     this.#focus(true);
   }
   #onMove(e) {
@@ -667,15 +668,19 @@ export class Editor {
   }
 
   /** 그림·도형·수식을 골랐다: 글 캐럿·선택은 걷고, 틀은 개체 모듈이 그린다. */
-  #selectObj(o) {
+  #selectObj(o, add = false) {
+    const same = (a, b) => a.s === b.s && a.p === b.p && a.ctrl === b.ctrl;
+    if (add && this.obj) { const i = this.objs.findIndex((x) => same(x, o)); if (i >= 0) this.objs.splice(i, 1); else this.objs.push(o); } else this.objs = [o];
+    if (!this.objs.length) { this.#clearObj(); return; }
+    o = this.objs[this.objs.length - 1];
     this.obj = o;
     this.anchor = null; this.cellBlock = null; this.selText = '';
     for (const l of this.viewer.pagesEl.querySelectorAll('.sel-layer')) l.replaceChildren();
     this.caretEl?.remove(); this.caretEl = null;
-    for (const f of this.objListeners) f(o);
+    for (const f of this.objListeners) f(o, this.objs);
     for (const f of this.ctx ?? []) f();
   }
-  #clearObj() { if (!this.obj) return; this.obj = null; for (const f of this.objListeners) f(null); for (const f of this.ctx ?? []) f(); }
+  #clearObj() { if (!this.obj) return; this.obj = null; this.objs = []; for (const f of this.objListeners) f(null, []); for (const f of this.ctx ?? []) f(); }
 
   /** 기능 모듈(ed-*.js)이 쓰는 창구. 모듈은 이 객체로만 편집기와 통신한다. */
   #makeApi() {
@@ -697,9 +702,11 @@ export class Editor {
       mutateApi: (fn, args, opts) => (ed.pos?.hf ? (ed.status(T.zoneBlocked), Promise.resolve(null)) : ed.#apiCall(fn, args, opts)),
       /** 대기열 안에서: 캐럿을 pos로(없으면 가까운 곳으로) 옮긴다. */
       placeCaret: (pos) => ed.#revalidate(pos),
+      /** 대기열 안에서: 좌표를 못 구하는 자리(빈 글상자 안 등)에 캐럿을 주어진 좌표로 둔다. */
+      setCaret: (pos, rect) => { ed.anchor = null; ed.#set(pos, rect, {}); },
       onContext: (fn) => ed.ctx.push(fn),
       panel: (name) => ed.panels[name], showTab: (k) => ed.#showTab(k),
-      get obj() { return ed.obj; }, get zoom() { return ed.viewer.zoom; }, get viewer() { return ed.viewer; },
+      get obj() { return ed.obj; }, get objs() { return ed.objs; }, get zoom() { return ed.viewer.zoom; }, get viewer() { return ed.viewer; },
       selectObj: (o) => ed.#selectObj(o), clearObj: () => ed.#clearObj(),
       onObject: (fn) => ed.objListeners.push(fn), onForm: (fn) => ed.formListeners.push(fn),
       setObjKeyHandler: (fn) => { ed.objKey = fn; },
