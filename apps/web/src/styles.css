@@ -161,6 +161,9 @@ body.doc-page { display: block; height: auto; min-height: 100%; }
 .btn.fmt-b { font-weight: 800; } .btn.fmt-i { font-style: italic; } .btn.fmt-u { text-decoration: underline; }
 .editbar .select { max-width: 150px; }
 .edit-cap { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.edit-zone { font-weight: 600; color: var(--accent, var(--fg)); }
+/* 머리글·바닥글·각주 안에서는 본문 좌표를 쓰는 탭을 흐리게 하고 누르지 못하게 한다 */
+body[data-edit-zone] .edit-panel:not([data-panel="format"]):not([data-panel="view"]) { opacity: .45; pointer-events: none; }
 .btn.fmt-s { text-decoration: line-through; }
 .edit-size { min-width: 5ch; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 .edit-color { width: 32px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); cursor: pointer; }

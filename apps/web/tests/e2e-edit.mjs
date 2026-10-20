@@ -419,6 +419,45 @@ test('쪽: 머리글·바닥글(쪽 번호 표지)과 각주를 넣고 저장본
   await done(page);
 });
 
+test('머리글·바닥글·각주를 두 번 눌러 글 위에서 바로 고치고 Esc로 본문에 돌아온다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'page'); await page.waitForTimeout(200);
+  await clickBtn(page, '머리글…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] textarea').fill('HeaderXYZ'); await submit(page); await settle(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await clickBtn(page, '각주 넣기'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] textarea').fill('각주 본문'); await submit(page); await settle(page);
+  const at = async (x, y) => { const b = await page.locator('.page').nth(2).boundingBox(); const sc = b.width / 793.7; return [b.x + x * sc, b.y + y * sc]; };
+  // 머리글 두 번 누르기 → 머리글 안 편집
+  let [x, y] = await at(300, 70);
+  await page.mouse.dblclick(x, y); await settle(page);
+  await page.waitForFunction(() => document.body.dataset.editZone === 'h', null, { timeout: 10000 });
+  await page.keyboard.type('Q', { delay: 40 }); await settle(page);
+  await page.keyboard.press('Enter'); await settle(page);
+  await page.keyboard.type('Line2', { delay: 40 }); await settle(page);
+  await page.keyboard.press('Backspace'); await settle(page);
+  await page.keyboard.press('Escape'); await settle(page);
+  assert.equal(await page.evaluate(() => document.body.dataset.editZone ?? ''), '', 'Esc로 본문에 돌아온다');
+  // 각주 두 번 누르기 → 각주 안 편집(쪽 아래가 보이도록 스크롤)
+  await page.locator('.page').nth(2).evaluate((el) => el.scrollIntoView({ block: 'end' })); await page.waitForTimeout(400);
+  [x, y] = await at(120, 1018);
+  await page.mouse.dblclick(x, y); await settle(page);
+  await page.waitForFunction(() => document.body.dataset.editZone === 'n', null, { timeout: 10000 });
+  await page.keyboard.press('Control+Home'); await settle(page);
+  await page.keyboard.type('ZZ', { delay: 40 }); await settle(page);
+  await page.keyboard.press('Escape'); await settle(page);
+  const r = await saveAndParse(page, { warn: true });
+  const hf = (i) => JSON.parse(r.doc.getHeaderFooterParaInfo(0, true, 0, i)).text;
+  assert.equal(hf(0), 'Q', `첫 문단: ${hf(0)}`);
+  assert.ok(hf(0).includes('Q'), `머리글에 Q: ${hf(0)}`);
+  assert.equal(hf(1), 'LineHeaderXYZ', `둘째 문단: ${hf(1)}`);
+  let found = false;
+  for (let p = 0; p < r.doc.getParagraphCount(0) && !found; p++) { for (let c = 0; c < 3; c++) { try { if ((JSON.parse(r.doc.getFootnoteInfo(0, p, c)).texts ?? []).join('').startsWith('ZZ각주 본문')) { found = true; break; } } catch { /* 각주 아님 */ } } }
+  assert.ok(found, '각주 본문 앞에 ZZ');
+  await done(page);
+});
+
 // ── 링크·책갈피·필드·스타일·번호·찾아 바꾸기 ──
 test('찾아 바꾸기: 다음 찾기·바꾸기·모두 바꾸기(표 안 포함)', async () => {
   const page = await newPage();
