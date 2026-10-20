@@ -131,6 +131,47 @@ function charJson(doc, props) {
   return JSON.stringify(p);
 }
 
+/** 캐럿이 있는 줄의 {lineIndex,lineCount,charStart,charEnd}. 못 구하면 null. */
+function lineInfo(doc, pos) {
+  try {
+    const r = inCell(pos) && pos.path.length === 1
+      ? J(doc.getLineInfoInCell(pos.s, pos.p, pos.path[0].controlIndex, pos.path[0].cellIndex, cellPara(pos), pos.o))
+      : (!inCell(pos) ? J(doc.getLineInfo(pos.s, pos.p, pos.o)) : null);
+    return r && r.charEnd >= r.charStart ? r : null;
+  } catch { return null; }
+}
+/** 위치를 지금 문서 안으로 끌어온다(되돌리기 뒤 문단이 짧아졌거나 칸이 없어졌을 수 있다): 문단 번호·글자 위치를 범위 안으로, 칸이 없어졌으면 그 칸을 가진 문단으로. */
+function clampPos(doc, pos) {
+  if (!pos) return null;
+  try {
+    const n = doc.getParagraphCount(pos.s);
+    if (pos.p >= n) return { s: pos.s, p: Math.max(0, n - 1), o: 0, path: null };
+    if (pos.path) {
+      try { return { ...pos, o: Math.min(pos.o, paraLen(doc, pos)) }; } catch { return { s: pos.s, p: pos.p, o: 0, path: null }; }
+    }
+    return { ...pos, o: Math.min(pos.o, doc.getParagraphLength(pos.s, pos.p)) };
+  } catch { return { s: 0, p: 0, o: 0, path: null }; }
+}
+/** 문단 글. 칸 안이면 칸 문단. */
+const paraText = (doc, pos) => { const n = paraLen(doc, pos); return n ? textOf(doc, { ...pos, o: 0 }, n) : ''; };
+/** 단어 경계(공백과 글자의 경계)로 한 단어 이동. 문단 끝·처음에서는 이웃 문단으로. */
+function wordMove(doc, pos, right) {
+  const chars = [...paraText(doc, pos)];
+  const isSp = (c) => /\s/.test(c);
+  let o = pos.o;
+  if (right) {
+    if (o >= chars.length) { return paraNo(pos) + 1 < paraCount(doc, pos) ? { ...(inCell(pos) ? withCellPara(pos, cellPara(pos) + 1) : { ...pos, p: pos.p + 1 }), o: 0 } : pos; }
+    while (o < chars.length && !isSp(chars[o])) o++;
+    while (o < chars.length && isSp(chars[o])) o++;
+  } else {
+    if (o <= 0) { if (paraNo(pos) <= 0) return pos; const prev = inCell(pos) ? withCellPara(pos, cellPara(pos) - 1) : { ...pos, p: pos.p - 1 }; return { ...prev, o: paraLen(doc, { ...prev, o: 0 }) }; }
+    o--;
+    while (o > 0 && isSp(chars[o])) o--;
+    while (o > 0 && !isSp(chars[o - 1])) o--;
+  }
+  return { ...pos, o };
+}
+
 // ── 되돌리기 ──
 const CAP = 60;
 const NOOP = Symbol('noop');
@@ -222,12 +263,24 @@ export function run(doc, HwpDocument, m) {
   switch (m.op) {
     case 'hit': {
       const h = J(doc.hitTest(m.page, m.x, m.y));
+      // 양식 개체(선택 상자·라디오·입력·콤보·단추)를 누른 것인지
+      if (m.objs) { try { const fo = J(doc.getFormObjectAt(m.page, m.x, m.y)); if (fo.found) return { form: fo }; } catch { /* 양식 아님 */ } }
       // 글상자 글 안이 아니면, 클릭한 자리의 그림·도형·수식을 먼저 고른다(개체 선택)
       if (m.objs && !(h && h.isTextBox)) { const obj = pickObject(doc, m.page, m.x, m.y); if (obj) return { obj }; }
       const pos = toPos(h);
       return { pos, rect: pos ? rectOf(doc, pos) : null };
     }
-    case 'caret': return { rect: rectOf(doc, m.pos) };
+    case 'caret': { const pos = clampPos(doc, m.pos); return { rect: rectOf(doc, pos), pos }; }
+    case 'wordat': {   // 두 번 클릭: 위치가 든 단어(또는 문단 전체: whole)의 범위
+      const chars = [...paraText(doc, m.pos)];
+      if (m.whole) return { a: { ...m.pos, o: 0 }, b: { ...m.pos, o: chars.length } };
+      const isSp = (c) => /\s/.test(c);
+      let a = Math.min(m.pos.o, chars.length), b = a;
+      if (a < chars.length && isSp(chars[a]) && a > 0 && !isSp(chars[a - 1])) a--;
+      while (a > 0 && !isSp(chars[a - 1])) a--;
+      while (b < chars.length && !isSp(chars[b])) b++;
+      return { a: { ...m.pos, o: a }, b: { ...m.pos, o: b } };
+    }
     case 'props': return { char: charProps(doc, m.pos), para: paraProps(doc, m.pos), table: tableAt({ doc, J }, m.pos) };
     case 'text': return { text: selectionText(doc, m.a, m.b) };
     case 'mark': st.groupOpen = false; return {};
@@ -246,8 +299,14 @@ export function run(doc, HwpDocument, m) {
       } else if (k === 'right') {
         if (pos.o < paraLen(doc, pos)) pos = { ...pos, o: pos.o + 1 };
         else if (paraNo(pos) + 1 < paraCount(doc, pos)) pos = { ...(inCell(pos) ? withCellPara(pos, cellPara(pos) + 1) : { ...pos, p: pos.p + 1 }), o: 0 };
-      } else if (k === 'home') pos = { ...pos, o: 0 };
-      else if (k === 'end') pos = { ...pos, o: paraLen(doc, pos) };
+      } else if (k === 'home' || k === 'end') {
+        // 줄 처음·끝(줄 정보를 못 구하면 문단 처음·끝)
+        const L = lineInfo(doc, pos);
+        if (k === 'home') pos = { ...pos, o: L ? L.charStart : 0 };
+        else pos = { ...pos, o: L ? (L.lineIndex < L.lineCount - 1 ? Math.max(L.charStart, L.charEnd - 1) : L.charEnd) : paraLen(doc, pos) };
+      } else if (k === 'docstart') pos = { s: pos.s, p: 0, o: 0, path: null };
+      else if (k === 'docend') { const n = doc.getParagraphCount(pos.s) - 1; pos = { s: pos.s, p: n, o: doc.getParagraphLength(pos.s, n), path: null }; }
+      else if (k === 'wordleft' || k === 'wordright') pos = wordMove(doc, pos, k === 'wordright');
       else if (k === 'up' || k === 'down') {
         const delta = k === 'up' ? -1 : 1;
         const r = J(inCell(pos)
@@ -340,7 +399,7 @@ export function run(doc, HwpDocument, m) {
       try { doc.discardSnapshot(ent.id); } catch { /* ignore */ }
       to.push({ id: cur, pos: m.pos ?? null });   // 반대쪽에는 "지금의 캐럿"을 남긴다
       st.groupOpen = false; st.dirty = true;
-      return { ...viewInfo(doc, st), pos: ent.pos, canUndo: st.undo.length > 0, canRedo: st.redo.length > 0 };
+      return { ...viewInfo(doc, st), pos: clampPos(doc, ent.pos), canUndo: st.undo.length > 0, canRedo: st.redo.length > 0 };
     }
     case 'fonts': { try { return { fonts: J(doc.getDocumentInfo()).fontsUsed ?? [] }; } catch { return { fonts: [] }; } }
     case 'view': {   // 보기 옵션: marks 문단 부호, codes 조판 부호, transparent 투명 선
@@ -354,14 +413,21 @@ export function run(doc, HwpDocument, m) {
     case 'clean': st.dirty = false; return {};
     case 'save': {
       const t0 = performance.now();
-      const hwpx = m.format === 'hwpx';
+      const fmt = m.format;
+      if (fmt === 'txt') {   // 글만 내보내기
+        const txt = J(doc.getTextFileUnicode());
+        const bytes = new TextEncoder().encode(typeof txt === 'string' ? txt : String(txt));
+        return { bytes, verify: { checked: false, text: true }, exportMs: Math.round(performance.now() - t0), totalMs: Math.round(performance.now() - t0) };
+      }
+      const hwpx = fmt === 'hwpx';
       const before = signature(doc);
-      const bytes = hwpx ? doc.exportHwpx() : doc.exportHwp();
+      const bytes = m.password ? (hwpx ? doc.exportHwpxWithPassword(m.password) : doc.exportHwpWithPassword(m.password)) : (hwpx ? doc.exportHwpx() : doc.exportHwp());
       const tExport = performance.now() - t0;
       // 저장한 바이트를 같은 엔진으로 다시 열어 본문(문단 수·길이·앞 글자)이 같은지 점검한다. rhwp의 손실 보고서는 믿을 수 없다(docs/phase4/design.md 2.1).
+      // 암호를 건 저장본은 같은 암호로 다시 열어 본다.
       let verify = { checked: false };
       try {
-        const re = new HwpDocument(new Uint8Array(bytes));
+        const re = m.password ? HwpDocument.openWithPassword(new Uint8Array(bytes), m.password) : new HwpDocument(new Uint8Array(bytes));
         try {
           const after = signature(re);
           const d = diffSignature(before, after);
@@ -370,6 +436,6 @@ export function run(doc, HwpDocument, m) {
       } catch (e) { verify = { checked: true, ok: false, reopenError: String(e && e.message || e).slice(0, 120) }; }
       return { bytes: bytes.buffer ? bytes : new Uint8Array(bytes), verify, exportMs: Math.round(tExport), totalMs: Math.round(performance.now() - t0) };
     }
-    default: return ext({ doc, HwpDocument, st, J, mutate, viewInfo, rectOf, inCell, pj, cellPara, paraNo, paraLen, withCellPara, charJson }, m);
+    default: return ext({ doc, HwpDocument, st, J, mutate, viewInfo, rectOf, inCell, pj, cellPara, paraNo, paraLen, withCellPara, charJson, NOOP, opInsert, opDeleteRange, ordered, sameContainer }, m);
   }
 }

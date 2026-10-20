@@ -14,10 +14,16 @@ export const MUT = new Set([
   // 쪽·구역·머리글·각주
   'setPageDef', 'setSectionDef', 'insertPageBreak', 'insertColumnBreak', 'setColumnDef', 'setPageBorderFill', 'setPageHide', 'insertNewNumber', 'toggleHideHeaderFooter',
   'createHeaderFooter', 'deleteHeaderFooter', 'applyHfTemplate', 'insertFootnote', 'insertEndnote', 'deleteFootnote',
+  // 링크·책갈피·필드·양식·스타일·번호·차트
+  'insertHyperlinkEx', 'updateHyperlinkEx', 'removeHyperlinkEx', 'replaceHyperlinkTextEx', 'addBookmark', 'deleteBookmark', 'renameBookmark',
+  'insertClickHereField', 'updateClickHereProps', 'removeFieldAt', 'renameField', 'setFieldValue', 'setFieldValueByName', 'setFormValue',
+  'applyStyle', 'createStyle', 'updateStyle', 'deleteStyle', 'ensureDefaultNumbering', 'ensureDefaultBullet', 'createNumbering', 'setNumberingRestart', 'setChartData', 'setChartDataByIndex',
   'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt',
 ]);
 /** 문서를 바꾸지 않는 조회 API. */
 export const QRY = new Set([
+  'getHyperlinkContext', 'getBookmarks', 'getFieldList', 'getFieldValue', 'getClickHereProps', 'getFormObjectAt', 'getFormValue', 'getStyleList', 'getStyleAt', 'getStyleDetail',
+  'getNumberingList', 'getBulletList', 'listCharts', 'getChartData', 'getChartDataByIndex', 'getLineInfo', 'getHyperlinkContext',
   'getPageDef', 'getSectionDef', 'getColumnDef', 'getPageBorderFill', 'getPageHide', 'getPageInfo', 'getHeaderFooter', 'getHeaderFooterParaInfo', 'getHeaderFooterList', 'getFootnoteInfo',
   'copyControl', 'clipboardHasControl', 'getPictureProperties', 'getShapeProperties', 'getEquationProperties', 'getShapeBBox', 'getPageControlLayout', 'getObjects',
   'getTableDimensions', 'getCellInfo', 'getCellProperties', 'getCellOwnProperties', 'getTableProperties', 'getTableBBox', 'getTableCellBboxes', 'getControls',
@@ -46,6 +52,12 @@ export function ext(c, m) {
     }
     case 'objfind': return { obj: findObject(doc, J, m.page, m.s, m.p, m.ctrl) };
     case 'objprops': return { props: objProps(doc, J, m.obj) };
+    case 'find': return find(c, m);
+    case 'repl': return repl(c, m);
+    case 'replall': return replAll(c, m);
+    case 'hlinsert': return hlInsert(c, m);
+    case 'copysel': return copySel(c, m);
+    case 'pasterich': return pasteRich(c, m);
     case 'hfget': return hfGet(c, m);
     case 'hfset': return hfSet(c, m);
     case 'fnat': return { fn: fnAt(c, m.pos) };
@@ -250,4 +262,105 @@ function fnSet(c, m) {
     });
   }, false);
   return { ...viewInfo(doc, st) };
+}
+
+// ── 찾기·바꾸기 ──
+const cellPathOf = (cc) => (cc ? [{ controlIndex: cc.ctrlIdx, cellIndex: cc.cellIdx, cellParaIndex: cc.cellPara }] : null);
+const posOf = (r, o) => (r.cellContext ? { s: r.sec, p: r.cellContext.parentPara, o, path: cellPathOf(r.cellContext) } : { s: r.sec, p: r.para, o, path: null });
+/** 다음/이전 일치를 찾는다: {found, a, b, wrapped}. from은 찾기를 시작할 위치(다음은 선택 끝, 이전은 선택 시작). */
+function find(c, m) {
+  const { doc, J } = c;
+  if (!m.query) return { found: false };
+  const f = m.from ?? { s: 0, p: 0, o: 0 };
+  const r = J(doc.searchText(m.query, f.s, f.p, f.o, m.forward !== false, !!m.caseSensitive, true));
+  if (!r.found) return { found: false };
+  return { found: true, wrapped: !!r.wrapped, a: posOf(r, r.charOffset), b: posOf(r, r.charOffset + r.length), total: r.totalMatchCount };
+}
+/** 일치 하나를 바꾼다(범위 지우고 그 자리에 넣기, 한 번의 되돌리기). */
+function repl(c, m) {
+  const { doc, mutate, viewInfo, st, inCell } = c;
+  let end;
+  mutate(() => {
+    const at = c.opDeleteRange(doc, m.a, m.b);
+    end = m.text ? c.opInsert(doc, at, m.text) : at;
+  }, false);
+  return { pos: end, rect: c.rectOf(doc, end), ...viewInfo(doc, st) };
+}
+/** 모두 바꾸기: 일치하는 곳을 문단 안에서 뒤에서부터 바꿔 앞쪽 위치가 어긋나지 않게 한다. */
+function replAll(c, m) {
+  const { doc, J, mutate, viewInfo, st } = c;
+  if (!m.query) return { count: 0, ...viewInfo(doc, st) };
+  const all = J(doc.searchAllText(m.query, !!m.caseSensitive, true));
+  let count = 0;
+  const key = (r) => `${r.sec}|${r.cellContext ? `${r.cellContext.parentPara}/${r.cellContext.ctrlIdx}/${r.cellContext.cellIdx}/${r.cellContext.cellPara}` : r.para}`;
+  const list = [...all].sort((x, y) => (key(x) === key(y) ? y.charOffset - x.charOffset : 0));   // 같은 문단 안에서만 뒤에서 앞으로(문단 순서는 그대로)
+  if (!list.length) return { count: 0, ...viewInfo(doc, st) };
+  mutate(() => {
+    // 일치마다 문서 전체를 다시 쪽 나누면 수천 곳에서 몇 분이 걸린다: 배치 모드로 쪽 나누기를 끝에 한 번만 한다
+    doc.beginBatch();
+    try {
+      for (const r of list) {
+        const a = posOf(r, r.charOffset), b = posOf(r, r.charOffset + r.length);
+        const at = c.opDeleteRange(doc, a, b);
+        if (m.text) c.opInsert(doc, at, m.text);
+        count++;
+      }
+    } finally { doc.endBatch(); }
+  }, false);
+  return { count, ...viewInfo(doc, st) };
+}
+
+// ── 하이퍼링크 ──
+const hlTarget = (pos) => ({ section: pos.s, para: pos.p, cellPath: (pos.path ?? []).map((x) => [x.controlIndex, x.cellIndex, x.cellParaIndex]) });
+/** 선택 범위(또는 새로 넣은 글)에 하이퍼링크를 붙인다. 선택이 없으면 text를 캐럿에 넣고 그 글에 붙인다. */
+function hlInsert(c, m) {
+  const { doc, mutate, viewInfo, st } = c;
+  let end;
+  mutate(() => {
+    let a = m.a, b = m.b;
+    if (m.text) { end = c.opInsert(doc, m.a, m.text); b = end; }
+    const target = hlTarget(a);
+    const lo = a.o, hi = b.o;
+    doc.insertHyperlinkEx(JSON.stringify({ target, start: lo, end: hi, uri: m.uri }));
+  }, false);
+  return { pos: end ?? m.b, rect: c.rectOf(doc, end ?? m.b), ...viewInfo(doc, st) };
+}
+
+// ── 내부 클립보드(서식·개체까지 문서 안에서 붙이기) ──
+/** 선택을 엔진 클립보드에 복사하고 글·HTML을 돌려준다(시스템 클립보드에도 넣으려고). 표 칸을 가로지르는 선택은 글만. */
+function copySel(c, m) {
+  const { doc, J, inCell, pj, cellPara } = c;
+  const [a, b] = c.ordered(m.a, m.b);
+  if (!c.sameContainer(a, b)) return { text: '', html: '' };
+  let text = '', html = '';
+  try {
+    if (inCell(a)) {
+      const path = pj(a);
+      text = J(doc.copySelectionInCellByPath(a.s, a.p, path, cellPara(a), a.o, cellPara(b), b.o)).text ?? '';
+      html = doc.exportSelectionInCellHtmlByPath(a.s, a.p, path, cellPara(a), a.o, cellPara(b), b.o);
+    } else {
+      text = J(doc.copySelection(a.s, a.p, a.o, b.p, b.o)).text ?? '';
+      html = doc.exportSelectionHtml(a.s, a.p, a.o, b.p, b.o);
+    }
+  } catch { /* 글만 복사 */ }
+  return { text, html };
+}
+/** 붙여넣기: 엔진 클립보드의 글과 같으면 서식째, 아니면 HTML(있으면)·글로. */
+function pasteRich(c, m) {
+  const { doc, mutate, viewInfo, st, inCell, pj, cellPara } = c;
+  let r = null;
+  mutate(() => {
+    const pos = m.pos;
+    const internal = doc.hasInternalClipboard() && doc.getClipboardText() === m.text;
+    if (internal) {
+      const x = inCell(pos) ? J2(doc.pasteInternalInCellByPath(pos.s, pos.p, pj(pos), cellPara(pos), pos.o)) : J2(doc.pasteInternal(pos.s, pos.p, pos.o));
+      r = inCell(pos) ? { ...c.withCellPara(pos, x.cellParaIdx ?? cellPara(pos)), o: x.charOffset ?? pos.o } : { ...pos, p: x.paraIdx ?? pos.p, o: x.charOffset ?? pos.o };
+    } else if (m.html && !inCell(pos)) {
+      const x = J2(doc.pasteHtml(pos.s, pos.p, pos.o, m.html));
+      r = { ...pos, p: x.paraIdx ?? pos.p, o: x.charOffset ?? pos.o };
+    } else return c.NOOP;
+  }, false);
+  function J2(v) { return typeof v === 'string' ? JSON.parse(v) : v; }
+  if (!r) return { fallback: true, ...viewInfo(doc, st) };
+  return { pos: r, rect: c.rectOf(doc, r), ...viewInfo(doc, st) };
 }

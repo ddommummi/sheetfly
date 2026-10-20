@@ -77,7 +77,9 @@ async function saveAndParse(page, { warn = false } = {}) {
   // 헤드리스 Chromium은 한글이 든 다운로드 이름을 'download'로 돌려주므로(앱 문제가 아님) 이름은 상태 안내문에서 읽는다.
   await page.waitForFunction(() => /저장했습니다/.test(document.getElementById('status').textContent), null, { timeout: 10000 });
   const name = (await page.locator('#status').innerText()).replace(/ 저장했습니다\.$/, '');
-  return { name, bytes, doc: new HwpDocument(bytes), warning };
+  let doc = null;
+  try { doc = new HwpDocument(bytes); } catch { /* 암호 파일은 암호 없이 열리지 않는다 */ }
+  return { name, bytes, doc, warning };
 }
 const find = (doc, t) => JSON.parse(doc.searchText(t, 0, 0, 0, true, true, true));
 const comp = async (cdp, page, t) => { await cdp.send('Input.imeSetComposition', { text: t, selectionStart: t.length, selectionEnd: t.length }); await page.waitForTimeout(40); };
@@ -162,6 +164,8 @@ test('선택 → 굵게, 선택 삭제, 복사·붙여넣기', async () => {
   assert.equal(props.bold, true, '선택한 "Text"가 굵게');
   const first = JSON.parse(r.doc.getCharPropertiesAt(bold.sec, bold.para, bold.charOffset));
   assert.equal(first.bold, false, '선택하지 않은 "Bold"는 그대로');
+  const pf = find(r.doc, '현황Text');
+  assert.equal(JSON.parse(r.doc.getCharPropertiesAt(pf.sec, pf.para, pf.charOffset + 4 + 2)).bold, true, '붙여넣은 글도 굵게(서식째 붙이기)');
   assert.ok(find(r.doc, '현황Text').found, `복사한 "Text"를 줄 끝(End)에 붙여넣음 (문단: ${r.doc.getTextRange(bold.sec, bold.para, 0, 60)})`);
   await done(page);
 });
@@ -199,8 +203,10 @@ test('문단 부호 보기를 켜고 끌 수 있다(문서는 바뀌지 않는�
   const page = await newPage();
   await open(page, 'hwp_table_test.hwp');
   await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
-  await page.click('#edit-bar [title="문단 부호 보이기·숨기기"]'); await settle(page);
-  assert.equal(await page.locator('#edit-bar [title="문단 부호 보이기·숨기기"]').getAttribute('aria-pressed'), 'true');
+  await page.click('#edit-bar [data-panel="format"] [title="문단 부호 보이기·숨기기"]'); await settle(page);
+  assert.equal(await page.locator('#edit-bar [data-panel="format"] [title="문단 부호 보이기·숨기기"]').getAttribute('aria-pressed'), 'true');
+  await tab(page, 'view'); await page.waitForTimeout(200);
+  assert.equal(await page.locator('#edit-bar [data-panel="view"] [aria-label="문단 부호"]').getAttribute('aria-pressed'), 'true', '보기 탭 단추도 같이 켜진다');
   assert.equal(await dirty(page), false, '보기 옵션은 변경 표시를 만들지 않는다');
   await done(page);
 });
@@ -410,6 +416,121 @@ test('쪽: 머리글·바닥글(쪽 번호 표지)과 각주를 넣고 저장본
   let found = false;
   for (let p = 0; p < r.doc.getParagraphCount(0) && !found; p++) { for (let c = 0; c < 3; c++) { try { if ((JSON.parse(r.doc.getFootnoteInfo(0, p, c)).texts ?? []).join('').includes('각주 본문')) { found = true; break; } } catch { /* 각주 아님 */ } } }
   assert.ok(found, '각주 본문이 저장됐다');
+  await done(page);
+});
+
+// ── 링크·책갈피·필드·스타일·번호·찾아 바꾸기 ──
+test('찾아 바꾸기: 다음 찾기·바꾸기·모두 바꾸기(표 안 포함)', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'find'); await page.waitForTimeout(200);
+  const inputs = page.locator('#edit-bar [data-panel="find"] input.search-input');
+  await inputs.nth(0).fill('말뭉치'); await inputs.nth(1).fill('코퍼스');
+  await clickBtn(page, '다음'); await page.waitForSelector('.sel', { timeout: 10000 });
+  await clickBtn(page, '바꾸기'); await settle(page);
+  await clickBtn(page, '모두 바꾸기'); await settle(page);
+  await page.waitForFunction(() => /곳을 바꿨습니다/.test(document.getElementById('status').textContent), null, { timeout: 10000 });
+  const r = await saveAndParse(page, { warn: true });
+  assert.equal(find(r.doc, '말뭉치').found, false, '남은 말뭉치 없음');
+  assert.ok(find(r.doc, '코퍼스').totalMatchCount >= 20, `코퍼스 ${find(r.doc, '코퍼스').totalMatchCount}곳`);
+  await done(page);
+});
+
+test('입력: 하이퍼링크·책갈피·누름틀, 서식: 스타일·번호', async () => {
+  const page = await newPage();
+  await open(page, 'hwp_table_test.hwp');   // 첫 문단 영역(표 아닌 본문)
+  await page.click('#edit-btn'); await page.waitForSelector('.caret'); await settle(page);
+  await page.keyboard.type('링크글자 본문', { delay: 40 }); await settle(page);
+  // 하이퍼링크: 앞 4글자를 선택해 붙이기
+  await page.keyboard.press('Home'); await settle(page);
+  await page.keyboard.down('Shift'); for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight', { delay: 40 }); await page.keyboard.up('Shift'); await page.waitForSelector('.sel'); await settle(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await clickBtn(page, '하이퍼링크…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=text]').fill('https://example.com/x'); await submit(page);
+  // 책갈피 추가
+  await clickBtn(page, '책갈피…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=text]').fill('내책갈피'); await submit(page);
+  // 스타일과 번호
+  await tab(page, 'format'); await page.waitForTimeout(200);
+  await page.selectOption('#edit-bar .edit-list', 'num'); await settle(page);
+  await page.selectOption('#edit-bar .edit-style', { label: '개요 2' }); await settle(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await page.keyboard.press('End'); await settle(page);
+  await clickBtn(page, '누름틀…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=text]').nth(2).fill('내필드'); await submit(page);
+  const r = await saveAndParse(page, { warn: true });
+  assert.ok(JSON.parse(r.doc.getFieldList()).some((x) => x.name === '내필드'), '누름틀');
+  const f = find(r.doc, '링크글자');
+  assert.ok(f.found);
+  const ctx = JSON.parse(r.doc.getHyperlinkContext(JSON.stringify({ section: f.sec, para: f.para, cellPath: [] })));
+  assert.equal(ctx.links[0]?.uri, 'https://example.com/x');
+  assert.ok(JSON.parse(r.doc.getBookmarks()).some((b) => b.name === '내책갈피'));
+  assert.equal(JSON.parse(r.doc.getStyleAt(f.sec, f.para)).name, '개요 2');
+  await done(page);
+});
+
+// ── 새 문서·저장 옵션 ──
+test('새 문서: 만들자마자 편집·저장(이름은 "새 문서.hwp"), 암호 저장, 텍스트로 저장', async () => {
+  const page = await newPage();
+  assert.equal(await page.locator('#new-btn-empty').isVisible(), true);
+  await page.click('#new-btn-empty');
+  await page.waitForSelector('#edit-bar:not([hidden])', { timeout: 30000 }); await page.waitForSelector('.caret', { timeout: 15000 }); await settle(page);
+  await page.keyboard.type('Hello new doc', { delay: 40 }); await settle(page);
+  let r = await saveAndParse(page, { warn: true });
+  assert.equal(r.name, '새 문서.hwp');
+  assert.ok(find(r.doc, 'Hello new doc').found);
+  // 암호 저장
+  await clickBtn(page, '저장 옵션…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] input[type=text]').fill('pw-1234'); await submit(page);
+  r = await saveAndParse(page, { warn: true });
+  assert.throws(() => new HwpDocument(r.bytes), /비밀번호/);
+  const withPw = HwpDocument.openWithPassword(r.bytes, 'pw-1234');
+  assert.ok(withPw.getTextRange(0, 0, 0, 5).length > 0 || withPw.getParagraphCount(0) > 0);
+  // 텍스트로 저장
+  await clickBtn(page, '저장 옵션…'); await page.waitForSelector('dialog[open]');
+  await page.selectOption('dialog[open] select', 'txt'); await submit(page);
+  const dl = page.waitForEvent('download', { timeout: 30000 });
+  await page.click('#edit-bar .btn.primary');
+  await page.waitForSelector('dialog[open]'); await page.click('dialog[open] [data-yes]');   // 글만 남는다는 안내
+  const txt = readFileSync(await (await dl).path(), 'utf8');
+  assert.match(txt, /Hello new doc/);
+  await done(page);
+});
+
+test('이동: Ctrl+←/→ 단어, Home/End 줄, Ctrl+Home/End 문서, 두 번 클릭 단어 선택', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await page.keyboard.type('alpha beta gamma', { delay: 40 }); await settle(page);
+  await page.keyboard.press('Control+ArrowLeft'); await settle(page);
+  await page.keyboard.press('Control+ArrowLeft'); await settle(page);
+  await page.keyboard.type('X', { delay: 40 }); await settle(page);           // alpha Xbeta gamma
+  // 두 번 클릭으로 "gamma"를 고르고 덮어쓰기
+  const cb = await page.locator('.caret').boundingBox();
+  const pb = await page.locator('.page').nth(2).boundingBox();
+  await page.keyboard.press('End'); await settle(page);
+  const eb = await page.locator('.caret').boundingBox();
+  await page.mouse.dblclick(eb.x - 18, eb.y + eb.height / 2); await page.waitForSelector('.sel', { timeout: 8000 }); await settle(page);
+  await page.keyboard.type('Z', { delay: 40 }); await settle(page);
+  const r = await saveAndParse(page, { warn: true });
+  { const f0 = find(r.doc, 'alpha Xbeta gamma'); assert.ok(f0.found, 'Ctrl+←로 단어 앞(beta 앞)에 X가 들어갔다'); assert.match(r.doc.getTextRange(f0.sec, f0.para, 0, 80), /공개 Z$/, '두 번 클릭한 줄 끝 단어(현황)를 Z로 덮어썼다'); }
+  assert.ok(cb && pb && eb);
+  await done(page);
+});
+
+test('양식 개체: 선택 상자·라디오·입력 칸을 눌러 값을 바꾼다', async () => {
+  const page = await newPage();
+  await open(page, 'form-01.hwp');
+  await page.click('#edit-btn'); await page.waitForSelector('#edit-bar:not([hidden])'); await settle(page);
+  const box = await page.locator('.page').first().boundingBox();
+  const at = async (x, y) => { await page.mouse.click(box.x + (x / 793.7) * box.width, box.y + (y / 1122.5) * box.height); await page.waitForTimeout(500); await settle(page); };
+  await at(124, 200);                                       // 선택 상자 1 → 0
+  await at(124, 302);                                       // 라디오 0 → 1
+  await at(124, 362);                                       // 입력 칸 → 대화상자
+  await page.waitForSelector('dialog[open]'); await page.locator('dialog[open] input[type=text]').fill('양식값'); await submit(page);
+  const r = await saveAndParse(page, { warn: true });
+  assert.equal(JSON.parse(r.doc.getFormValue(0, 2, 0)).value, 0, '선택 상자');
+  assert.equal(JSON.parse(r.doc.getFormValue(0, 6, 0)).value, 1, '라디오');
+  assert.equal(JSON.parse(r.doc.getFormValue(0, 8, 0)).text, '양식값', '입력 칸');
   await done(page);
 });
 

@@ -229,6 +229,10 @@ self.onmessage = async (e) => {
       const r = openDocument(m);
       return reply(r, [r.sizes.buffer]);
     }
+    if (m.type === 'blank') {   // 새 문서: 엔진 내장 빈 문서를 HWP 바이트로(열기 흐름이 이어서 연다)
+      const d = HwpDocument.createEmpty();
+      try { d.createBlankDocument(); const bytes = d.exportHwp(); return reply({ bytes }, [bytes.buffer]); } finally { d.free(); }
+    }
     if (m.type === 'render') {
       const r = renderPage(m);
       return reply(r, [r.svg]);

@@ -99,10 +99,10 @@ jobs:
           limit="${{ github.event.inputs.corpus_limit }}"
           npm run test:edit-corpus -- --limit "${limit:-150}"
 
-      - name: 편집 퍼저 (무작위 편집 열, 시드 3개)
+      - name: 편집 퍼저 (글·표·개체·쪽·기타 무작위 편집 열, 시드 3개)
         working-directory: apps/web
         run: |
-          for s in 1 2 3; do npm run test:edit-fuzz -- --seed "$s"; done
+          for s in 1 2 3; do npm run test:edit-fuzz -- --seed "$s" --tbl 0.1 --obj 0.1 --page 0.1 --misc 0.1; done
 
       - name: DOCX 변이 시험 (스모크)
         working-directory: apps/web

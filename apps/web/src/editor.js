@@ -7,15 +7,19 @@ import { askForm } from './ed-ui.js';
 import { installTable } from './ed-table.js';
 import { installObjects } from './ed-objects.js';
 import { installPage } from './ed-page.js';
+import { installMisc } from './ed-misc.js';
 
 const T = {
-  tabs: { format: '서식', insert: '입력', table: '표', object: '개체', page: '쪽', view: '보기' }, ok: '확인', cancel: '취소',
+  tabs: { format: '서식', insert: '입력', table: '표', object: '개체', page: '쪽', find: '찾기', view: '보기' }, ok: '확인', cancel: '취소',
   undo: '실행 취소 (Ctrl+Z)', redo: '다시 실행 (Ctrl+Y)', bold: '굵게 (Ctrl+B)', italic: '기울임 (Ctrl+I)', underline: '밑줄 (Ctrl+U)',
   sizeDown: '글자 작게', sizeUp: '글자 크게', color: '글자 색', left: '왼쪽 맞춤', center: '가운데 맞춤', right: '오른쪽 맞춤', justify: '양쪽 맞춤',
   font: '글꼴', strike: '취소선', highlight: '형광펜 색', highlightOff: '형광펜 지우기', highlightOffLabel: '지움',
   spacing: '자간', spacingTitle: '글자 사이 간격(자간) %', ratio: '장평', ratioTitle: '글자 폭(장평) %',
   spacingDown: '자간 줄이기', spacingUp: '자간 늘리기', ratioDown: '장평 줄이기', ratioUp: '장평 늘리기',
   lineSpacing: '줄 간격', indentLess: '왼쪽 여백 줄이기', indentMore: '왼쪽 여백 늘리기', marks: '문단 부호 보이기·숨기기',
+  saveOpts: '저장 옵션…', saveOptsTitle: '저장 형식과 암호', fmtLabel: '형식', fmts: [['auto', '원래 형식'], ['hwp', 'HWP'], ['hwpx', 'HWPX'], ['txt', '텍스트(.txt, 글만)']], pwLabel: '암호',
+  pwHint: '비워 두면 암호 없이 저장합니다(HWP·HWPX만). 암호는 저장하는 순간에만 쓰고 어디에도 남기지 않습니다. 잊으면 파일을 열 수 없습니다.',
+  txtNote: '텍스트로 저장하면 서식·그림·표 모양은 없어지고 글만 남습니다.',
   save: '저장', saveTitle: '다른 이름으로 저장 (Ctrl+S)', toolbar: '편집 도구', input: '문서 편집 입력',
   saving: '저장 중…', saved: (n) => `${n} 저장했습니다.`, saveCancelled: '저장을 취소했습니다.', saveFailed: '저장하지 못했습니다.',
   opFailed: '이 편집을 적용하지 못했습니다. 실행 취소(Ctrl+Z)로 직전 상태로 돌아갈 수 있습니다.',
@@ -59,9 +63,9 @@ export class Editor {
     this.comp = null;                 // { start, len, fmt } 한글 조합 중
     this.pending = {};                // 서식 단추를 먼저 눌렀을 때 다음 입력에 적용할 서식
     this.cur = {};                    // 캐럿 위치의 글자·문단 서식
-    this.tbl = null; this.cellBlock = null; this.obj = null; this.objListeners = []; this.objKey = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
+    this.tbl = null; this.cellBlock = null; this.obj = null; this.formListeners = []; this.objListeners = []; this.objKey = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
     this.cleanups = [];
-    this.lastTyped = 0; this.selText = ''; this.dragging = false; this.hitBusy = false; this.hitNext = null; this.keyHandled = false;
+    this.lastTyped = 0; this.clicks = 0; this.lastDown = null; this.selText = ''; this.dragging = false; this.hitBusy = false; this.hitNext = null; this.keyHandled = false;
     this.#buildToolbar();
     this.#loadFonts();
     this.#buildInput();
@@ -217,6 +221,8 @@ export class Editor {
     const t = await this.#call('text', { a, b });
     if (ver === this.selVer && t) this.selText = t.text.length > 2_000_000 ? '' : t.text;
   }
+  /** 복사(Ctrl+C·잘라내기) 때: 엔진 내부 클립보드에 선택을 담아 둔다. 붙이기 때 시스템 클립보드의 글과 같으면 서식·개체째 붙인다. */
+  #stashSelection(a, b) { return this.#call('copysel', { a, b }); }
   #drawSel(q) {
     const layer = this.#layer(q.page, 'sel-layer');
     if (!layer) return;
@@ -292,6 +298,7 @@ export class Editor {
     this.hitBusy = true;
     this.#enqueue(async () => {
       const r = await this.#req('hit', { ...h, objs: !extend });
+      if (r.form) { this.#flushGroup(); this.#clearObj(); for (const f of this.formListeners) this.#enqueue(() => f(r.form)); return; }
       if (r.obj) { this.#flushGroup(); this.#selectObj(r.obj); return; }
       if (r.pos) { this.#clearObj(); this.#flushGroup(); this.pending = {}; this.#set(r.pos, r.rect, { extend }); }
       else if (!extend) this.status(T.readonlyHere);
@@ -306,6 +313,21 @@ export class Editor {
     if (!h) return;
     e.preventDefault();
     this.dragging = true;
+    // 두 번 클릭은 단어, 세 번 클릭은 문단 선택(처음 클릭이 이미 캐럿을 놓았으므로 다시 찍지 않는다)
+    // (PointerEvent.detail은 늘 0이라 클릭 횟수를 직접 센다: 같은 자리에서 0.45초 안에 이어 누르기)
+    const now = performance.now(), L = this.lastDown;
+    this.clicks = L && now - L.t < 450 && Math.hypot(e.clientX - L.x, e.clientY - L.y) < 6 ? Math.min(3, this.clicks + 1) : 1;
+    this.lastDown = { t: now, x: e.clientX, y: e.clientY };
+    if (this.clicks >= 2 && !e.shiftKey) {
+      const whole = this.clicks >= 3;
+      this.#focus(true);
+      this.#enqueue(async () => {
+        if (!this.pos || this.obj) return;
+        const w = await this.#req('wordat', { pos: this.pos, whole });
+        if (w.a && w.b && !same(w.a, w.b)) { const c = await this.#req('caret', { pos: w.b }); this.anchor = w.a; this.#set(w.b, c.rect, { extend: true }); }
+      });
+      return;
+    }
     this.#hitAt(h, e.shiftKey);
     this.#focus(true);
   }
@@ -335,7 +357,10 @@ export class Editor {
       if (lk === 'u') { e.preventDefault(); this.#toggle('underline'); return; }
       if (lk === 's') { e.preventDefault(); this.save(); return; }
       if (lk === 'a') { e.preventDefault(); this.#selectAll(); return; }
+      if (lk === 'f' || lk === 'h') { e.preventDefault(); this.api.openFind?.(); return; }
       if (lk === 'c' || lk === 'x' || lk === 'v') return;        // 복사·잘라내기·붙여넣기는 클립보드 이벤트가 처리
+      const jump = { arrowleft: 'wordleft', arrowright: 'wordright', home: 'docstart', end: 'docend' }[lk];
+      if (jump) { e.preventDefault(); this.#move(jump, e.shiftKey); return; }
       this.keyHandled = false;
       return;
     }
@@ -414,7 +439,7 @@ export class Editor {
       let pos = r.pos ?? this.pos, c = null;
       if (pos) { try { c = await this.#req('caret', { pos }); } catch { c = null; } }
       if (!c?.rect) { pos = { s: 0, p: 0, o: 0, path: null }; c = await this.#req('caret', { pos }); }
-      this.#set(pos, c.rect, {});
+      this.#set(c.pos ?? pos, c.rect, {});
     });
   }
 
@@ -449,18 +474,30 @@ export class Editor {
     if (!this.active) return;
     e.preventDefault();
     const text = e.clipboardData?.getData('text/plain') ?? '';
-    if (!text) return;
+    const html = e.clipboardData?.getData('text/html') ?? '';
+    if (!text && !html) return;
     this.#enqueue(async () => {
       if (!this.pos) return;
+      this.#clearObj();
       if (!(await this.#deleteSelNow())) return;
       this.#flushGroup();
-      await this.#doMutate('paste', { pos: this.pos, text });
+      // 이 문서에서 복사한 것이면 서식·개체째, 다른 곳의 HTML이면 HTML로, 안 되면 글로 붙인다
+      try {
+        const r = await this.#req('pasterich', { pos: this.pos, text, html });
+        if (!r.fallback) {
+          this.#setDirty(true); this.viewer.refresh(r.sizes, {});
+          if (r.pos) this.#set(r.pos, r.rect, {});
+          return;
+        }
+      } catch (err) { console.warn('rich paste', err); }
+      if (text) await this.#doMutate('paste', { pos: this.pos, text });
     });
   }
   #onCopy(e, cut) {
     if (!this.#hasSel() || !this.selText) return;
     e.preventDefault();
     e.clipboardData?.setData('text/plain', this.selText);
+    if (!this.cellBlock) this.#stashSelection(this.anchor, this.pos);
     if (cut) this.#delete('back');
   }
 
@@ -514,8 +551,10 @@ export class Editor {
       this.panels[k] = pn;
     }
     const sp = document.createElement('span'); sp.className = 'spacer'; head.append(sp);
+    this.btn.saveOpts = this.#btn('', T.saveOpts, T.saveOptsTitle, () => this.#saveOptions());
+    this.btn.saveOpts.setAttribute('aria-label', T.saveOpts);
     this.btn.save = this.#btn('primary', T.save, T.saveTitle, () => this.save());
-    head.append(this.btn.save);
+    head.append(this.btn.saveOpts, this.btn.save);
     bar.append(head, ...Object.values(this.panels));
     this.#buildFormatPanel();
     // 나머지 탭의 기능(표·개체·쪽 …)은 모듈이 자기 탭에 단추를 채운다
@@ -523,6 +562,7 @@ export class Editor {
     installTable(this.api);
     installObjects(this.api);
     installPage(this.api);
+    installMisc(this.api);
     this.#buildViewPanel();
     this.#showTab('format');
   }
@@ -623,12 +663,15 @@ export class Editor {
       /** 대기열 안에서: 캐럿을 pos로(없으면 가까운 곳으로) 옮긴다. */
       placeCaret: (pos) => ed.#revalidate(pos),
       onContext: (fn) => ed.ctx.push(fn),
+      panel: (name) => ed.panels[name], showTab: (k) => ed.#showTab(k),
       get obj() { return ed.obj; }, get zoom() { return ed.viewer.zoom; }, get viewer() { return ed.viewer; },
       selectObj: (o) => ed.#selectObj(o), clearObj: () => ed.#clearObj(),
-      onObject: (fn) => ed.objListeners.push(fn),
+      onObject: (fn) => ed.objListeners.push(fn), onForm: (fn) => ed.formListeners.push(fn),
       setObjKeyHandler: (fn) => { ed.objKey = fn; },
       setDirty: (d) => ed.#setDirty(d),
       focus: () => ed.#focus(true),
+      /** (작업 안에서) a~b를 선택 상태로 만든다(찾기 결과 등). */
+      selectRange: async (a, b) => { const c = await ed.#req('caret', { pos: b }); ed.anchor = a; ed.#set(b, c.rect, { extend: true }); },
     };
   }
   /** (작업 안에서) 문서를 바꾸는 rhwp API 호출: 되돌리기 항목·변경 표시·쪽 다시 그리기·캐럿 보정까지. */
@@ -645,6 +688,7 @@ export class Editor {
   async #revalidate(pos) {
     let c = null, at = pos;
     if (at) { try { c = await this.#req('caret', { pos: at }); } catch { c = null; } }
+    if (c?.pos) at = c.pos;
     if (!c?.rect && at?.path) { at = { s: at.s, p: at.p, o: 0, path: null }; try { c = await this.#req('caret', { pos: at }); } catch { c = null; } }
     if (!c?.rect) { at = { s: 0, p: 0, o: 0, path: null }; c = await this.#req('caret', { pos: at }); }
     this.anchor = null;
@@ -674,7 +718,7 @@ export class Editor {
     this.propsTimer = setTimeout(async () => {
       if (!this.pos || !this.active) return;
       const r = await this.#call('props', { pos: this.pos });
-      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align, lineSpacing: r.para?.lineSpacing, marginLeft: r.para?.marginLeft }; this.tbl = r.table ?? null; this.#updateToolbar(); }
+      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align, lineSpacing: r.para?.lineSpacing, marginLeft: r.para?.marginLeft, paraLevel: r.para?.paraLevel }; this.tbl = r.table ?? null; this.#updateToolbar(); }
       const s = await this.#call('status', {});
       if (s) this.#updateStatus(s);
     }, 80);
@@ -732,8 +776,23 @@ export class Editor {
   #toggleMarks() { return this.#toggleView('marks', this.viewBtn.marks); }
 
   // ── 저장 ──────────────────────────────────────────────────────────
-  #ext() { return /\.hwpx$/i.test(this.fileName) ? 'hwpx' : 'hwp'; }
-  #suggested() { return `${this.fileName.replace(/\.hwpx?$/i, '')} (편집).${this.#ext()}`; }
+  #ext() {
+    const f = this.saveOpts?.format;
+    if (f && f !== 'auto') return f;
+    return /\.hwpx$/i.test(this.fileName) ? 'hwpx' : 'hwp';
+  }
+  #suggested() { return `${this.fileName.replace(/\.(hwpx?|txt)$/i, '')}${this.fresh ? '' : ' (편집)'}.${this.#ext()}`; }
+  async #saveOptions() {
+    const cur = this.saveOpts ?? { format: 'auto', password: '' };
+    const v = await askForm(T.saveOptsTitle, [
+      { key: 'format', label: T.fmtLabel, type: 'select', value: cur.format, options: T.fmts },
+      { key: 'password', label: T.pwLabel, type: 'text', value: '', hint: T.pwHint },
+    ], { ok: T.ok, cancel: T.cancel });
+    this.#refocus();
+    if (!v) return;
+    this.saveOpts = { format: v.format, password: v.password };
+    this.status(v.format === 'txt' ? T.txtNote : (v.password ? '암호를 걸어 저장합니다.' : '저장 형식을 바꿨습니다.'));
+  }
 
   /** 확인 대화상자. 계속하면 true. */
   #ask(title, lines, yes, no) {
@@ -771,20 +830,21 @@ export class Editor {
     this.status(T.saving);
     try {
       const format = this.#ext();
-      const r = await this.#enqueue(async () => { this.#flushGroup(); return this.#req('save', { format }); });
+      const password = format === 'txt' ? '' : (this.saveOpts?.password ?? '');
+      const r = await this.#enqueue(async () => { this.#flushGroup(); return this.#req('save', { format, password }); });
       if (!r) { this.status(T.saveFailed); return; }
       const v = r.verify ?? {};
       const warn = [];
       if (v.checked && v.reopenError) warn.push(T.reopenFail);
       else if (v.checked && !v.ok) warn.push(T.verifyFail(v.diffs));
       if (v.checked && !v.reopenError && v.pagesBefore !== v.pagesAfter) warn.push(T.pagesChanged(v.pagesBefore, v.pagesAfter));
-      if (this.meta?.hwp3) warn.push(T.hwp3);
+      if (this.meta?.hwp3 && format !== 'txt') warn.push(T.hwp3);
+      if (format === 'txt') warn.push(T.txtNote);
       if (warn.length && !(await this.#ask(T.warnTitle, warn, T.keepSaving, T.cancelSave))) { this.status(T.saveCancelled); return; }
       const blob = new Blob([r.bytes], { type: 'application/octet-stream' });
       const where = await this.#write(blob, this.#suggested());
       if (where === null) { this.status(T.saveCancelled); return; }
-      await this.#call('clean');
-      this.#setDirty(false);
+      if (format !== 'txt') { await this.#call('clean'); this.#setDirty(false); }   // 글만 내보낸 것은 문서를 저장한 것이 아니다
       this.status(T.saved(where));
     } catch (e) {
       console.warn('save', e);

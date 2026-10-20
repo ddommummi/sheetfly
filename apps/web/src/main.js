@@ -18,6 +18,7 @@ let warm = null;      // 다음 열기를 위해 미리 올려 둔 Worker (첫 �
 let opening = null;   // { worker, token }
 let openToken = 0;
 let docName = '';
+let docFresh = false;
 let docKind = '';
 let docMeta = {};
 let editor = null;   // 편집기(지연 로딩). 문서 하나에 하나
@@ -62,7 +63,7 @@ function prewarm() {
 }
 
 // ── 열기 ─────────────────────────────────────────────────────────────
-async function openFile(file, password) {
+async function openFile(file, password, fresh = false) {
   if (editor?.dirty && !(await editor.confirmDiscard())) return;   // 저장하지 않은 편집이 있으면 먼저 묻는다
   cancelOpen(false);
   hideError();
@@ -90,7 +91,7 @@ async function openFile(file, password) {
     const old = docWorker;
     docWorker = worker;
     editor?.dispose(); editor = null; delete body.dataset.dirty; delete body.dataset.editing;
-    docKind = kind; docMeta = { ...(res.meta ?? {}), openMs };
+    docKind = kind; docMeta = { ...(res.meta ?? {}), openMs }; docFresh = fresh;
     // 편집은 HWP/HWPX만(암호 문서 제외, docs/phase4/design.md 5절)
     const editable = kind === 'hwp' && !docMeta.encrypted;
     $('edit-btn').hidden = !editable; $('edit-btn').setAttribute('aria-pressed', 'false'); $('edit-bar').hidden = true;
@@ -330,6 +331,19 @@ window.addEventListener('keydown', (e) => {
 });
 
 
+// ── 새 문서 ─────────────────────────────────────────────────────────
+async function newDocument() {
+  try {
+    const w = warm ?? spawn();
+    warm = w;
+    await w.ready;
+    const r = await w.request('blank');
+    await openFile(new File([r.bytes], '새 문서.hwp', { type: 'application/octet-stream' }), undefined, true);
+    if (docKind === 'hwp' && !editor?.active) await toggleEdit();
+  } catch (e) { console.warn('new document', e); status(S.editFailed); }
+}
+for (const id of ['new-btn', 'new-btn-empty']) $(id)?.addEventListener('click', newDocument);
+
 // ── 편집 (지연 로딩) ─────────────────────────────────────────────────
 async function toggleEdit() {
   if (!docWorker || docKind !== 'hwp') return;
@@ -341,7 +355,7 @@ async function toggleEdit() {
       await docWorker.request('editInit', { url: meta('sheetfly-hwp-edit') });
       const mod = await import(/* 편집기는 눌렀을 때만 받는다 */ meta('sheetfly-editor'));
       editor = mod.createEditor({
-        viewer, stage, worker: docWorker, bar: $('edit-bar'), fileName: docName, meta: docMeta, status,
+        viewer, stage, worker: docWorker, bar: $('edit-bar'), fileName: docName, meta: docMeta, status, fresh: docFresh,
         onDirty: (d) => { if (d) body.dataset.dirty = '1'; else delete body.dataset.dirty; },
       });
       // 열기만 수 초 이상 걸린 문서는 글자마다 전체를 다시 조판하는 편집이 매우 느리다: 알리고 확인받는다

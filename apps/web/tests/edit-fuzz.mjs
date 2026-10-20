@@ -25,6 +25,8 @@ const OBJP = Number(arg('obj', 0)) > 0;       // 개체(그림·도형·수식) 
 const OBJR = Number(arg('obj', 0));
 const PAGER = Number(arg('page', 0));        // 쪽·머리글·각주 편집을 섞는다
 const PAGEP = PAGER > 0;
+const MISCR = Number(arg('misc', 0));        // 링크·책갈피·필드·스타일·번호·찾아 바꾸기·붙여넣기를 섞는다
+const MISCP = MISCR > 0;
 const TBLP = Number(arg('tbl', 0));        // 편집 한 번이 표 구조 편집일 확률(0이면 기본 비율)
 
 function* walk(dir) {
@@ -131,7 +133,28 @@ function pageOp(doc, m, rand, pos) {
   ];
   try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) { return rejectOk(e); }
 }
-let failures = 0, totalOps = 0, noRect = 0, pageOps = 0, objOps = 0, tblOps = 0, rejected = 0, apiOps = 0;
+function miscOp(doc, m, rand, pos) {
+  const ri = (n) => Math.floor(rand() * n);
+  const len = doc.getParagraphLength(0, pos.p);
+  const o1 = Math.min(len, pos.o), o2 = Math.min(len, o1 + 1 + ri(4));
+  const kinds = [
+    () => m('hlinsert', { a: { s: 0, p: pos.p, o: o1, path: null }, b: { s: 0, p: pos.p, o: o2, path: null }, uri: 'https://example.com/' + ri(100), text: '' }),
+    () => m('hlinsert', { a: { s: 0, p: pos.p, o: o1, path: null }, b: { s: 0, p: pos.p, o: o1, path: null }, uri: 'https://e.org', text: '링크' + ri(9) }),
+    () => m('api', { fn: 'addBookmark', args: [0, pos.p, o1, 'bm' + ri(1000)] }),
+    () => { const bs = JSON.parse(doc.getBookmarks()); return bs.length && m('api', { fn: rand() < 0.5 ? 'deleteBookmark' : 'renameBookmark', args: rand() < 0.5 ? [bs[0].sec, bs[0].para, bs[0].ctrlIdx] : [bs[0].sec, bs[0].para, bs[0].ctrlIdx, 'r' + ri(1000)] }); },
+    () => m('api', { fn: 'insertClickHereField', args: [0, pos.p, o1, '안내', '메모', 'f' + ri(1000), true] }),
+    () => { const fl = JSON.parse(doc.getFieldList()).filter((x) => x.fieldType === 'clickhere'); return fl.length && m('api', { fn: 'setFieldValue', args: [fl[ri(fl.length)].fieldId, '값' + ri(9)] }); },
+    () => m('api', { fn: 'applyStyle', args: [0, pos.p, ri(8)] }),
+    () => m('api', { fn: 'createStyle', args: [JSON.stringify({ name: 's' + ri(1000), englishName: 's', type: 0, nextStyleId: 0 })] }),
+    () => m('parafmt', { a: { s: 0, p: pos.p, o: 0, path: null }, b: { s: 0, p: pos.p, o: 0, path: null }, props: { headType: ['None', 'Number', 'Bullet'][ri(3)], numberingId: 1, paraLevel: ri(3) } }),
+    () => m('replall', { query: ['a', '한', 'Hello'][ri(3)], text: ['', 'ZZ', '가나'][ri(3)], caseSensitive: rand() < 0.5 }),
+    () => { const f = m('find', { query: '한', forward: rand() < 0.5, caseSensitive: false, from: { s: 0, p: pos.p, o: o1 } }); return f.found && m('repl', { a: f.a, b: f.b, text: '바꿈' }); },
+    () => { const cs = m('copysel', { a: { s: 0, p: pos.p, o: o1, path: null }, b: { s: 0, p: pos.p, o: o2, path: null } }); return m('pasterich', { pos: { s: 0, p: pos.p, o: o2, path: null }, text: cs.text, html: cs.html }); },
+    () => m('view', { mode: ['marks', 'codes', 'transparent'][ri(3)], on: rand() < 0.5 }),
+  ];
+  try { const r = kinds[ri(kinds.length)](); return r ? 'ok' : 'skipped'; } catch (e) { return rejectOk(e); }
+}
+let failures = 0, totalOps = 0, noRect = 0, miscOps = 0, pageOps = 0, objOps = 0, tblOps = 0, rejected = 0, apiOps = 0;
 const fail = (f, msg) => { failures++; console.log('  ✗', f.rel, msg); };
 
 for (const f of files) {
@@ -151,7 +174,7 @@ for (const f of files) {
   let pos = randPos(), muts = 0, ok = true, lastOp = '';
   try {
     for (let i = 0; i < STEPS && ok; i++) {
-      const k = TBLP && rand() < TBLP ? 0.95 : (OBJR && rand() < OBJR ? 0.98 : (PAGER && rand() < PAGER ? 0.99 : rand()));
+      const k = TBLP && rand() < TBLP ? 0.95 : (OBJR && rand() < OBJR ? 0.98 : (PAGER && rand() < PAGER ? 0.99 : (MISCR && rand() < MISCR ? 0.995 : rand())));
       let r = null, op = ''; lastOp = '';
       if (k < 0.34) { op = lastOp = 'insert'; r = m('insert', { pos, text: POOL[Math.floor(rand() * POOL.length)], group: rand() < 0.5 }); }
       else if (k < 0.44) { op = lastOp = 'enter'; r = m('enter', { pos }); }
@@ -175,6 +198,15 @@ for (const f of files) {
         if (res === 'rejected') { rejected++; if (JSON.stringify(paras(doc)) !== before) { fail(f, `step ${i}: 엔진이 거부한 표 편집 뒤 문서가 바뀌어 있다`); ok = false; break; } }
         else { muts++; tblOps++; }
         pos = { s: 0, p: Math.min(doc.getParagraphCount(0) - 1, T.p), o: 0, path: null };
+        continue;
+      }
+      else if (MISCP && k >= 0.99) {
+        op = 'misc';
+        const before = JSON.stringify(paras(doc));
+        const res = miscOp(doc, m, rand, { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: pos.o });
+        if (res === 'rejected') { rejected++; if (JSON.stringify(paras(doc)) !== before) { fail(f, `step ${i}: 엔진이 거부한 편집 뒤 문서가 바뀌어 있다`); ok = false; break; } }
+        else { muts++; miscOps++; }
+        pos = { s: 0, p: Math.min(pos.p, doc.getParagraphCount(0) - 1), o: 0, path: null };
         continue;
       }
       else if (PAGEP && k >= 0.985) {
@@ -202,6 +234,7 @@ for (const f of files) {
       // 불변식: 캐럿이 문단 안에 있고 좌표를 구할 수 있다
       const n = doc.getParagraphCount(0);
       if (pos.p >= n) pos = { s: 0, p: Math.max(0, n - 1), o: 0, path: null };
+      if (pos.path) { if (!m('caret', { pos }).rect) pos = { s: 0, p: pos.p, o: 0, path: null }; else { m('caret', { pos }); totalOps++; continue; } }   // 칸 안 위치는 캐럿 좌표가 나오면 유효
       const l = doc.getParagraphLength(0, pos.p);
       if (pos.o > l) { fail(f, `step ${i} ${op}: 캐럿 o=${pos.o} > 문단 길이 ${l}`); ok = false; break; }
       if (!m('caret', { pos }).rect) noRect++;
@@ -229,5 +262,5 @@ for (const f of files) {
   } catch (e) { fail(f, `되돌리기 예외: ${String(e && (e.message || e.code) || e).slice(0, 140)}`); }
   try { doc.free(); } catch {}
 }
-console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·개체 편집 ${objOps}·쪽 편집 ${pageOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
+console.log(`퍼저 seed=${SEED}: 파일 ${files.length}개, 편집 ${totalOps}회(캐럿 좌표 없음 ${noRect}, 표 편집 ${tblOps}·개체 편집 ${objOps}·쪽 편집 ${pageOps}·기타 편집 ${miscOps}·엔진 거부 ${rejected}), 실패 ${failures}`);
 process.exit(failures ? 1 : 0);

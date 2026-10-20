@@ -4,6 +4,7 @@ export const S = {
   appName: 'Sheetfly',
   tagline: '문서 한 장을 가볍게 연다',
   open: '파일 열기',
+  newDoc: '새 문서', newDocTitle: '빈 문서를 만들어 바로 편집을 시작합니다',
   openTitle: '파일 열기 (Ctrl+O)',
   dropTitle: '문서를 여기로 끌어다 놓으세요',
   dropHint: 'HWP, HWPX, DOCX, DOC, RTF, XLSX, XLS, PPTX, PPT 문서를 열 수 있습니다. 문서는 이 기기 안에서만 처리되며 서버로 전송되지 않습니다.',
