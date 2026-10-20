@@ -193,6 +193,7 @@ body[data-dirty] .file-name::after { content: " ●"; color: var(--accent); }
 .obj-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .obj-frame { position: absolute; border: 1.5px solid var(--accent); box-sizing: border-box; pointer-events: auto; cursor: move; touch-action: none; }
 .obj-frame.multi { border-style: dashed; cursor: default; }
+.obj-endpoint { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); box-sizing: border-box; cursor: crosshair; }
 .obj-rot { position: absolute; left: calc(50% - 5px); top: -24px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--surface); box-sizing: border-box; cursor: grab; }
 .obj-rot::after { content: ''; position: absolute; left: 3.5px; top: 8px; width: 1px; height: 14px; background: var(--accent); }
 .obj-handle { position: absolute; width: 9px; height: 9px; background: var(--surface); border: 1.5px solid var(--accent); border-radius: 2px; box-sizing: border-box; }
@@ -201,3 +202,14 @@ body[data-dirty] .file-name::after { content: " ●"; color: var(--accent); }
 .obj-handle.h-se { right: -5px; bottom: -5px; cursor: nwse-resize; } .obj-handle.h-s { left: calc(50% - 4px); bottom: -5px; cursor: ns-resize; }
 .obj-handle.h-sw { left: -5px; bottom: -5px; cursor: nesw-resize; } .obj-handle.h-w { left: -5px; top: calc(50% - 4px); cursor: ew-resize; }
 .dialog-text { min-height: 90px; padding: 6px 8px; resize: vertical; font: inherit; }
+
+/* 눈금자 */
+.ruler { position: relative; height: 24px; background: var(--surface-2); border-radius: 6px; overflow: hidden; user-select: none; }
+.ruler[hidden] { display: none; }
+.ruler-page { position: absolute; top: 0; bottom: 0; background: var(--surface); }
+.ruler-shade { position: absolute; top: 0; bottom: 0; background: var(--border); opacity: .7; }
+.ruler-tick { position: absolute; bottom: 0; width: 1px; height: 7px; background: var(--muted); font-size: 9px; line-height: 10px; color: var(--muted); }
+.ruler-mk { position: absolute; width: 10px; height: 8px; background: var(--accent); cursor: ew-resize; touch-action: none; }
+.ruler-mk.first { top: 0; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.ruler-mk.left { bottom: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.ruler-mk.right { bottom: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }

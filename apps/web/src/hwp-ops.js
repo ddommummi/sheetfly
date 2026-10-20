@@ -18,13 +18,13 @@ export const MUT = new Set([
   'insertHyperlinkEx', 'updateHyperlinkEx', 'removeHyperlinkEx', 'replaceHyperlinkTextEx', 'addBookmark', 'deleteBookmark', 'renameBookmark',
   'insertClickHereField', 'updateClickHereProps', 'removeFieldAt', 'renameField', 'setFieldValue', 'setFieldValueByName', 'setFormValue',
   'applyStyle', 'updateStyleShapes', 'createStyle', 'updateStyle', 'deleteStyle', 'ensureDefaultNumbering', 'ensureDefaultBullet', 'createNumbering', 'setNumberingRestart', 'setChartData', 'setChartDataByIndex',
-  'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt', 'setTextBoxAt',
+  'groupShapes', 'ungroupShape', 'insertEquation', 'setEquationProperties', 'deleteEquationControl', 'pasteControl', 'attachCaptionAt', 'detachCaptionAt', 'setTextBoxAt', 'moveLineEndpoint', 'setCellPicturePropertiesByPath', 'resizeTableCellsByPath', 'deleteCellTableControlByPath', 'setCellShapePropertiesByPath', 'deleteCellPictureControlByPath',
 ]);
 /** 문서를 바꾸지 않는 조회 API. */
 export const QRY = new Set([
   'getOutlineNavigation', 'getHyperlinkContext', 'getBookmarks', 'getFieldList', 'getFieldValue', 'getClickHereProps', 'getFormObjectAt', 'getFormValue', 'getStyleList', 'getStyleAt', 'getStyleDetail',
   'getNumberingList', 'getBulletList', 'listCharts', 'getChartData', 'getChartDataByIndex', 'getLineInfo', 'getHyperlinkContext',
-  'getPageDef', 'getSectionDef', 'getColumnDef', 'getPageBorderFill', 'getPageHide', 'getPageInfo', 'getHeaderFooter', 'getHeaderFooterParaInfo', 'getHeaderFooterList', 'getFootnoteInfo',
+  'getPageDef', 'getSectionDef', 'getColumnDef', 'getPageBorderFill', 'getPageHide', 'getPageInfo', 'getCellInfoByPath', 'getCellPropertiesByPath', 'getTableDimensionsByPath', 'getTableCellBboxesByPath', 'getHeaderFooter', 'getHeaderFooterParaInfo', 'getHeaderFooterList', 'getFootnoteInfo',
   'copyControl', 'clipboardHasControl', 'getPictureProperties', 'getShapeProperties', 'getEquationProperties', 'getShapeBBox', 'getPageControlLayout', 'getObjects',
   'getTableDimensions', 'getCellInfo', 'getCellProperties', 'getCellOwnProperties', 'getTableProperties', 'getTableBBox', 'getTableCellBboxes', 'getControls',
 ]);
@@ -50,7 +50,7 @@ export function ext(c, m) {
       let out; try { out = typeof r === 'string' ? J(r) : r; } catch { out = r; }
       return { result: out };
     }
-    case 'objfind': return { obj: findObject(doc, J, m.page, m.s, m.p, m.ctrl) };
+    case 'objfind': return { obj: findObject(doc, J, m.page, m.s, m.p, m.ctrl, m.cell) };
     case 'objprops': return { props: objProps(doc, J, m.obj) };
     case 'stylefromcaret': return styleFromCaret(c, m);
     case 'find': return find(c, m);
@@ -75,7 +75,13 @@ export function ext(c, m) {
 /** 위치가 최상위 표 칸 안이면 그 표와 칸 정보. 아니면 null. */
 export function tableAt(c, pos) {
   const { doc, J } = c;
-  if (!pos || !pos.path || pos.path.length !== 1) return null;
+  if (!pos || !pos.path) return null;
+  if (pos.path.length > 1) {   // 중첩 표: 엔진에 경로로 다루는 API(크기 맞추기·표 지우기)만 있어 nested 표지를 달아 돌려준다
+    try {
+      const pj = JSON.stringify(pos.path), dims = J(doc.getTableDimensionsByPath(pos.s, pos.p, pj)), info = J(doc.getCellInfoByPath(pos.s, pos.p, pj));
+      return { nested: true, s: pos.s, p: pos.p, path: pos.path, cell: pos.path[pos.path.length - 1].cellIndex, row: info.row, col: info.col, rowSpan: info.rowSpan, colSpan: info.colSpan, rows: dims.rowCount, cols: dims.colCount };
+    } catch { return null; }
+  }
   const { controlIndex: ctrl, cellIndex: cell } = pos.path[0];
   try {
     const dims = J(doc.getTableDimensions(pos.s, pos.p, ctrl));
@@ -88,7 +94,7 @@ export function tableAt(c, pos) {
 export function cellRange(c, a, b) {
   const { doc, J } = c;
   const A = tableAt(c, a), B = tableAt(c, b);
-  if (!A || !B || A.s !== B.s || A.p !== B.p || A.ctrl !== B.ctrl) return { range: null };
+  if (!A || !B || A.nested || B.nested || A.s !== B.s || A.p !== B.p || A.ctrl !== B.ctrl) return { range: null };
   let r1 = Math.min(A.row, B.row), c1 = Math.min(A.col, B.col);
   let r2 = Math.max(A.row + A.rowSpan - 1, B.row + B.rowSpan - 1), c2 = Math.max(A.col + A.colSpan - 1, B.col + B.colSpan - 1);
   const boxes = J(doc.getTableCellBboxes(A.s, A.p, A.ctrl));
@@ -157,14 +163,15 @@ export { NOOP_MSG };
 
 // ── 개체(그림·도형·수식) ──
 const OBJ_TYPES = new Set(['image', 'shape', 'line', 'group', 'equation', 'ole', 'chart', 'textbox', 'form']);
-const toObj = (c, page) => ({ type: c.type, s: c.secIdx, p: c.paraIdx, ctrl: c.controlIdx, page, x: c.x, y: c.y, w: c.w, h: c.h, wrap: c.wrap ?? null, plane: c.plane, z: c.zOrder });
-/** 쪽 좌표 (x, y)에 놓인 개체(표 제외, 칸 안 개체 제외). 겹치면 앞(zOrder 큰 것). 선은 얇아서 3px 여유를 준다. */
+// 표 칸 안 개체는 칸 경로(cellPath)와 그 칸을 가진 본문 문단(parentParaIdx)으로 가리킨다: p는 본문 문단, ctrl은 칸 안 문단에서의 개체 번호.
+const toObj = (c, page) => ({ type: c.type, s: c.secIdx, p: c.cellPath ? (c.parentParaIdx ?? c.paraIdx) : c.paraIdx, ctrl: c.controlIdx, page, x: c.x, y: c.y, w: c.w, h: c.h, wrap: c.wrap ?? null, plane: c.plane, z: c.zOrder, ...(c.cellPath ? { cell: { path: c.cellPath } } : {}) });
+/** 쪽 좌표 (x, y)에 놓인 개체(표 제외, 표 칸 안 개체 포함). 겹치면 앞(zOrder 큰 것). 선은 얇아서 3px 여유를 준다. */
 export function pickObject(doc, page, x, y) {
   let list;
   try { list = JSON.parse(doc.getPageControlLayout(page)).controls; } catch { return null; }
   let best = null;
   for (const c of list) {
-    if (!OBJ_TYPES.has(c.type) || c.cellIdx !== undefined) continue;
+    if (!OBJ_TYPES.has(c.type)) continue;
     const pad = c.type === 'line' ? 3 : 0;
     if (x >= c.x - pad && x <= c.x + c.w + pad && y >= c.y - pad && y <= c.y + c.h + pad) {
       if (!best || (c.plane ?? 0) > (best.plane ?? 0) || ((c.plane ?? 0) === (best.plane ?? 0) && (c.zOrder ?? 0) >= (best.zOrder ?? 0))) best = c;
@@ -173,18 +180,20 @@ export function pickObject(doc, page, x, y) {
   return best ? toObj(best, page) : null;
 }
 /** 개체의 최신 위치·크기(편집 뒤 틀을 다시 그릴 때). 쪽을 모르면 처음부터 찾는다. */
-export function findObject(doc, J, page, s, p, ctrl) {
+export function findObject(doc, J, page, s, p, ctrl, cell) {
   const n = doc.pageCount();
   const order = page != null ? [page, ...Array.from({ length: n }, (_, i) => i).filter((i) => i !== page)] : Array.from({ length: n }, (_, i) => i);
   for (const pg of order) {
     let list; try { list = J(doc.getPageControlLayout(pg)).controls; } catch { continue; }
-    const c = list.find((x) => x.secIdx === s && x.paraIdx === p && x.controlIdx === ctrl && x.cellIdx === undefined && OBJ_TYPES.has(x.type));
+    const key = cell ? JSON.stringify(cell.path) : '';
+    const c = list.find((x) => x.secIdx === s && (x.cellPath ? (x.parentParaIdx ?? x.paraIdx) : x.paraIdx) === p && x.controlIdx === ctrl && (x.cellPath ? JSON.stringify(x.cellPath) : '') === key && OBJ_TYPES.has(x.type));
     if (c) return toObj(c, pg);
   }
   return null;
 }
 function objProps(doc, J, o) {
   try {
+    if (o.cell) { const path = JSON.stringify(o.cell.path); return o.type === 'image' ? { kind: 'picture', ...J(doc.getCellPicturePropertiesByPath(o.s, o.p, path, o.ctrl)) } : { kind: 'shape', ...J(doc.getCellShapePropertiesByPath(o.s, o.p, path, o.ctrl)) }; }
     if (o.type === 'image') return { kind: 'picture', ...J(doc.getPictureProperties(o.s, o.p, o.ctrl)) };
     if (o.type === 'equation') return { kind: 'equation', ...J(doc.getEquationProperties(o.s, o.p, o.ctrl, -1, -1)) };
     return { kind: 'shape', ...J(doc.getShapeProperties(o.s, o.p, o.ctrl)) };

@@ -8,6 +8,7 @@ import { installTable } from './ed-table.js';
 import { installObjects } from './ed-objects.js';
 import { installPage } from './ed-page.js';
 import { installMisc } from './ed-misc.js';
+import { installRuler } from './ed-ruler.js';
 
 const T = {
   tabs: { format: '서식', insert: '입력', table: '표', object: '개체', page: '쪽', find: '찾기', view: '보기' }, ok: '확인', cancel: '취소',
@@ -600,6 +601,7 @@ export class Editor {
     installPage(this.api);
     installMisc(this.api);
     this.#buildViewPanel();
+    installRuler(this.api);
     this.#showTab('format');
   }
   /** 보기 탭: 문서를 바꾸지 않는 표시 옵션. */
@@ -705,9 +707,10 @@ export class Editor {
       /** 대기열 안에서: 좌표를 못 구하는 자리(빈 글상자 안 등)에 캐럿을 주어진 좌표로 둔다. */
       setCaret: (pos, rect) => { ed.anchor = null; ed.#set(pos, rect, {}); },
       onContext: (fn) => ed.ctx.push(fn),
+      addRow: (el) => ed.bar.append(el),
       panel: (name) => ed.panels[name], showTab: (k) => ed.#showTab(k),
       get obj() { return ed.obj; }, get objs() { return ed.objs; }, get zoom() { return ed.viewer.zoom; }, get viewer() { return ed.viewer; },
-      selectObj: (o) => ed.#selectObj(o), clearObj: () => ed.#clearObj(),
+      selectObj: (o, add) => ed.#selectObj(o, add), clearObj: () => ed.#clearObj(),
       onObject: (fn) => ed.objListeners.push(fn), onForm: (fn) => ed.formListeners.push(fn),
       setObjKeyHandler: (fn) => { ed.objKey = fn; },
       setDirty: (d) => ed.#setDirty(d),
@@ -760,7 +763,7 @@ export class Editor {
     this.propsTimer = setTimeout(async () => {
       if (!this.pos || !this.active) return;
       const r = await this.#call('props', { pos: this.pos });
-      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align, lineSpacing: r.para?.lineSpacing, marginLeft: r.para?.marginLeft, paraLevel: r.para?.paraLevel }; this.tbl = r.table ?? null; this.#updateToolbar(); }
+      if (r) { this.cur = { ...(r.char ?? {}), alignment: r.para?.alignment ?? r.para?.align, lineSpacing: r.para?.lineSpacing, marginLeft: r.para?.marginLeft, marginRight: r.para?.marginRight, indent: r.para?.indent, paraLevel: r.para?.paraLevel }; this.tbl = r.table ?? null; this.#updateToolbar(); }
       const s = await this.#call('status', {});
       if (s) this.#updateStatus(s);
     }, 80);

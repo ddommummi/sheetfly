@@ -13,6 +13,7 @@ const TM = {
   formula: '계산식…', formulaLabel: '계산식', formulaHint: '예) =SUM(A1:A4), =A1+B2*3 (칸 이름은 열 A·B…, 줄 1·2…)', formulaFail: '계산식을 계산하지 못했습니다.',
   chart: '차트 값…', noChart: '차트를 클릭해 고른 뒤 누르세요.', chartHint: '값만 고칩니다. 줄마다 "계열 이름: 값, 값, …" — 개수는 그대로여야 합니다.', chartFail: '차트 값을 바꾸지 못했습니다(개수가 달라졌거나 숫자가 아닙니다).',
   outline: '개요…', outlineTitle: '번호가 매겨진 제목 목록에서 골라 이동합니다', outlinePick: '제목', noOutline: '번호가 매겨진 제목(개요)이 없습니다.',
+  toc: '목차 넣기…', tocTitle: '번호가 매겨진 제목(개요)으로 목차를 캐럿 자리에 글로 넣습니다(문서가 바뀌면 다시 넣어야 합니다)', tocLevel: '넣을 단계(1~7)', tocLeader: '점 줄 잇기', tocNone: '번호가 매겨진 제목(개요)이 없어 목차를 만들 수 없습니다.', tocHeading: '목 차',
   ok: '확인', del: '지우기', no: '취소',
 };
 
@@ -25,7 +26,30 @@ export function installMisc(api) {
 
   // ── 입력 탭: 링크·책갈피·누름틀 ──
   const g = api.group('insert');
-  g.append(mk(TM.link, TM.linkTitle, () => run(hyperlink)), mk(TM.bookmark, null, () => run(bookmarks)), mk(TM.field, null, () => run(fields)));
+  g.append(mk(TM.link, TM.linkTitle, () => run(hyperlink)), mk(TM.bookmark, null, () => run(bookmarks)), mk(TM.field, null, () => run(fields)), mk(TM.toc, TM.tocTitle, () => run(insertToc)));
+  /** 글자 폭: 한글·전각은 2, 그 밖은 1로 센다(점 줄 길이를 맞추려는 어림). */
+  const vw = (t) => [...t].reduce((n, c) => n + (c.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
+  async function insertToc() {
+    const pos = api.pos; if (!pos) return;
+    const items = (await q('getOutlineNavigation', []))?.outline ?? [];
+    if (!items.length) { api.status(TM.tocNone); return; }
+    const v = await api.form(TM.toc, [
+      { key: 'level', label: TM.tocLevel, type: 'number', value: 3, min: 1, max: 7 },
+      { key: 'dots', label: TM.tocLeader, type: 'checkbox', value: true },
+    ]);
+    if (!v) return;
+    const WIDTH = 70;
+    const lines = [TM.tocHeading, ''];
+    for (const x of items.filter((o) => o.level <= v.level)) {
+      const head = `${'  '.repeat(Math.max(0, x.level - 1))}${x.number ? `${x.number} ` : ''}${x.title}`;
+      const pg = String(x.page);
+      const fill = v.dots ? ` ${'·'.repeat(Math.max(3, WIDTH - vw(head) - pg.length - 2))} ` : '  ';
+      lines.push(`${head}${fill}${pg}`);
+    }
+    const r = await api.req('paste', { pos, text: lines.join('\n') });
+    api.setDirty(true); api.viewer.refresh(r.sizes, {});
+    if (r.pos) await api.placeCaret(r.pos);
+  }
 
   async function hyperlink() {
     const pos = api.pos; if (!pos) return;
@@ -215,7 +239,7 @@ export function installMisc(api) {
     try { await api.mutateApi('evaluateTableFormula', [t.s, t.p, t.ctrl, t.row, t.col, v.f.trim(), true], { pos: api.pos }); } catch { api.status(TM.formulaFail); }
   }));
   tg.append(fBtn);
-  api.onContext(() => { fBtn.disabled = !api.tbl; });
+  api.onContext(() => { fBtn.disabled = !api.tbl || !!api.tbl.nested; });
 
   // ── 보기 탭: 개요(번호 있는 제목으로 이동) ──
   const vg = api.group('view');
