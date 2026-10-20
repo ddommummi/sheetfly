@@ -30,14 +30,16 @@ export function indexParagraphs(xml) {
       if (name === 'w:p') { node.para.end = end; const k = open.lastIndexOf(node.para); if (k >= 0) open.splice(k, 1); finish(node.para); }
       else if (name === 'w:r' && node.run) { node.run.end = end; }
       else if (name === 'w:t' && node.item) { node.item.textEnd = start; node.item.end = end; node.item.text = unesc(xml.slice(node.item.textStart, start)); }
+      if (name === 'w:t' && node.textStart != null && open.length) open[open.length - 1].all += unesc(xml.slice(node.textStart, start));   // 필드·변경 추적 안의 글까지 모은 문단 글(편집은 못 하지만 IR과 맞추는 데 쓴다)
       else if (name === 'w:rPr' && node.rPr) node.rPr[1] = end;
       else if (name === 'w:pPr' && node.pPr) node.pPr[1] = end;
       continue;
     }
-    const node = { name, start };
+    const node = { name, start, textStart: end };
     const para = open[open.length - 1];
+    if (para && (name === 'w:tab' || name === 'w:cr' || (name === 'w:br' && !/w:type="(page|column)"/.test(all)))) para.all += name === 'w:tab' ? '\t' : '\n';
     if (name === 'w:p') {
-      const p = { start, end: -1, pPr: null, runs: [], text: '', editable: true, why: '', depth: open.length };
+      const p = { start, end: -1, pPr: null, runs: [], text: '', all: '', editable: true, why: '', depth: open.length };
       paras.push(p); node.para = p;
       if (selfClose) { p.end = end; finish(p); } else open.push(p);
     } else if (para && parent && (parent.name === 'w:p' || parent.name === 'w:hyperlink')) {
