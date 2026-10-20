@@ -10,6 +10,8 @@
   <meta name="sheetfly-worker" content="%WORKER%">
   <meta name="sheetfly-wasm" content="%WASM%">
   <meta name="sheetfly-docx-worker" content="%DOCX_WORKER%">
+  <meta name="sheetfly-editor" content="%EDITOR%">
+  <meta name="sheetfly-hwp-edit" content="%HWP_EDIT%">
   <meta name="sheetfly-docx-wasm" content="%DOCX_WASM%">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="%CSS%">
@@ -18,6 +20,7 @@
   <header class="topbar">
     <a class="brand" href="/" aria-label="Sheetfly"><span class="logo" aria-hidden="true"></span>Sheetfly</a>
     <button id="open-btn" class="btn primary" type="button" data-s="open" data-s-title="openTitle">파일 열기</button>
+    <button id="new-btn" class="btn" type="button" data-s="newDoc" data-s-title="newDocTitle">새 문서</button>
     <span id="file-name" class="file-name"></span>
     <span class="spacer"></span>
     <div class="group doc-only" role="group" aria-label="쪽 이동">
@@ -48,9 +51,12 @@
       <button id="fit-width" class="btn" type="button" data-s-title="zoomFitWidth">너비</button>
       <button id="fit-page" class="btn" type="button" data-s-title="zoomFitPage">쪽</button>
     </div>
+    <button id="edit-btn" class="btn doc-only" type="button" data-s="edit" data-s-title="editTitle" aria-pressed="false" hidden>편집</button>
     <button id="search-btn" class="btn doc-only" type="button" data-s="search" data-s-title="searchTitle">검색</button>
     <button id="theme-btn" class="btn" type="button">테마: 자동</button>
   </header>
+
+  <div id="edit-bar" class="editbar" hidden></div>
 
   <div id="searchbar" class="searchbar" role="search" hidden>
     <input id="search-input" class="search-input" type="search" autocomplete="off" spellcheck="false" aria-label="검색어">
@@ -68,6 +74,7 @@
         <h1 data-s="dropTitle">문서를 여기로 끌어다 놓으세요</h1>
         <p data-s="dropHint"></p>
         <button id="open-btn-empty" class="btn primary large" type="button" data-s="open">파일 열기</button>
+        <button id="new-btn-empty" class="btn large" type="button" data-s="newDoc">새 문서</button>
       </div>
     </section>
     <div id="pages" class="pages" hidden></div>

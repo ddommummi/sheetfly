@@ -7,6 +7,7 @@ export const MIN_ZOOM = 0.25;
 export const MAX_ZOOM = 4;
 const KEEP_RENDERED = 14;
 const MAX_INFLIGHT = 2;
+const STALE_HOLD_MS = 350;   // 편집 직후 이 시간 동안은 글자를 치는 쪽만 다시 그린다
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
@@ -28,6 +29,8 @@ export class Viewer extends EventTarget {
     this.renderFn = null;
     this.rendered = new Map(); // page -> blob url
     this.inflight = new Set();
+    this.stale = new Set();   // 편집으로 내용이 바뀌어 다시 그려야 하는(이미 그려진) 쪽
+    this.ver = 0; this.hot = null; this.holdUntil = 0; this.holdTimer = 0;
     this.visible = new Set();
     this.hlLayers = new Map();
     this.matches = [];
@@ -95,6 +98,7 @@ export class Viewer extends EventTarget {
     for (const url of this.rendered.values()) URL.revokeObjectURL(url);
     this.rendered.clear();
     this.inflight.clear();
+    this.stale.clear();
     this.visible.clear();
     this.hlLayers.clear();
     this.matches = [];
@@ -189,7 +193,10 @@ export class Viewer extends EventTarget {
     if (!this.renderFn) return;
     const want = new Set(this.visible);
     want.add(this.current);
-    const order = [...want].filter((i) => !this.rendered.has(i) && !this.inflight.has(i))
+    const now = performance.now();
+    const held = this.holdUntil > now;
+    if (held) { clearTimeout(this.holdTimer); this.holdTimer = setTimeout(() => this.#queuePump(), this.holdUntil - now + 5); }
+    const order = [...want].filter((i) => (!this.rendered.has(i) || this.stale.has(i)) && !this.inflight.has(i) && !(held && this.rendered.has(i) && !this.hot?.has(i)))
       .sort((a, b) => Math.abs(a - this.current) - Math.abs(b - this.current));
     for (const i of order) {
       if (this.inflight.size >= MAX_INFLIGHT) break;
@@ -202,12 +209,16 @@ export class Viewer extends EventTarget {
     const el = this.pageEls[i];
     this.inflight.add(i);
     try {
+      const ver = this.ver;
       const buf = await this.renderFn(i);
       if (gen !== this.gen) return;
       const url = URL.createObjectURL(new Blob([buf], { type: 'image/svg+xml' }));
+      const old = this.rendered.get(i);
       this.rendered.set(i, url);
+      if (ver === this.ver) this.stale.delete(i);       // 그리는 사이에 또 편집됐으면 stale로 남겨 다시 그린다
       delete el.dataset.error;
       el.firstElementChild.src = url;
+      if (old) URL.revokeObjectURL(old);
       this.#evict();
     } catch (err) {
       if (gen !== this.gen) return;
@@ -230,7 +241,65 @@ export class Viewer extends EventTarget {
       delete el.dataset.rendered;
       URL.revokeObjectURL(this.rendered.get(i));
       this.rendered.delete(i);
+      this.stale.delete(i);
     }
+  }
+
+  // ── 편집 지원 ─────────────────────────────────────────────────────
+  /**
+   * 편집으로 내용이 바뀌었다: 그려진 쪽을 낡은 것으로 표시하고 다시 그린다. sizes가 있으면 쪽 수·크기를 먼저 맞춘다.
+   * from: 이 쪽 앞은 바뀌지 않았다. hot: 바로 다시 그릴 쪽들(글자를 치는 자리). 나머지 낡은 쪽은 입력이 잠시 멈춘 뒤에 그린다
+   * (한 글자마다 보이는 쪽을 모두 다시 그리면 입력이 그 뒤에 줄을 서서 느려진다).
+   */
+  refresh(sizes, { from = 0, hot = null } = {}) {
+    this.ver++;
+    if (sizes) this.#resizePages(sizes);
+    for (const i of this.rendered.keys()) if (i >= from) this.stale.add(i);
+    if (hot) {
+      this.hot = new Set(hot);
+      this.holdUntil = performance.now() + STALE_HOLD_MS;
+      for (const i of this.hot) if (this.rendered.has(i)) this.stale.add(i);
+    } else this.holdUntil = 0;
+    this.#queuePump();
+  }
+
+  /** 쪽 수가 바뀐 경우(입력으로 쪽이 늘거나 줄었다): 쪽 요소를 맞추고 확대 비율·위치는 유지한다. */
+  #resizePages(sizes) {
+    const n = sizes.length / 2;
+    const old = this.pageEls.length;
+    const top = this.stage.scrollTop;
+    for (let i = 0; i < n; i++) this.sizes[i] = { w: sizes[i * 2], h: sizes[i * 2 + 1] };
+    this.sizes.length = n;
+    for (let i = old; i < n; i++) {
+      const el = document.createElement('div');
+      el.className = 'page'; el.dataset.index = String(i); el.setAttribute('role', 'img'); el.setAttribute('aria-label', `${i + 1}쪽`);
+      const img = document.createElement('img');
+      img.alt = ''; img.decoding = 'async'; img.draggable = false;
+      img.addEventListener('load', () => { el.dataset.rendered = '1'; });
+      const hl = document.createElement('div'); hl.className = 'hl-layer';
+      el.append(img, hl);
+      this.hlLayers.set(i, hl); this.pageEls.push(el); this.pagesEl.append(el); this.io.observe(el);
+    }
+    for (let i = n; i < old; i++) {
+      this.io.unobserve(this.pageEls[i]); this.pageEls[i].remove(); this.hlLayers.delete(i);
+      const u = this.rendered.get(i); if (u) URL.revokeObjectURL(u);
+      this.rendered.delete(i); this.stale.delete(i); this.visible.delete(i); this.inflight.delete(i);
+    }
+    this.pageEls.length = n;
+    this.#layout();
+    this.stage.scrollTop = top;
+    if (this.current >= n) this.current = Math.max(0, n - 1);
+    this.dispatchEvent(new CustomEvent('pagecount', { detail: { count: n } }));
+  }
+
+  /** 쪽 안의 한 점(쪽 좌표 y, 높이 h)이 화면에 보이도록 스크롤한다. */
+  ensureVisible(page, y, h) {
+    const t = PAD + (this.tops[page] ?? 0) + y * this.zoom;
+    const b = t + h * this.zoom;
+    const vt = this.stage.scrollTop, vb = vt + this.stage.clientHeight;
+    const margin = 48;
+    if (t - margin < vt) this.stage.scrollTop = Math.max(0, t - margin);
+    else if (b + margin > vb) this.stage.scrollTop = b + margin - this.stage.clientHeight;
   }
 
   // ── 검색 강조 ─────────────────────────────────────────────────────

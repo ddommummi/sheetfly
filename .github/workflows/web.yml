@@ -89,6 +89,21 @@ jobs:
         working-directory: apps/web
         run: npm run test:e2e
 
+      - name: 편집 E2E (HWP 입력·한글 조합·서식·되돌리기·저장, 입력 지연 기록)
+        working-directory: apps/web
+        run: npm run test:edit
+
+      - name: 편집 왕복 코퍼스 (편집→저장→다시 열기, 본문 동일 95% 이상)
+        working-directory: apps/web
+        run: |
+          limit="${{ github.event.inputs.corpus_limit }}"
+          npm run test:edit-corpus -- --limit "${limit:-150}"
+
+      - name: 편집 퍼저 (글·표·개체·쪽·기타 무작위 편집 열, 시드 3개)
+        working-directory: apps/web
+        run: |
+          for s in 1 2 3; do npm run test:edit-fuzz -- --seed "$s" --tbl 0.1 --obj 0.1 --page 0.1 --misc 0.1; done
+
       - name: DOCX 변이 시험 (스모크)
         working-directory: apps/web
         run: npm run test:docx-fuzz -- --n 3000
