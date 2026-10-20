@@ -458,6 +458,49 @@ test('머리글·바닥글·각주를 두 번 눌러 글 위에서 바로 고치
   await done(page);
 });
 
+test('머리글·각주 안에서 마우스로 끌어 영역을 선택하고(영역 밖으로 끌어도) 지운다', async () => {
+  const page = await newPage();
+  await open(page, BODY); await clickBody(page);
+  await tab(page, 'page'); await page.waitForTimeout(200);
+  await clickBtn(page, '머리글…'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] textarea').fill('가나다라마바사아자차카타파하\n둘째 줄 문장입니다'); await submit(page); await settle(page);
+  await tab(page, 'insert'); await page.waitForTimeout(200);
+  await clickBtn(page, '각주 넣기'); await page.waitForSelector('dialog[open]');
+  await page.locator('dialog[open] textarea').fill('각주 본문 열 글자 넘는 긴 문장'); await submit(page); await settle(page);
+  const at = async (x, y) => { const b = await page.locator('.page').nth(2).boundingBox(); const sc = b.width / 793.7; return [b.x + x * sc, b.y + y * sc]; };
+  const drag = async (x0, y0, x1, y1) => {
+    let [x, y] = await at(x0, y0); await page.mouse.move(x, y); await page.mouse.down();
+    for (let i = 1; i <= 8; i++) { [x, y] = await at(x0 + ((x1 - x0) * i) / 8, y0 + ((y1 - y0) * i) / 8); await page.mouse.move(x, y, { steps: 2 }); }
+    await page.mouse.up(); await settle(page); await page.waitForTimeout(300);
+  };
+  let [x, y] = await at(300, 70);
+  await page.mouse.dblclick(x, y); await settle(page);
+  await page.waitForFunction(() => document.body.dataset.editZone === 'h', null, { timeout: 10000 });
+  // 첫 줄 가운데에서 둘째 줄(머리글 영역 아래)까지 끈다
+  await drag(390, 70, 400, 105);
+  assert.ok((await page.locator('.sel').count()) >= 2, '두 줄에 걸쳐 선택 영역이 그려진다');
+  await page.keyboard.press('Delete'); await settle(page);
+  await page.keyboard.press('Escape'); await settle(page);
+  // 각주 안에서 끌기
+  await page.locator('.page').nth(2).evaluate((el) => el.scrollIntoView({ block: 'end' })); await page.waitForTimeout(400);
+  [x, y] = await at(100, 1018);
+  await page.mouse.dblclick(x, y); await settle(page);
+  await page.waitForFunction(() => document.body.dataset.editZone === 'n', null, { timeout: 10000 });
+  await drag(90, 1018, 150, 1018);
+  assert.ok((await page.locator('.sel').count()) >= 1, '각주 안 선택 영역');
+  await page.keyboard.press('Delete'); await settle(page);
+  await page.keyboard.press('Escape'); await settle(page);
+  const r = await saveAndParse(page, { warn: true });
+  const h0 = JSON.parse(r.doc.getHeaderFooterParaInfo(0, true, 0, 0));
+  assert.equal(h0.paraCount, 1, `선택을 지우면 두 문단이 하나로 합쳐진다(${h0.text})`);
+  assert.ok(h0.text.startsWith('가나') && h0.text.endsWith('입니다'), h0.text);
+  assert.ok(h0.text.length < '가나다라마바사아자차카타파하둘째 줄 문장입니다'.length, `가운데가 지워졌다: ${h0.text}`);
+  let fn = '';
+  for (let p = 0; p < r.doc.getParagraphCount(0) && !fn; p++) { for (let c = 0; c < 3; c++) { try { const t = (JSON.parse(r.doc.getFootnoteInfo(0, p, c)).texts ?? []).join(''); if (t.includes('긴 문장') || t.includes('문장')) { fn = t; break; } } catch { /* 각주 아님 */ } } }
+  assert.ok(fn && fn.length < '각주 본문 열 글자 넘는 긴 문장'.length, `각주 일부가 지워졌다: ${fn}`);
+  await done(page);
+});
+
 // ── 링크·책갈피·필드·스타일·번호·찾아 바꾸기 ──
 test('찾아 바꾸기: 다음 찾기·바꾸기·모두 바꾸기(표 안 포함)', async () => {
   const page = await newPage();
