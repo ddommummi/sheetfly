@@ -17,8 +17,8 @@ before(async () => { ({ server, url } = await startServer(0)); browser = await l
 after(async () => { await browser?.close(); server?.close(); });
 
 const BODY = '2022년 국립국어원 업무계획.hwp';
-async function newPage() {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+async function newPage(opts = {}) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true, ...opts });
   const page = await ctx.newPage();
   page.__rec = instrument(page, url); page.__ctx = ctx;
   // 헤드리스 Chromium의 저장 위치 선택창은 응답하지 않으므로, 시험에서는 다운로드 경로를 쓴다.
@@ -998,4 +998,70 @@ test('외부 요청·CSP 위반·페이지 오류가 없다', () => {
   assert.deepEqual(allExternal, []);
   assert.deepEqual(allCsp, []);
   assert.deepEqual(allErrors, []);
+});
+
+test('터치: 길게 누르면 단어가 골라지고 양 끝 손잡이를 끌어 영역을 넓힌다(손가락으로 끌면 스크롤만)', async () => {
+  const page = await newPage({ hasTouch: true });
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+  const width = () => page.evaluate(() => [...document.querySelectorAll('.sel')].reduce((n, e) => n + e.getBoundingClientRect().width, 0));
+  const handle = async (k) => { const b = await page.locator(`.sel-handle.${k}:not([hidden])`).boundingBox(); return [b.x + (k === 'start' ? 24 : 20), b.y + 20]; };
+  const dragHandle = async (k, dx) => {
+    const [x, y] = await handle(k);
+    await touch('touchStart', x, y);
+    for (let i = 1; i <= 8; i++) { await touch('touchMove', x + (dx * i) / 8, y); await page.waitForTimeout(30); }
+    await touch('touchEnd'); await settle(page); await page.waitForTimeout(300);
+  };
+  await open(page, BODY);
+  await page.click('#edit-btn');
+  await page.fill('#page-input', '3'); await page.keyboard.press('Enter');
+  let box, prev = null;
+  for (let i = 0; i < 40; i++) {
+    await page.waitForTimeout(150);
+    box = await page.locator('.page').nth(2).boundingBox();
+    if (prev && Math.abs(prev.y - box.y) < 0.5 && box.y > 0 && box.y < 300) break;
+    prev = box;
+  }
+  const px = box.x + 330, py = box.y + 372;
+  // 손가락으로 끌기: 스크롤만 되고 선택은 생기지 않는다
+  await touch('touchStart', px, py + 200);
+  for (let i = 1; i <= 8; i++) { await touch('touchMove', px, py + 200 - i * 12); await page.waitForTimeout(20); }
+  await touch('touchEnd'); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel').count(), 0, '터치로 끌어도 영역이 선택되지 않는다');
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 0, '선택이 없으면 손잡이도 없다');
+  await page.evaluate(() => document.getElementById('stage').scrollBy(0, 0));
+  box = await page.locator('.page').nth(2).boundingBox();
+  // 길게 누르기 → 단어 선택 + 손잡이 둘
+  await touch('touchStart', box.x + 330, box.y + 372); await page.waitForTimeout(800); await touch('touchEnd');
+  await page.waitForSelector('.sel', { timeout: 10000 }); await settle(page); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '양 끝에 손잡이가 보인다');
+  const w0 = await width();
+  assert.ok(w0 > 5, `단어가 골라졌다(${w0})`);
+  // 끝 손잡이를 오른쪽으로 끌면 영역이 넓어진다
+  await dragHandle('end', 90);
+  const w1 = await width();
+  assert.ok(w1 > w0 + 30, `끝 손잡이를 끌어 넓어졌다(${w0} → ${w1})`);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '끌고 난 뒤에도 손잡이가 남는다');
+  // 시작 손잡이를 왼쪽으로 끌면 더 넓어진다
+  await dragHandle('start', -60);
+  const w2 = await width();
+  assert.ok(w2 > w1 + 20, `시작 손잡이를 끌어 넓어졌다(${w1} → ${w2})`);
+  // 시작 손잡이를 안쪽(오른쪽)으로 끌면 영역이 줄어든다
+  await dragHandle('start', 100);
+  const w3 = await width();
+  assert.ok(w3 > 5 && w3 < w2 - 20, `시작 손잡이를 안쪽으로 끌어 줄었다(${w2} → ${w3})`);
+  // 끝 손잡이를 시작보다 왼쪽으로 넘겨도(서로 뒤바뀜) 영역이 이어진다
+  await dragHandle('end', -400);
+  assert.ok((await width()) > 5, '끝 손잡이가 시작을 넘어도 영역이 있다');
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '넘긴 뒤에도 손잡이 둘');
+  // 다른 곳을 가볍게 누르면 선택이 풀리고 손잡이가 사라진다
+  await page.touchscreen.tap(box.x + 120, box.y + 520); await settle(page); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel').count(), 0);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 0, '선택이 풀리면 손잡이도 사라진다');
+  // 표 칸 안의 단어는 칸 전체가 아니라 그 단어만 골라지고 손잡이가 붙는다
+  await touch('touchStart', box.x + box.width * 0.42, box.y + box.height * 0.33); await page.waitForTimeout(800); await touch('touchEnd');
+  await page.waitForSelector('.sel', { timeout: 10000 }); await settle(page); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '칸 안 선택에도 손잡이');
+  assert.ok((await width()) < box.width * 0.09, `칸 전체가 아닌 단어만 선택(${await width()} / ${box.width})`);
+  await done(page);
 });

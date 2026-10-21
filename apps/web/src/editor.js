@@ -39,6 +39,8 @@ const T = {
   zoneNoChar: '각주 안에서는 글자 서식을 바꿀 수 없습니다(문단 서식만 가능).',
 };
 // 머리글·바닥글·각주 안에서 쓸 수 있는 작업(그 밖의 작업은 본문 좌표를 쓰므로 막는다)
+/** 같은 표 칸인지 가리는 열쇠(칸 안 문단 번호는 뺀다). */
+const cellKey = (p) => `${p.s}:${p.p}:${p.path.map((e) => `${e.controlIndex}.${e.cellIndex}`).join('/')}`;
 const ZONE_OPS = new Set(['hit', 'caret', 'move', 'insert', 'del', 'enter', 'delrange', 'paste', 'fmt', 'parafmt', 'undo', 'redo', 'mark', 'props', 'text', 'selrects', 'wordat', 'status', 'clean', 'save', 'fonts', 'view', 'marks', 'q']);
 const SLOW_OPEN_MS = 8000;         // 열기에 이보다 오래 걸린 문서는 편집 전에 알린다(뷰어의 "시간이 걸리고 있습니다" 안내와 같은 기준)
 const GAP_MS = 1500;               // 이 시간 안의 연속 입력은 되돌리기 한 묶음
@@ -74,6 +76,9 @@ export class Editor {
     this.tbl = null; this.cellBlock = null; this.obj = null; this.objs = []; this.formListeners = []; this.objListeners = []; this.objKey = null;   // 캐럿이 든 표 칸 정보 / 칸 블록 선택(서로 다른 칸에 걸친 선택)
     this.cleanups = [];
     this.lastTyped = 0; this.clicks = 0; this.lastDown = null; this.selText = ''; this.dragging = false; this.hitBusy = false; this.hitNext = null; this.keyHandled = false;
+    this.touch = !!matchMedia?.('(pointer: coarse)').matches;   // 마지막으로 쓴 입력이 손가락·펜이면 선택 끝에 끌 손잡이를 보인다
+    this.selEnds = null; this.posIsEnd = true; this.hd = null; this.press = null; this.edgeRaf = 0;
+    this.#buildHandles();
     this.#buildToolbar();
     this.#loadFonts();
     this.#buildInput();
@@ -110,6 +115,7 @@ export class Editor {
     for (const [t, type, fn, o] of this.cleanups) t.removeEventListener(type, fn, o);
     this.cleanups = [];
     this.input.remove(); this.bar.replaceChildren();
+    for (const h of this.handles) h.remove();
   }
   async #placeStart() {
     // 보이는 쪽의 위쪽에 캐럿을 둔다
@@ -217,20 +223,21 @@ export class Editor {
   #clearOverlays() {
     this.caretEl?.remove(); this.caretEl = null;
     for (const l of this.viewer.pagesEl.querySelectorAll('.sel-layer, .edit-layer')) l.remove();
+    this.selEnds = null; this.#placeHandles();
   }
   async #syncSelection() {
     const ver = this.selVer = (this.selVer ?? 0) + 1;
     for (const l of this.viewer.pagesEl.querySelectorAll('.sel-layer')) l.replaceChildren();
     this.cellBlock = null;
-    if (!this.#hasSel()) { this.selText = ''; for (const f of this.ctx ?? []) f(); return; }
+    if (!this.#hasSel()) { this.selText = ''; this.selEnds = null; this.#placeHandles(); for (const f of this.ctx ?? []) f(); return; }
     const [a, b] = [this.anchor, this.pos];
     // 서로 다른 표 칸에 걸친 선택이면 "칸 블록"(병합된 칸을 포함하도록 넓힌 사각형)으로 그린다
-    if (a.path && b.path) {
+    if (a.path && b.path && cellKey(a) !== cellKey(b)) {
       const cr = await this.#call('cellrange', { a, b });
       if (ver !== this.selVer) return;
       if (cr?.range) {
         this.cellBlock = { ...cr.range, cells: cr.cells };
-        this.selText = '';
+        this.selText = ''; this.selEnds = null; this.#placeHandles();
         for (const q of cr.rects) this.#drawSel(q);
         for (const f of this.ctx ?? []) f();
         return;
@@ -239,6 +246,7 @@ export class Editor {
     const r = await this.#call('selrects', { a, b });
     if (ver !== this.selVer || !r) return;
     for (const q of r.rects) this.#drawSel(q);
+    this.#setEnds(r.rects);
     const t = await this.#call('text', { a, b });
     if (ver === this.selVer && t) this.selText = t.text.length > 2_000_000 ? '' : t.text;
   }
@@ -252,6 +260,110 @@ export class Editor {
     d.style.cssText = this.#pct(q.page, q.x, q.y, q.w, q.h);
     layer.append(d);
   }
+
+  // ── 선택 끝 손잡이(터치) ──────────────────────────────────────────
+  #buildHandles() {
+    this.handles = ['start', 'end'].map((k) => {
+      const el = document.createElement('div');
+      el.className = `sel-handle ${k}`; el.hidden = true;
+      el.addEventListener('pointerdown', (e) => this.#grab(e, k));
+      el.addEventListener('pointermove', (e) => this.#dragHandle(e));
+      el.addEventListener('pointerup', (e) => this.#drop(e));
+      el.addEventListener('pointercancel', (e) => this.#drop(e));
+      return el;
+    });
+  }
+  /** 선택 영역의 첫 줄 왼쪽 아래·마지막 줄 오른쪽 아래를 손잡이 자리로 삼고, 캐럿(pos)이 어느 쪽 끝인지 기억한다. */
+  #setEnds(rects) {
+    if (!rects.length) { this.selEnds = null; this.#placeHandles(); return; }
+    const f = rects[0], l = rects.at(-1);
+    this.selEnds = [{ page: f.page, x: f.x, y: f.y + f.h }, { page: l.page, x: l.x + l.w, y: l.y + l.h }];
+    const rc = this.rect, d = (p, x, y) => Math.abs(rc.page - p) * 1e6 + Math.abs(rc.y - y) * 1e3 + Math.abs(rc.x - x);
+    this.posIsEnd = !rc || d(l.page, l.x + l.w, l.y) <= d(f.page, f.x, f.y);
+    this.#placeHandles();
+  }
+  #placeHandles() {
+    const show = this.active && this.touch && this.selEnds;
+    this.handles.forEach((el, i) => {
+      const p = show && this.selEnds[i], pe = p && this.viewer.pageEls[p.page];
+      if (!pe) { el.hidden = true; return; }
+      if (!el.isConnected) this.viewer.pagesEl.append(el);
+      const a = this.viewer.pagesEl.getBoundingClientRect(), b = pe.getBoundingClientRect(), z = this.viewer.zoom;
+      el.style.left = `${b.left - a.left + p.x * z}px`; el.style.top = `${b.top - a.top + p.y * z}px`;
+      el.hidden = false;
+    });
+  }
+  /** 화면 좌표 → 가장 가까운 쪽 안의 좌표. */
+  #pointAt(cx, cy) {
+    let best = null, bd = Infinity;
+    for (const [i, el] of this.viewer.pageEls.entries()) {
+      if (!el) continue;
+      const b = el.getBoundingClientRect(), d = cy < b.top ? b.top - cy : cy > b.bottom ? cy - b.bottom : 0;
+      if (d < bd) { bd = d; best = [i, b]; if (!d) break; }
+    }
+    if (!best) return null;
+    const [i, b] = best, z = this.viewer.zoom, sz = this.viewer.sizes[i];
+    return { page: i, x: Math.min(sz.w, Math.max(0, (cx - b.left) / z)), y: Math.min(sz.h, Math.max(0, (cy - b.top) / z)) };
+  }
+  #grab(e, k) {
+    if (!this.active || !this.#hasSel()) return;
+    e.preventDefault(); e.stopPropagation();
+    const el = e.currentTarget;
+    el.setPointerCapture?.(e.pointerId);
+    // 끄는 쪽 끝을 캐럿(pos)으로 만든다. 반대쪽 끝(anchor)은 그대로 둔다.
+    if ((k === 'end') !== this.posIsEnd) {
+      [this.anchor, this.pos] = [this.pos, this.anchor]; this.posIsEnd = !this.posIsEnd;
+      this.#enqueue(async () => { this.rect = (await this.#req('caret', { pos: this.pos })).rect ?? this.rect; });
+    }
+    this.#flushGroup(); this.pending = {};
+    const b = el.getBoundingClientRect();
+    // 손가락이 손잡이 몸통(글줄 아래)을 누르므로, 글줄 가운데를 가리키도록 그만큼 올려서 찾는다
+    this.hd = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: e.clientX - (b.left + (k === 'start' ? 34 : 10)), dy: e.clientY - b.top, half: (this.rect?.h ?? 16) / 2 };
+    this.#edgeScroll();
+  }
+  #handlePoint() { const d = this.hd; return this.#pointAt(d.x - d.dx, d.y - d.dy - d.half * this.viewer.zoom); }
+  #dragHandle(e) {
+    const d = this.hd;
+    if (!d || e.pointerId !== d.id) return;
+    e.preventDefault();
+    d.x = e.clientX; d.y = e.clientY;
+    const h = this.#handlePoint();
+    if (h) this.#hitAt(h, true);
+  }
+  #drop(e) {
+    if (!this.hd || e.pointerId !== this.hd.id) return;
+    this.hd = null;
+    cancelAnimationFrame(this.edgeRaf); this.edgeRaf = 0;
+    this.#focus(true);
+  }
+  /** 손잡이를 화면 위·아래 끝으로 끌고 가면 문서가 그쪽으로 스크롤된다. */
+  #edgeScroll() {
+    const tick = () => {
+      const d = this.hd;
+      if (!d) { this.edgeRaf = 0; return; }
+      const r = this.stage.getBoundingClientRect(), M = 56;
+      const v = d.y < r.top + M ? d.y - r.top - M : d.y > r.bottom - M ? d.y - r.bottom + M : 0;
+      if (v) {
+        this.stage.scrollTop += Math.max(-24, Math.min(24, v / 3));
+        const h = this.#handlePoint();
+        if (h) this.#hitAt(h, true);
+        this.#placeHandles();
+      }
+      this.edgeRaf = requestAnimationFrame(tick);
+    };
+    this.edgeRaf = requestAnimationFrame(tick);
+  }
+  /** 길게 누르기: 누른 자리의 단어를 고른다(두 번 누르기와 같은 효과). */
+  #longPress() {
+    this.press = null;
+    this.#focus(true);
+    this.#enqueue(async () => {
+      if (!this.pos || this.obj) return;
+      const w = await this.#req('wordat', { pos: this.pos, whole: false });
+      if (w.a && w.b && !same(w.a, w.b)) { const c = await this.#req('caret', { pos: w.b }); this.anchor = w.a; this.#set(w.b, c.rect, { extend: true }); navigator.vibrate?.(8); }
+    });
+  }
+  #cancelPress() { if (this.press) { clearTimeout(this.press.t); this.press = null; } }
 
   // ── 숨은 입력창 ───────────────────────────────────────────────────
   #buildInput() {
@@ -301,9 +413,11 @@ export class Editor {
     this.#on(this.stage, 'pointerdown', this.#onDown);
     this.#on(window, 'pointermove', this.#onMove);
     this.#on(window, 'pointerup', this.#onUp);
-    this.#on(window, 'resize', () => { if (this.active) this.#focus(); });
+    this.#on(window, 'pointercancel', this.#onUp);
+    this.#on(this.stage, 'contextmenu', (e) => { if (this.active && this.touch) e.preventDefault(); });
+    this.#on(window, 'resize', () => { if (this.active) { this.#focus(); this.#placeHandles(); } });
     this.#on(this.stage, 'scroll', () => { if (this.active) this.#focus(); }, { passive: true });
-    this.#on(this.viewer, 'zoomchange', () => { queueMicrotask(() => this.#focus()); });
+    this.#on(this.viewer, 'zoomchange', () => { queueMicrotask(() => { this.#focus(); this.#placeHandles(); }); });
   }
 
   // 마우스
@@ -336,7 +450,10 @@ export class Editor {
     const h = this.#pageHit(e);
     if (!h) return;
     e.preventDefault();
-    this.dragging = true;
+    this.touch = e.pointerType !== 'mouse';
+    this.dragging = e.pointerType !== 'touch';   // 손가락으로 끌면 화면이 스크롤된다: 영역은 길게 누르기·두 번 누르기·손잡이로 고른다
+    this.#cancelPress();
+    if (!this.touch) this.#placeHandles();
     // 두 번 클릭은 단어, 세 번 클릭은 문단 선택(처음 클릭이 이미 캐럿을 놓았으므로 다시 찍지 않는다)
     // (PointerEvent.detail은 늘 0이라 클릭 횟수를 직접 센다: 같은 자리에서 0.45초 안에 이어 누르기)
     const now = performance.now(), L = this.lastDown;
@@ -358,13 +475,15 @@ export class Editor {
     }
     this.#hitAt(h, e.shiftKey && !this.obj, e.shiftKey && !!this.obj);   // 개체를 고른 상태에서 Shift+누르기는 개체를 더 고른다(묶기용)
     this.#focus(true);
+    if (e.pointerType === 'touch' && !e.shiftKey) this.press = { x: e.clientX, y: e.clientY, t: setTimeout(() => this.#longPress(), 480) };
   }
   #onMove(e) {
+    if (this.press && Math.hypot(e.clientX - this.press.x, e.clientY - this.press.y) > 10) this.#cancelPress();
     if (!this.dragging) return;
     const h = this.#pageHit(e);
     if (h) this.#hitAt(h, true);
   }
-  #onUp() { this.dragging = false; }
+  #onUp() { this.dragging = false; this.#cancelPress(); }
 
   // 키보드
   #flushGroup() { this.lastTyped = 0; this.#req('mark').catch(() => {}); }
