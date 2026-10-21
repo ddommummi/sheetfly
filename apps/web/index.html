@@ -19,6 +19,9 @@
 <body data-state="empty">
   <header class="topbar">
     <a class="brand" href="/" aria-label="Sheetfly"><span class="logo" aria-hidden="true"></span>Sheetfly</a>
+    <button id="edit-btn" class="btn primary ic doc-only" type="button" data-s-title="editTitle" aria-pressed="false" hidden>
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2.5 13.5l.7-3L11 2.7a1.4 1.4 0 012 2L5.2 12.8zM9.5 4.2l2.3 2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-s="edit">편집</span>
+    </button>
     <button id="open-btn" class="btn primary" type="button" data-s="open" data-s-title="openTitle">파일 열기</button>
     <button id="new-btn" class="btn" type="button" data-s="newDoc" data-s-title="newDocTitle">새 문서</button>
     <span id="file-name" class="file-name"></span>
@@ -51,7 +54,6 @@
       <button id="fit-width" class="btn" type="button" data-s-title="zoomFitWidth">너비</button>
       <button id="fit-page" class="btn" type="button" data-s-title="zoomFitPage">쪽</button>
     </div>
-    <button id="edit-btn" class="btn doc-only" type="button" data-s="edit" data-s-title="editTitle" aria-pressed="false" hidden>편집</button>
     <button id="search-btn" class="btn doc-only" type="button" data-s="search" data-s-title="searchTitle">검색</button>
     <button id="theme-btn" class="btn" type="button">테마: 자동</button>
   </header>

@@ -825,11 +825,11 @@ test('이동: Ctrl+←/→ 단어, Home/End 줄, Ctrl+Home/End 문서, 두 번 �
   await page.keyboard.type('X', { delay: 40 }); await settle(page);           // alpha Xbeta gamma
   // 두 번 클릭으로 "gamma"를 고르고 덮어쓰기
   await page.waitForSelector('.caret');
-  const cb = await page.locator('.caret').boundingBox();
+  const cb = await stableBox(page, '.caret');
   const pb = await page.locator('.page').nth(2).boundingBox();
   await page.keyboard.press('End'); await settle(page);
   await page.waitForSelector('.caret');
-  const eb = await page.locator('.caret').boundingBox();
+  const eb = await stableBox(page, '.caret');
   await page.mouse.dblclick(eb.x - 18, eb.y + eb.height / 2); await page.waitForSelector('.sel', { timeout: 8000 }); await settle(page);
   await page.keyboard.type('Z', { delay: 40 }); await settle(page);
   const r = await saveAndParse(page, { warn: true });
