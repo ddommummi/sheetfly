@@ -17,8 +17,8 @@ before(async () => { ({ server, url } = await startServer(0)); browser = await l
 after(async () => { await browser?.close(); server?.close(); });
 
 const BODY = '2022년 국립국어원 업무계획.hwp';
-async function newPage() {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+async function newPage(opts = {}) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true, ...opts });
   const page = await ctx.newPage();
   page.__rec = instrument(page, url); page.__ctx = ctx;
   // 헤드리스 Chromium의 저장 위치 선택창은 응답하지 않으므로, 시험에서는 다운로드 경로를 쓴다.
@@ -213,6 +213,16 @@ test('문단 부호 보기를 켜고 끌 수 있다(문서는 바뀌지 않는�
 
 // ── 표 편집 ──
 const tab = (page, name) => page.click(`#edit-bar .btn.tab[data-tab="${name}"]`);
+/** 위치가 두 번 연달아 같을 때까지 기다린 뒤의 상자(애니메이션·다시 그리기 중에 재지 않는다) */
+async function stableBox(page, selector, nth = 0) {
+  let prev = null;
+  for (let i = 0; i < 40; i++) {
+    const b = await page.locator(selector).nth(nth).boundingBox().catch(() => null);
+    if (b && prev && Math.abs(b.x - prev.x) < 0.5 && Math.abs(b.y - prev.y) < 0.5 && Math.abs(b.width - prev.width) < 0.5) return b;
+    prev = b; await page.waitForTimeout(120);
+  }
+  return prev;
+}
 const tbtn = (page, title) => page.locator(`#edit-bar [aria-label="${title}"]`);
 /** hwp_table_test.hwp 첫 쪽의 첫 표(4줄×3칸)에서 (줄,칸)의 화면 위치를 쪽 비율로 돌려준다. */
 const CELL = { '0,0': [0.265, 0.235], '0,1': [0.498, 0.235], '1,0': [0.265, 0.2566], '1,1': [0.498, 0.2566], '2,0': [0.265, 0.278] };
@@ -378,11 +388,12 @@ test('개체: Shift+누르기로 여러 개 골라 묶고 풀기, 묶음이 하�
   await page.mouse.move(fa.x + fa.width / 2, fa.y + fa.height / 2); await page.mouse.down();   // 첫 개체를 끌어 오른쪽으로 250px
   await page.mouse.move(fa.x + fa.width / 2 + 250 * z, fa.y + fa.height / 2, { steps: 6 }); await page.mouse.up(); await settle(page);
   await page.waitForFunction((x0) => { const f = document.querySelector('.obj-frame'); return f && f.getBoundingClientRect().x > x0 + 100; }, fa.x, { timeout: 10000 });
-  const aBox = await page.locator('.obj-frame').boundingBox();
+  const aBox = await stableBox(page, '.obj-frame');
   await page.keyboard.press('Escape'); await settle(page);
   await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  const bBox = await stableBox(page, '.obj-frame');   // 둘째 개체는 캐럿 자리, 첫째는 거기서 오른쪽으로 250px(둘째를 넣을 때 화면이 움직여도 어긋나지 않게 둘째 기준으로 잡는다)
   await page.keyboard.down('Shift');
-  await page.mouse.click(aBox.x + aBox.width / 2, aBox.y + aBox.height / 2);
+  await page.mouse.click(bBox.x + bBox.width / 2 + 250 * z, bBox.y + bBox.height / 2);
   await page.keyboard.up('Shift'); await settle(page);
   await page.waitForFunction(() => document.querySelectorAll('.obj-frame.multi').length === 2, null, { timeout: 10000 });
   await tab(page, 'object'); await page.waitForTimeout(200);
@@ -492,11 +503,12 @@ test('개체: 여러 개를 고른 채 하나를 끌면 모두 함께 옮겨진�
   const aBox = await page.locator('.obj-frame').boundingBox();
   await page.keyboard.press('Escape'); await settle(page);
   await page.selectOption('#edit-bar .edit-shape', 'rectangle'); await page.waitForSelector('.obj-frame'); await settle(page);
+  const bBox = await stableBox(page, '.obj-frame');   // 둘째 개체는 캐럿 자리, 첫째는 거기서 오른쪽으로 250px(둘째를 넣을 때 화면이 움직여도 어긋나지 않게 둘째 기준으로 잡는다)
   await page.keyboard.down('Shift');
-  await page.mouse.click(aBox.x + aBox.width / 2, aBox.y + aBox.height / 2);
+  await page.mouse.click(bBox.x + bBox.width / 2 + 250 * z, bBox.y + bBox.height / 2);
   await page.keyboard.up('Shift'); await settle(page);
   await page.waitForFunction(() => document.querySelectorAll('.obj-frame.multi').length === 2, null, { timeout: 10000 });
-  const before = await page.locator('.obj-frame.multi').first().boundingBox();
+  const before = await stableBox(page, '.obj-frame.multi');
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2); await page.mouse.down();
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2 + 60 * z, { steps: 6 }); await page.mouse.up(); await settle(page);
   await page.waitForFunction((y0) => { const fs = [...document.querySelectorAll('.obj-frame')]; return fs.length === 2 && fs.every((f) => f.getBoundingClientRect().y > y0 + 40); }, before.y, { timeout: 10000 });
@@ -986,4 +998,70 @@ test('외부 요청·CSP 위반·페이지 오류가 없다', () => {
   assert.deepEqual(allExternal, []);
   assert.deepEqual(allCsp, []);
   assert.deepEqual(allErrors, []);
+});
+
+test('터치: 길게 누르면 단어가 골라지고 양 끝 손잡이를 끌어 영역을 넓힌다(손가락으로 끌면 스크롤만)', async () => {
+  const page = await newPage({ hasTouch: true });
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+  const width = () => page.evaluate(() => [...document.querySelectorAll('.sel')].reduce((n, e) => n + e.getBoundingClientRect().width, 0));
+  const handle = async (k) => { const b = await page.locator(`.sel-handle.${k}:not([hidden])`).boundingBox(); return [b.x + (k === 'start' ? 24 : 20), b.y + 20]; };
+  const dragHandle = async (k, dx) => {
+    const [x, y] = await handle(k);
+    await touch('touchStart', x, y);
+    for (let i = 1; i <= 8; i++) { await touch('touchMove', x + (dx * i) / 8, y); await page.waitForTimeout(30); }
+    await touch('touchEnd'); await settle(page); await page.waitForTimeout(300);
+  };
+  await open(page, BODY);
+  await page.click('#edit-btn');
+  await page.fill('#page-input', '3'); await page.keyboard.press('Enter');
+  let box, prev = null;
+  for (let i = 0; i < 40; i++) {
+    await page.waitForTimeout(150);
+    box = await page.locator('.page').nth(2).boundingBox();
+    if (prev && Math.abs(prev.y - box.y) < 0.5 && box.y > 0 && box.y < 300) break;
+    prev = box;
+  }
+  const px = box.x + 330, py = box.y + 372;
+  // 손가락으로 끌기: 스크롤만 되고 선택은 생기지 않는다
+  await touch('touchStart', px, py + 200);
+  for (let i = 1; i <= 8; i++) { await touch('touchMove', px, py + 200 - i * 12); await page.waitForTimeout(20); }
+  await touch('touchEnd'); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel').count(), 0, '터치로 끌어도 영역이 선택되지 않는다');
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 0, '선택이 없으면 손잡이도 없다');
+  await page.evaluate(() => document.getElementById('stage').scrollBy(0, 0));
+  box = await page.locator('.page').nth(2).boundingBox();
+  // 길게 누르기 → 단어 선택 + 손잡이 둘
+  await touch('touchStart', box.x + 330, box.y + 372); await page.waitForTimeout(800); await touch('touchEnd');
+  await page.waitForSelector('.sel', { timeout: 10000 }); await settle(page); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '양 끝에 손잡이가 보인다');
+  const w0 = await width();
+  assert.ok(w0 > 5, `단어가 골라졌다(${w0})`);
+  // 끝 손잡이를 오른쪽으로 끌면 영역이 넓어진다
+  await dragHandle('end', 90);
+  const w1 = await width();
+  assert.ok(w1 > w0 + 30, `끝 손잡이를 끌어 넓어졌다(${w0} → ${w1})`);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '끌고 난 뒤에도 손잡이가 남는다');
+  // 시작 손잡이를 왼쪽으로 끌면 더 넓어진다
+  await dragHandle('start', -60);
+  const w2 = await width();
+  assert.ok(w2 > w1 + 20, `시작 손잡이를 끌어 넓어졌다(${w1} → ${w2})`);
+  // 시작 손잡이를 안쪽(오른쪽)으로 끌면 영역이 줄어든다
+  await dragHandle('start', 100);
+  const w3 = await width();
+  assert.ok(w3 > 5 && w3 < w2 - 20, `시작 손잡이를 안쪽으로 끌어 줄었다(${w2} → ${w3})`);
+  // 끝 손잡이를 시작보다 왼쪽으로 넘겨도(서로 뒤바뀜) 영역이 이어진다
+  await dragHandle('end', -400);
+  assert.ok((await width()) > 5, '끝 손잡이가 시작을 넘어도 영역이 있다');
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '넘긴 뒤에도 손잡이 둘');
+  // 다른 곳을 가볍게 누르면 선택이 풀리고 손잡이가 사라진다
+  await page.touchscreen.tap(box.x + 120, box.y + 520); await settle(page); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel').count(), 0);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 0, '선택이 풀리면 손잡이도 사라진다');
+  // 표 칸 안의 단어는 칸 전체가 아니라 그 단어만 골라지고 손잡이가 붙는다
+  await touch('touchStart', box.x + box.width * 0.42, box.y + box.height * 0.33); await page.waitForTimeout(800); await touch('touchEnd');
+  await page.waitForSelector('.sel', { timeout: 10000 }); await settle(page); await page.waitForTimeout(300);
+  assert.equal(await page.locator('.sel-handle:not([hidden])').count(), 2, '칸 안 선택에도 손잡이');
+  assert.ok((await width()) < box.width * 0.09, `칸 전체가 아닌 단어만 선택(${await width()} / ${box.width})`);
+  await done(page);
 });

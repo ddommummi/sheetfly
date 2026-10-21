@@ -104,6 +104,16 @@ jobs:
         run: |
           for s in 1 2 3; do npm run test:edit-fuzz -- --seed "$s" --tbl 0.1 --obj 0.1 --page 0.1 --misc 0.1 --hf 0.1; done
 
+      - name: DOCX 편집 모델 (단위 + 합성 문서 퍼저, 저장 뒤 다시 읽기 비교)
+        working-directory: apps/web
+        run: npm run test:docx-edit
+
+      - name: DOCX 편집 모델 공개 코퍼스 왕복 (Apache POI·Tika·python-docx·Open XML SDK 시험 파일, 틀린 짝 0건)
+        working-directory: apps/web
+        run: |
+          sh ../../tools/edit-spike/fetch-docx-corpus.sh "$RUNNER_TEMP/corpus"
+          npm run test:docx-edit-corpus -- "$RUNNER_TEMP/corpus" --seed 1 --ops 10
+
       - name: DOCX 변이 시험 (스모크)
         working-directory: apps/web
         run: npm run test:docx-fuzz -- --n 3000
