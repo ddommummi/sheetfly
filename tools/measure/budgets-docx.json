@@ -1,8 +1,8 @@
 {
-  "_note": "지연 로딩(DOCX를 열 때만 받는) 자산의 예산 — 잠정값, 오너 승인 전 (docs/decisions.md D-033). Worker JS 상한은 오너가 올려도 된다고 해서 20,000→30,000B(D-037), 합계는 730,000B. 첫 화면 전송량에는 들어가지 않는다. 실측(2026-10-19, 쪽 번호 필드 지원 후): docxwasm 647,131 B, docxworker 12,463 B (brotli q11).",
+  "_note": "지연 로딩(DOCX를 열 때만 받는) 자산의 예산 — 잠정값, 오너 승인 전 (docs/decisions.md D-033). Worker JS 상한은 오너가 올려도 된다고 해서 20,000→30,000B(D-037), 합계는 730,000B. 첫 화면 전송량에는 들어가지 않는다. 실측(2026-10-19, 쪽 번호 필드 지원 후): docxwasm 647,131 B, docxworker 12,463 B (brotli q11). 4-2-2(2026-10-21): 편집용 줄 기록·증분 재조판·문단 조판 캐시로 docxworker 상한을 오너가 승인한 34,000B로 올림(design-docx.md 결정 6), 합계 734,000B. 실측 docxworker 29,602 B.",
   "brotliBytes": {
     "docxwasm": 700000,
-    "docxworker": 30000,
-    "total": 730000
+    "docxworker": 34000,
+    "total": 734000
   }
 }

@@ -17,8 +17,10 @@ const HIGHLIGHT = {  // 이름 형광펜(IR은 RGB 배열도 준다)
   yellow: '#ffff00', green: '#00ff00', cyan: '#00ffff', magenta: '#ff00ff', blue: '#0000ff', red: '#ff0000', darkBlue: '#000080', darkCyan: '#008080', darkGreen: '#008000', darkMagenta: '#800080', darkRed: '#800000', darkYellow: '#808000', darkGray: '#808080', lightGray: '#c0c0c0', black: '#000000', white: '#ffffff' };
 
 /** 줄 하나를 표시 항목으로 낸다. y는 줄 윗면. */
-function emitLine(items, line, x0, y, par) {
+function emitLine(items, line, x0, y, par, li) {
   const dx = x0 + (line.dx || 0);
+  // 캐럿·히트 테스트용 줄 기록(편집 중인 문단만): 조각 x는 이 줄의 x 기준
+  if (par.pid !== undefined) items.push({ k: 'ln', pid: par.pid, x: dx, y, h: line.height, base: line.base, w: line.w, li, items: line.items, trailing: line.trailing, last: !!line.last });
   for (const it of line.items) {
     const x = dx + it.x;
     if (it.k === 'tx') {
@@ -66,6 +68,20 @@ function paragraphBox(items, par, x0, w, top, bottom) {
   }
 }
 
+/**
+ * 문단 조판 캐시(편집 중 증분 재조판용): 같은 IR 문단이 같은 글(내용 배열이 그대로)·같은 폭·같은 번호 표시로 다시 놓이면 줄 나눔을 다시 하지 않는다.
+ * 키는 원래 IR 문단 객체다(제목 서식·목록 들여쓰기로 만든 사본이 아니라). 편집 거울이 문단의 내용을 바꿀 때는 새 배열을 대입하므로 저절로 무효가 된다.
+ */
+function cachedPara(c, key, deps, make) {
+  if (!c) return make();
+  deps.push(key.ver ?? 0);   // 서식처럼 내용 배열은 그대로인 변경은 ver를 올려 알린다
+  const e = c.get(key);
+  if (e && e.content === key.content && e.deps.length === deps.length && e.deps.every((d, i) => d === deps[i])) return e.par;
+  const par = make();
+  c.set(key, { content: key.content, deps, par });
+  return par;
+}
+
 /** 문단을 흐름에 놓는다. 쪽 경계에서 줄 단위로 나누며 과부/고아 줄(2줄)과 keep_together를 지킨다. */
 export function placeParagraph(par, flow, st) {
   const lines = par.lines;
@@ -87,17 +103,17 @@ export function placeParagraph(par, flow, st) {
       } else if (i === 0 && remaining < 4) k = 0;
     }
     if (k === 0) {
-      if (flow.paginated && !st.atTop) { flow.newPage(); st.atTop = true; before = 0; continue; }
+      if (flow.paginated && !st.atTop) { flow.cont = i > 0; flow.newPage(); st.atTop = true; before = 0; continue; }
       k = 1;   // 빈 쪽에도 안 들어가면 강제로 한 줄
     }
     const top = flow.y + (i === 0 ? before : 0);
     let y = top;
-    for (let j = 0; j < k; j++) { emitLine(flow.items, lines[i + j], flow.x0, y, par); y += lines[i + j].height; }
+    for (let j = 0; j < k; j++) { emitLine(flow.items, lines[i + j], flow.x0, y, par, i + j); y += lines[i + j].height; }
     paragraphBox(flow.items, par, flow.x0, flow.width, top, y);
     flow.y = y;
     st.atTop = false;
     i += k;
-    if (i < n && flow.paginated) { flow.newPage(); st.atTop = true; before = 0; }
+    if (i < n && flow.paginated) { flow.cont = true; flow.newPage(); st.atTop = true; before = 0; }
   }
   flow.y += par.after;
   st.lastAfter = par.after;
@@ -348,7 +364,7 @@ function placeTable(tbl, flow, st, ctx) {
     end = Math.max(end, reach[r]);
     const blockH = rowTop[end] - rowTop[r];
     if (flow.paginated && flow.y + blockH > flow.bottom + EPS && !firstOnPage) {
-      flow.newPage(); st.atTop = true; firstOnPage = true;
+      flow.cont = r > 0; flow.newPage(); st.atTop = true; firstOnPage = true;
       if (hdrRows.length && !isHdr && r >= hdrRows.length) { flow.y += drawRows(0, hdrRows.length, flow.y); firstOnPage = false; }
     }
     flow.y += drawRows(r, end, flow.y);
@@ -371,9 +387,10 @@ function paragraphCtx(flow, ctx, extra = {}) {
 }
 
 function estimateFirstHeight(el, flow, ctx) {
+  const orig = el;
   if (el.type === 'heading') el = withHeadingStyle(el, ctx.headingRuns?.[String(el.level)]);
   if (el.type === 'paragraph' || el.type === 'heading') {
-    const par = layoutParagraph(el, paragraphCtx(flow, ctx));
+    const par = cachedPara(ctx.pcacheEst, orig, [flow.width, el.level ?? null], () => layoutParagraph(el, paragraphCtx(flow, ctx)));
     const k = Math.min(2, par.lines.length);
     return par.before + par.lines.slice(0, k).reduce((a, l) => a + l.height, 0);
   }
@@ -399,28 +416,36 @@ function withHeadingStyle(el, hr) {
 }
 
 /** elements를 흐름에 놓는다. */
-export function placeBlocks(elements, flow, ctx) {
+export function placeBlocks(elements, flow, ctx, opt) {
   const st = { atTop: flow.y <= flow.top + EPS, lastAfter: 0 };
-  for (let idx = 0; idx < elements.length; idx++) {
+  for (let idx = opt?.from ?? 0; idx < elements.length; idx++) {
     let el = elements[idx];
+    if (opt?.onEl) opt.onEl(idx, el);
+    else if (opt?.nested && idx > 0) flow.sub = true;   // 최상위 요소 안의 둘째 이후 블록: 쪽이 여기서 시작하면 요소의 앞부분이 이전 쪽에 있다
     if (ctx.pageCount && ctx.pageCount() > MAX_PAGES) { ctx.warn('쪽 수 상한 초과'); return; }
     switch (el.type) {
       case 'paragraph': case 'heading': {
+        const orig = el;
         if (el.type === 'heading') el = withHeadingStyle(el, ctx.headingRuns?.[String(el.level)]);
-        const par = layoutParagraph(el, paragraphCtx(flow, ctx, el.marker_text ? { marker: el.marker_text } : {}));
+        const par = cachedPara(ctx.pcache, orig, [flow.width, el.marker_text ?? null, el.level ?? null], () => layoutParagraph(el, paragraphCtx(flow, ctx, el.marker_text ? { marker: el.marker_text } : {})));
         if (par.keepNext && flow.paginated && !st.atTop) {
           const next = elements[idx + 1];
           const own = par.before + par.lines.reduce((a, l) => a + l.height, 0);
-          if (next && flow.y + own + estimateFirstHeight(next, flow, ctx) > flow.bottom + EPS) { flow.newPage(); st.atTop = true; }
+          if (next && flow.y + own + estimateFirstHeight(next, flow, ctx) > flow.bottom + EPS) { flow.cont = false; flow.newPage(); st.atTop = true; }
         }
         placeParagraph(par, flow, st);
         break;
       }
       case 'list': {
+        let firstItem = true;
         for (const { p, level, marker } of flattenList(el)) {
+          if (!firstItem) flow.sub = true;
+          firstItem = false;
           const hang = 360, left = 720 * (level + 1);
-          const q = { ...p, indent_left_twips: left + (p.indent_left_twips || 0), first_line_indent_twips: -hang };
-          const par = layoutParagraph(q, paragraphCtx(flow, ctx, { marker }));
+          const par = cachedPara(ctx.pcache, p, [flow.width, marker ?? null, level], () => {
+            const q = { ...p, indent_left_twips: left + (p.indent_left_twips || 0), first_line_indent_twips: -hang };
+            return layoutParagraph(q, paragraphCtx(flow, ctx, { marker }));
+          });
           placeParagraph(par, flow, st);
         }
         break;
@@ -436,10 +461,10 @@ export function placeBlocks(elements, flow, ctx) {
       case 'text_box':
         // 슬라이드처럼 위치가 정해진 상자는 흐름과 무관하게 쪽 좌표에 놓는다
         if (flow.paginated && el.x_emu != null && el.y_emu != null && el.width_emu > 0) placeAbsolute(el, flow, ctx);
-        else placeBlocks(el.content ?? [], flow, ctx);
+        else placeBlocks(el.content ?? [], flow, ctx, { nested: true });
         break;
       case 'page_break':
-        if (flow.paginated) { flow.newPage(); st.atTop = true; }
+        if (flow.paginated) { flow.cont = !opt?.onEl; flow.skip = !!opt?.onEl; flow.newPage(); st.atTop = true; }   // 최상위 쪽 나누기가 연 쪽은 그 다음 요소부터 시작한다
         break;
       case 'footnote': case 'endnote': ctx.notesOut?.push(el); break;
       case 'thematic_break': {
