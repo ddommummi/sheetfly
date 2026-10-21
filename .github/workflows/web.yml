@@ -89,6 +89,10 @@ jobs:
         working-directory: apps/web
         run: npm run test:e2e
 
+      - name: rhwp 패치 회귀 (tools/rhwp-patches: 빌드에 들어갔는지, 고치기로 한 모양)
+        working-directory: apps/web
+        run: npm run test:rhwp-patches
+
       - name: 편집 E2E (HWP 입력·한글 조합·서식·되돌리기·저장, 입력 지연 기록)
         working-directory: apps/web
         run: npm run test:edit
@@ -113,6 +117,18 @@ jobs:
         run: |
           sh ../../tools/edit-spike/fetch-docx-corpus.sh "$RUNNER_TEMP/corpus"
           npm run test:docx-edit-corpus -- "$RUNNER_TEMP/corpus" --seed 1 --ops 10
+
+      - name: DOCX 편집 세션 (캐럿·히트 테스트·증분 재조판 == 전체 조판, 거울 IR == 저장본 재읽기)
+        working-directory: apps/web
+        run: npm run test:docx-session
+
+      - name: DOCX 편집 세션 공개 코퍼스 (증분 재조판·캐럿 왕복·거울 일치, 큰 문서 제외)
+        working-directory: apps/web
+        run: npm run test:docx-session-corpus -- "$RUNNER_TEMP/corpus" --seed 1 --ops 10
+
+      - name: DOCX 편집 입력 지연 (문단 300·1,000개: 글 입력 p95 50ms 이하)
+        working-directory: apps/web
+        run: npm run test:docx-session-perf -- --n 300,1000
 
       - name: DOCX 변이 시험 (스모크)
         working-directory: apps/web

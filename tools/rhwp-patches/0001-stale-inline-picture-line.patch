@@ -1,0 +1,64 @@
+0001 저장된 줄 높이보다 큰 "글자처럼 취급" 그림의 줄 높이 보정
+
+무엇: 줄이 하나뿐인 본문 문단에서 글자처럼 취급한 그림 높이가 저장된 줄 높이의 1.25배를
+      넘으면, 그 줄의 높이·글 높이·기준선을 그림 높이에 맞춘다. 문서를 불러올 때 한 번만 한다.
+왜:   그림을 넣은 뒤 줄 정보가 갱신되지 않은 파일(오너 제공 완료보고서)에서 그림이 줄 밖으로
+      넘쳐 뒤 문단과 겹치고, 아래쪽 절반이 뒤 그림에 가려졌다(한글 뷰어는 정상으로 표시).
+확인: rhwp/samples 한컴 실물 1,205개 중 달라지는 문서는 이 문서와 issue5169_viewtext_changetracking.hwp
+      (로고가 제목 글자에 겹치던 것이 풀린다) 뿐이다. 도형·표 칸 문단·여러 줄 문단은 다루지 않는다.
+되돌리기: 이 파일을 지운다. 업스트림이 같은 문제를 고치면 버린다(docs/patches/README.md).
+
+--- a/src/document_core/commands/document.rs
++++ b/src/document_core/commands/document.rs
+@@ -255,6 +255,7 @@
+         // [#7436] 저장 줄 없는 번호 문단도 번호 폭을 뺀 상자로 줄을 나눈다 — 재조판 전에
+         // 문서 순서로 번호 문자열을 정해 둔다.
+         crate::renderer::layout::assign_numbering_markers(&mut document.sections, &styles);
++        Self::grow_stale_inline_picture_lines(&mut document);
+         Self::reflow_zero_height_paragraphs(
+             &mut document,
+             &styles,
+@@ -476,6 +477,43 @@
+             }
+         }
+     }
++
++    /// 글자처럼 취급한 그림이 저장된 줄 하나보다 훨씬 크면 그 줄 높이를 그림에 맞춘다.
++    ///
++    /// 한컴이 정상 저장한 문단은 줄 높이가 그 줄의 그림 높이를 포함한다. 그림 높이가
++    /// 저장 줄 높이를 크게 넘는 문단은 그림을 넣은 뒤 줄 정보가 갱신되지 않은 것이라
++    /// 믿을 수 없다 — 그대로 두면 그림이 줄 밖으로 넘쳐 뒤 문단과 겹치고 뒤 그림에 가려진다.
++    /// 줄이 하나뿐인 본문 문단만 다룬다(여러 줄은 그림이 줄마다 나뉘어 소속 판정이 필요하다).
++    fn grow_stale_inline_picture_lines(document: &mut Document) {
++        for section in &mut document.sections {
++            for para in &mut section.paragraphs {
++                if para.line_segs.len() != 1 {
++                    continue;
++                }
++                let tallest = para
++                    .controls
++                    .iter()
++                    .filter_map(|control| match control {
++                        Control::Picture(picture) if picture.common.treat_as_char => {
++                            Some(picture.common.height as i32)
++                        }
++                        _ => None,
++                    })
++                    .max()
++                    .unwrap_or(0);
++                let seg = &mut para.line_segs[0];
++                if seg.line_height <= 0
++                    || seg.tag & crate::model::paragraph::LineSeg::TAG_IMPLEMENTATION_PROPERTY != 0
++                    || i64::from(tallest) * 4 <= i64::from(seg.line_height) * 5
++                {
++                    continue;
++                }
++                seg.line_height = tallest;
++                seg.text_height = tallest;
++                seg.baseline_distance = (i64::from(tallest) * 85 / 100) as i32;
++            }
++        }
++    }
+ 
+     /// lineSegArray가 없는(line_height=0) 문단에 대해 합성 LineSeg를 생성한다.
+     ///

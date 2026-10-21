@@ -5,7 +5,8 @@ This product includes software from:
 
 - rhwp — Copyright (c) 2025-2026 Edward Kim — MIT License
   https://github.com/edwardkim/rhwp
-  Included as a pinned git submodule at third_party/rhwp/.
+  Included as a pinned git submodule at third_party/rhwp/. Sheetfly applies small patches at build time
+  (tools/rhwp-patches/, each stating what it changes and why); the MIT notice is preserved unchanged.
   Full license text: licenses/rhwp-LICENSE-MIT.txt (verbatim copy of third_party/rhwp/LICENSE)
 
 - office_oxide — Copyright (c) 2026 Yury Fedoseev — MIT OR Apache-2.0 (used under the MIT License)

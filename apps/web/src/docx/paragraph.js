@@ -26,34 +26,49 @@ export function runStyle(r, baseHalfPt = DEFAULT_HALF_PT) {
   };
 }
 
-/** 문단의 인라인 요소를 토큰 목록으로 만든다. */
-export function inlineTokens(content, measure, notes) {
+const cpLen = (s) => { let n = 0; for (const _ of s) n++; return n; };
+
+/**
+ * 문단의 인라인 요소를 토큰 목록으로 만든다.
+ * track이면 토큰마다 문단 글 안의 위치 [o0, o1)(code point, 편집 모델이 보는 글과 같은 번호)을 단다. 캐럿·히트 테스트용이다.
+ */
+export function inlineTokens(content, measure, notes, track = false) {
   const tokens = [];
   let prevRunLastWord = false;
+  let cp = 0;
   for (const r of content ?? []) {
     if (tokens.length > MAX_TOKENS) break;
     if (r.type === 'text') {
       const st = runStyle(r);
-      const text = st.upper ? r.text.toUpperCase() : r.text;
+      const src = r.text;
+      let text = st.upper ? src.toUpperCase() : src;
+      // 대문자로 바꾸면 글자 수가 달라지는 글자(ß→SS 등)는 원문을 나누고 토큰마다 바꾼다(위치 번호를 원문 기준으로 지키려고)
+      const mapped = track && st.upper && cpLen(text) !== cpLen(src);
+      if (mapped) text = src;
       let first = true;
       for (const tk of tokenize(text)) {
-        const t = { kind: tk.kind, text: tk.text, nbsp: tk.nbsp, st };
+        const t = { kind: tk.kind, text: mapped ? tk.text.toUpperCase() : tk.text, nbsp: tk.nbsp, st };
         if (first && tk.kind === 'word' && prevRunLastWord) t.noBreakBefore = true;
         first = false;
+        if (track) { t.o0 = cp; cp += cpLen(tk.text); t.o1 = cp; }
         tokens.push(t);
       }
       const last = tokens[tokens.length - 1];
       prevRunLastWord = !!last && last.kind === 'word' && !last.text.endsWith('-');
     } else if (r.type === 'line_break') {
-      tokens.push({ kind: 'br', text: '\n', st: runStyle({}) });
+      const t = { kind: 'br', text: '\n', st: runStyle({}) };
+      if (track) { t.o0 = cp; t.o1 = ++cp; }
+      tokens.push(t);
       prevRunLastWord = false;
     } else if (r.type === 'footnote_ref' || r.type === 'endnote_ref') {
       const st = runStyle({ vertical_align: 'superscript' });
       const n = notes ? notes.number(r.type, r.note_id) : r.note_id;
-      tokens.push({ kind: 'word', text: String(n), st });
+      tokens.push({ kind: 'word', text: String(n), st, virt: true });
       prevRunLastWord = false;
     } else if (r.type === 'image') {
-      tokens.push({ kind: 'img', text: '', st: runStyle({}), img: r });
+      const t = { kind: 'img', text: '', st: runStyle({}), img: r };
+      if (track) t.o0 = t.o1 = cp;
+      tokens.push(t);
       prevRunLastWord = false;
     }
   }
@@ -101,6 +116,9 @@ export function breakLines(tokens, o) {
     return { ascent, descent };
   };
 
+  // 토큰의 문단 글 위치([o0, o1))를 조각에 단다(추적할 때만)
+  const at = (it, t, o0 = t.o0, o1 = t.o1) => { if (o0 !== undefined) { it.o0 = o0; it.o1 = o1; if (t.st && t.st.upper && it.k === 'tx') it.up = true; } return it; };
+
   const finish = (forced) => {
     // 줄 끝에 매달린 공백은 폭에 넣지 않는다
     let end = items.length;
@@ -131,7 +149,7 @@ export function breakLines(tokens, o) {
 
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
-    if (t.kind === 'br') { push({ k: 'br', x, w: 0, font: t.st.font }); finish(true); continue; }
+    if (t.kind === 'br') { push(at({ k: 'br', x, w: 0, font: t.st.font }, t)); finish(true); continue; }
     if (t.kind === 'tab') {
       let stop = stops.find((s) => s.pos > x + 0.5 && s.pos >= o.left - 0.5);
       let target; let leader = 'none';
@@ -147,32 +165,33 @@ export function breakLines(tokens, o) {
         target = base + (Math.floor((x - base + 0.5) / DEFAULT_TAB_PX) + 1) * DEFAULT_TAB_PX;
       }
       if (target > limit + EPS && hasContent) { finish(false); continue; }
-      push({ k: 'tab', x, w: Math.max(0, target - x), leader, font: t.st.font, color: t.st.color });
+      push(at({ k: 'tab', x, w: Math.max(0, target - x), leader, font: t.st.font, color: t.st.color }, t));
       hasContent = true; prevTok = t;
       continue;
     }
     if (t.kind === 'space') {
-      push({ k: 'sp', x, w: t.w, text: t.text, font: t.st.font, st: t.st });
+      push(at({ k: 'sp', x, w: t.w, text: t.text, font: t.st.font, st: t.st }, t));
       prevTok = t; continue;
     }
     // word / cjk / img
     if (hasContent && x + t.w > limit + EPS && canBreakBetween(prevTok, t)) finish(false);
     if (t.kind !== 'img' && x + t.w > limit + EPS && t.w > limit - lineStart + EPS) {
       // 한 줄보다 긴 낱말: 글자 단위로 쪼갠다
-      let part = '';
+      let part = '', po = t.o0, n = 0;
+      const piece = () => at({ k: 'tx', x, w: measure.width(t.st.font, part) + t.st.spacing * [...part].length, text: part, st: t.st, font: t.st.font }, t, po, po === undefined ? undefined : po + n);
       for (const ch of t.text) {
         const cw = measure.width(t.st.font, ch) + t.st.spacing;
         if (part && x + measure.width(t.st.font, part + ch) + t.st.spacing * [...part + ch].length > limit + EPS) {
-          push({ k: 'tx', x, w: measure.width(t.st.font, part) + t.st.spacing * [...part].length, text: part, st: t.st, font: t.st.font });
-          finish(false); part = '';
+          push(piece());
+          finish(false); if (po !== undefined) po += n; part = ''; n = 0;
         }
-        part += ch; void cw;
+        part += ch; n++; void cw;
       }
-      if (part) { push({ k: 'tx', x, w: measure.width(t.st.font, part) + t.st.spacing * [...part].length, text: part, st: t.st, font: t.st.font }); hasContent = true; }
+      if (part) { push(piece()); hasContent = true; }
       prevTok = t; continue;
     }
-    if (t.kind === 'img') push({ k: 'img', x, w: t.w, h: t.h, img: t.img, font: t.st.font });
-    else push({ k: 'tx', x, w: t.w, text: t.text, st: t.st, font: t.st.font });
+    if (t.kind === 'img') push(at({ k: 'img', x, w: t.w, h: t.h, img: t.img, font: t.st.font }, t));
+    else push(at({ k: 'tx', x, w: t.w, text: t.text, st: t.st, font: t.st.font }, t));
     hasContent = true; prevTok = t;
   }
   if (items.length || !lines.length) finish(false);
@@ -201,7 +220,8 @@ export function breakLines(tokens, o) {
 /** IR 문단 → 조판 결과. width는 문단이 놓일 칸의 폭(px). */
 export function layoutParagraph(p, ctx) {
   const { measure, width } = ctx;
-  const tokens = inlineTokens(p.content, measure, ctx.notes);
+  const track = p.pid !== undefined;
+  const tokens = inlineTokens(p.content, measure, ctx.notes, track);
   const first = tokens.find((t) => t.st);
   const baseSt = first ? first.st : runStyle({}, ctx.defaultHalfPt);
   const left = twipsToPx(p.indent_left_twips || 0) + (ctx.extraLeft || 0);
@@ -218,6 +238,7 @@ export function layoutParagraph(p, ctx) {
     keepNext: !!p.keep_with_next, keepTogether: !!p.keep_together,
     background: rgb(p.background_color), border: p.border ?? null,
     contextual: !!p.contextual_spacing,
+    pid: p.pid,
   };
 }
 

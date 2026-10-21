@@ -1,0 +1,20 @@
+[package]
+name = "gprobe"
+version = "0.0.0"
+edition = "2024"
+[lib]
+crate-type = ["cdylib"]
+[dependencies]
+gridcraft-xlsx = { path = "GRIDCRAFT/crates/xlsx" }
+gridcraft-calc = { path = "GRIDCRAFT/crates/calc" }
+gridcraft-model = { path = "GRIDCRAFT/crates/model" }
+gridcraft-functions = { path = "GRIDCRAFT/crates/functions" }
+gridcraft-numfmt = { path = "GRIDCRAFT/crates/numfmt" }
+gridcraft-core = { path = "GRIDCRAFT/crates/core" }
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+[workspace]

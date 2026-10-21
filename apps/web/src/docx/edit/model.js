@@ -39,16 +39,11 @@ export class DocxEditModel {
 
   #build(xml, full) {
     const index = this.px === null ? [] : indexParagraphs(xml, this.px);
-    this.items = []; this.paras = []; this.undoStack = []; this.redoStack = []; this.dirty = false;
-    let blocks = null, align = null;
-    if (full) { blocks = flattenIr(full); align = alignBlocks(blocks, index); }
-    this.blocks = blocks;
-    const blockOf = new Map();
-    if (align) align.map.forEach((p, i) => { if (p >= 0) blockOf.set(p, i); });
+    this.items = []; this.paras = []; this.undoStack = []; this.redoStack = []; this.dirty = false; this.nextId = 1; this.last = null; this.idIndex = null;
     // 최상위(깊이 0) 문단만 조각으로 둔다. 글상자 안 문단은 바깥 문단 조각 안에 들어 있다.
     let pos = 0;
     index.forEach((q, i) => {
-      const pv = { depth: q.depth, all: q.all, xmlEditable: q.editable, why: q.why, block: blockOf.has(i) ? blockOf.get(i) : -1, risky: !!align && align.risky.has(i), orig: i, xml: null, text: null, checked: false };
+      const pv = { depth: q.depth, all: q.all, xmlEditable: q.editable, why: q.why, block: -1, risky: false, orig: i, xml: null, text: null, checked: false, id: this.nextId++ };
       if (q.depth === 0) {
         if (q.start > pos) this.items.push(xml.slice(pos, q.start));
         pv.xml = xml.slice(q.start, q.end); this.items.push(pv); pos = q.end;
@@ -56,8 +51,24 @@ export class DocxEditModel {
       this.paras.push(pv);
     });
     this.items.push(xml.slice(pos));
-    this.hasIr = !!full;
     this.origCount = index.length;
+    this.attach(full, index);
+  }
+
+  /**
+   * IR(조판의 입력)과 문단들을 짝짓는다(처음 열 때, 그리고 IR을 다시 읽었을 때). 문단 조각은 그대로 두고 block·ghost만 다시 정한다.
+   * 지금 문서 XML 문단 열이 기준이므로 편집 뒤에도 쓸 수 있다.
+   */
+  attach(full, index = null) {
+    index ??= this.px === null ? [] : indexParagraphs(this.xml(), this.px);
+    if (index.length !== this.paras.length) throw new EditError('internal', `문단 수가 어긋났다(${index.length} / ${this.paras.length})`);
+    let blocks = null, align = null;
+    if (full) { blocks = flattenIr(full); align = alignBlocks(blocks, index); }
+    this.blocks = blocks;
+    const blockOf = new Map();
+    if (align) align.map.forEach((p, i) => { if (p >= 0) blockOf.set(p, i); });
+    this.paras.forEach((pv, i) => { pv.block = blockOf.has(i) ? blockOf.get(i) : -1; pv.risky = !!align && align.risky.has(i); pv.ghost = undefined; pv.ghostAnchor = undefined; });
+    this.hasIr = !!full;
     // 빈 문단은 IR에 글 블록이 없다. 글을 넣을 수 있게 하되, 바로 앞 글 문단(닻)이 IR과 확실히 짝지어져 있어야 한다(조판이 새 글 블록을 둘 자리를 알아야 한다).
     if (full) {
       // 닻 문단의 IR 블록 바로 다음 블록이 다음 짝지어진 블록이어야 한다(사이에 짝 없는 블록 — 차트 글·그림·쪽 나누기 등 — 이 있으면 새 글 블록의 자리를 알 수 없다)
@@ -66,8 +77,9 @@ export class DocxEditModel {
       const safeAfter = (b) => { const nb = nextMapped(b); return nb === undefined ? b === blocks.length - 1 : nb === b + 1; };
       const inBox = this.#paragraphsInContainers();
       let prev = -1;
-      for (const pv of this.paras) {
-        if (pv.all) { prev = pv.block >= 0 ? pv.orig : -2; continue; }
+      for (let i = 0; i < this.paras.length; i++) {
+        const pv = this.paras[i];
+        if (pv.all) { prev = pv.block >= 0 ? i : -2; continue; }
         if (inBox.has(pv)) continue;
         if (pv.depth !== 0 || !pv.xmlEditable || pv.block >= 0 || prev === -2) continue;
         const ab = prev === -1 ? -1 : this.paras[prev].block;
@@ -100,6 +112,11 @@ export class DocxEditModel {
   }
 
   get paragraphCount() { return this.paras.length; }
+  /** 문단 id → 문단 번호(지금). 조판이 문단을 id로 가리킨다(번호는 나누기·합치기로 바뀐다). */
+  indexOfId(id) {
+    if (!this.idIndex) { this.idIndex = new Map(); this.paras.forEach((pv, i) => this.idIndex.set(pv.id, i)); }
+    return this.idIndex.get(id) ?? -1;
+  }
 
   /** 편집 가능 여부와 이유 */
   lock(p) {
@@ -125,16 +142,17 @@ export class DocxEditModel {
     const text = paraText(xml, this.px);
     const idx = indexParagraphs(xml, this.px);
     if (idx.length !== 1 || !idx[0].editable) throw new EditError('internal', `편집 결과가 일반 문단이 아니다(${idx[0]?.why})`);
-    return { depth: 0, all: text, xmlEditable: true, why: '', block: from.block, risky: false, orig: from.orig, ghost: from.ghost, ghostAnchor: from.ghostAnchor, created: true, xml, text, checked: true, ...extra };
+    return { depth: 0, all: text, xmlEditable: true, why: '', block: from.block, risky: false, orig: from.orig, ghost: from.ghost, ghostAnchor: from.ghostAnchor, created: true, xml, text, checked: true, id: from.id, ...extra };
   }
   /** paras·items를 [p, p+n)에서 added로 바꾼다(되돌리기 기록 포함). */
   #splice(p, n, added, hint) {
     const removed = this.paras.slice(p, p + n);
-    this.#apply(p, removed, added);
+    this.#apply(p, removed, added, hint);
     this.undoStack.push({ p, removed, added, hint }); this.redoStack.length = 0;
     this.dirty = true;
   }
-  #apply(p, removed, added) {
+  #apply(p, removed, added, hint) {
+    this.last = { p, removed, added, hint }; this.idIndex = null;
     const first = this.items.indexOf(removed[0]), last = this.items.indexOf(removed[removed.length - 1]);
     if (first < 0 || last < first) throw new EditError('internal', '조각 목록이 어긋났다');
     this.items.splice(first, last - first + 1, ...added);
@@ -193,7 +211,7 @@ export class DocxEditModel {
     if (o < 0 || o > len) throw new EditError('range', `글 위치 ${o}가 문단 길이 ${len} 밖이다`);
     const old = this.paras[p];
     const [x1, x2] = pSplit(old.xml, this.px, o);
-    const a = this.#mk(x1, old), b = this.#mk(x2, old);
+    const a = this.#mk(x1, old), b = this.#mk(x2, old, { id: this.nextId++ });
     if (a.text + b.text !== old.text || a.text !== cpSlice(old.text, 0, o)) throw new EditError('internal', '문단 나누기 결과가 다르다');
     this.#splice(p, 1, [a, b], { p, o });
     return { p: p + 1, o: 0 };
@@ -211,8 +229,8 @@ export class DocxEditModel {
     return { p: p - 1, o: at };
   }
 
-  undo() { const r = this.undoStack.pop(); if (!r) return null; this.#apply(r.p, r.added, r.removed); this.redoStack.push(r); this.dirty = true; return r.hint; }
-  redo() { const r = this.redoStack.pop(); if (!r) return null; this.#apply(r.p, r.removed, r.added); this.undoStack.push(r); this.dirty = true; return r.hint; }
+  undo() { const r = this.undoStack.pop(); if (!r) return null; this.#apply(r.p, r.added, r.removed, r.hint); this.redoStack.push(r); this.dirty = true; return r.hint; }
+  redo() { const r = this.redoStack.pop(); if (!r) return null; this.#apply(r.p, r.removed, r.added, r.hint); this.undoStack.push(r); this.dirty = true; return r.hint; }
 
   /** 지금의 document.xml 전체 */
   xml() { return this.items.map((x) => (typeof x === 'string' ? x : x.xml)).join(''); }
