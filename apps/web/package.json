@@ -11,6 +11,7 @@
     "serve": "node scripts/serve.mjs",
     "dev": "node scripts/build.mjs && node scripts/serve.mjs",
     "test:e2e": "node tests/pptx-unit.mjs && node tests/e2e.mjs && node tests/e2e-docx.mjs",
+    "test:rhwp-patches": "node tests/rhwp-patches.mjs",
     "test:corpus": "node tests/corpus.mjs",
     "test:edit": "node tests/e2e-edit.mjs",
     "test:edit-corpus": "node tests/edit-corpus.mjs",

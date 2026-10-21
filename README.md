@@ -13,7 +13,7 @@
 
 | 경로 | 내용 |
 |---|---|
-| `third_party/rhwp/` | HWP/HWPX 엔진. 고정 커밋 서브모듈 (아래 Acknowledgements) |
+| `third_party/rhwp/` | HWP/HWPX 엔진. 고정 커밋 서브모듈 (아래 Acknowledgements). 서브모듈은 원본 그대로이고 작은 패치는 `tools/rhwp-patches/`에서 빌드 때만 얹는다 |
 | `third_party/office_oxide/` | DOCX·DOC 읽기(IR). 포크(`ddommummi/office_oxide`)의 고정 커밋 서브모듈, 수정 없음 |
 | `crates/fmt-docx/` | office_oxide 어댑터(WASM): IR + 제목 스타일 보완 |
 | `apps/web/` | 웹 뷰어 (바닐라 JS, Worker + WASM). 배포 설정(`wrangler.jsonc`, `public/_headers`) 포함 |
@@ -50,7 +50,7 @@ Sheetfly 자체 코드는 **MIT License**이다 ([`LICENSE`](LICENSE), Copyright
 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
 - DOCX·DOC·XLSX·XLS·PPTX·PPT 읽기는 [office_oxide](https://github.com/yfedoseev/office_oxide) (Copyright (c) 2026 Yury Fedoseev, MIT OR Apache-2.0 중 MIT로 사용)를 수정 없이 쓴다. "OfficeOxide"는 해당 저자의 상표이며 본 프로젝트와 제휴 관계가 없다. 쪽 나눔은 Sheetfly가 직접 하며, RTF는 Sheetfly가 직접 만든 변환기(`apps/web/src/docx/rtf.js`)로 읽는다.
-- HWP/HWPX 처리는 [rhwp](https://github.com/edwardkim/rhwp) (Copyright (c) 2025-2026 Edward Kim, MIT License)를 고정 버전 의존성으로 사용한다. 원 저작권 문구는 `licenses/rhwp-LICENSE-MIT.txt`에 원문 그대로 있다.
+- HWP/HWPX 처리는 [rhwp](https://github.com/edwardkim/rhwp) (Copyright (c) 2025-2026 Edward Kim, MIT License)를 고정 버전 의존성으로 사용하며, 빌드 때 `tools/rhwp-patches/`의 작은 패치를 얹는다(수정 내용은 그 폴더에 공개). 원 저작권 문구는 `licenses/rhwp-LICENSE-MIT.txt`에 원문 그대로 있다.
 - 업스트림 하위 코드(예: `vendor/svg2pdf`)의 라이선스도 `licenses/`와 `NOTICE`에 수록한다.
 
 ## 비제휴 고지

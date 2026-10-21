@@ -67,7 +67,7 @@ out.docxwasm = `/assets/${docxName}`;
 let buildInfo = '';
 try {
   const bi = JSON.parse(readFileSync(join(wasmDir, 'BUILD_INFO.json'), 'utf8'));
-  buildInfo = `엔진 빌드: rhwp ${bi.rhwpCommit.slice(0, 7)} · wasm ${bi.wasmSha256.slice(0, 10)}`;
+  buildInfo = `엔진 빌드: rhwp ${bi.rhwpCommit.slice(0, 7)}${bi.rhwpPatches?.length ? `+패치${bi.rhwpPatches.length}` : ''} · wasm ${bi.wasmSha256.slice(0, 10)}`;
 } catch { buildInfo = `엔진 빌드: wasm ${wasmHash.slice(0, 10)}`; }
 
 const fill = (s) => s

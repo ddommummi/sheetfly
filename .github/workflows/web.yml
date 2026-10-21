@@ -89,6 +89,10 @@ jobs:
         working-directory: apps/web
         run: npm run test:e2e
 
+      - name: rhwp 패치 회귀 (tools/rhwp-patches: 빌드에 들어갔는지, 고치기로 한 모양)
+        working-directory: apps/web
+        run: npm run test:rhwp-patches
+
       - name: 편집 E2E (HWP 입력·한글 조합·서식·되돌리기·저장, 입력 지연 기록)
         working-directory: apps/web
         run: npm run test:edit

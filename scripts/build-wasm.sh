@@ -3,6 +3,8 @@
 #   cargo build(릴리스, rhwp 자신의 프로필) → wasm-bindgen(web) → wasm-opt -Oz(명시 기능 목록)
 # 사용: scripts/build-wasm.sh [출력 디렉터리]   (기본: apps/web/src/wasm)
 # 필요: rustup(+ wasm32-unknown-unknown), wasm-bindgen-cli(rhwp Cargo.lock과 같은 버전), apps/web의 npm install(binaryen)
+# 우리 패치(tools/rhwp-patches/*.patch)를 빌드 동안만 서브모듈 작업 트리에 얹고 끝나면 되돌린다(docs/patches/README.md).
+# 환경변수: RHWP_PATCHES=0 이면 패치 없이 원본 그대로 빌드한다(비교용). 기본 1.
 # 환경변수: WASM_OPT=0 이면 wasm-opt를 건너뛴다 (약 6분 절약, 전송 크기 +4%: brotli 3.13→3.26MB). 기본 1.
 # 근거: docs/decisions.md D-005 (wasm-opt --all-features는 브라우저가 로드하지 못하는 산출물을 만든다)
 set -euo pipefail
@@ -24,11 +26,20 @@ if [ "$want" != "$have" ]; then
   exit 1
 fi
 
+use_patches="${RHWP_PATCHES:-1}"
+patch_json="[]"
+cleanup() { [ -n "${tmp:-}" ] && rm -rf "$tmp"; [ "$use_patches" != 0 ] && "$root/scripts/rhwp-patches.sh" revert >/dev/null || true; }
+trap cleanup EXIT
+if [ "$use_patches" != 0 ]; then
+  "$root/scripts/rhwp-patches.sh" apply
+  patch_json="$("$root/scripts/rhwp-patches.sh" list | awk 'BEGIN{printf "["} {printf "%s{\"name\": \"%s\", \"sha256\": \"%s\"}", (NR>1?", ":""), $2, $1} END{printf "]"}')"
+fi
+
 echo "[1/3] cargo build (rhwp, 툴체인 $tc)"
 ( cd "$rhwp" && RUSTUP_TOOLCHAIN="$tc" CARGO_TARGET_DIR="$target_dir" \
     cargo build --release --lib --locked --target wasm32-unknown-unknown )
 
-tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+tmp="$(mktemp -d)"
 echo "[2/3] wasm-bindgen $have"
 wasm-bindgen --target web --no-typescript --out-dir "$tmp" "$target_dir/wasm32-unknown-unknown/release/rhwp.wasm"
 
@@ -50,6 +61,7 @@ sha="$(sha256sum "$out/rhwp_bg.wasm" | awk '{print $1}')"
 cat > "$out/BUILD_INFO.json" <<JSON
 {
   "rhwpCommit": "$(git -C "$rhwp" rev-parse HEAD)",
+  "rhwpPatches": $patch_json,
   "toolchain": "$tc",
   "wasmBindgen": "$have",
   "wasmOpt": "$([ "$use_opt" != 0 ] && "$wasm_opt" --version | head -n1 || echo skipped)",

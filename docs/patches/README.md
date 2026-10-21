@@ -2,11 +2,19 @@
 
 PRD 2절 포크 운영 방침: rhwp 수정은 최후의 수단이며, 패치는 전용 브랜치에 모으고 이 폴더에 "무엇을, 왜, 나중에 되돌릴 수 있는지"를 기록한다.
 
-## 현재 상태 (2026-10-18)
+## 현재 상태 (2026-10-21)
 
-**적용된 패치: 없음.** 서브모듈 `third_party/rhwp`는 업스트림 `edwardkim/rhwp`의 `main` 커밋 `1a76570e833917d15817415a53c09ad61ab3203f`(v0.8.7)에 그대로 고정되어 있고 작업 트리에 수정이 없다(`git -C third_party/rhwp status`가 깨끗함).
+**적용된 패치: 1개** (`tools/rhwp-patches/`). 서브모듈 `third_party/rhwp`는 업스트림 `edwardkim/rhwp`의 `main` 커밋 `1a76570e833917d15817415a53c09ad61ab3203f`(v0.8.7)에 그대로 고정되어 있고 **서브모듈 커밋은 수정하지 않는다**. 패치는 빌드 때만 작업 트리에 얹고 끝나면 되돌린다(`scripts/rhwp-patches.sh`, `scripts/build-wasm.sh`가 호출). 그래서 포크(`ddommummi/rhwp`)는 업스트림 추적용 그대로이고, 갱신 때 패치가 맞지 않으면 빌드가 바로 실패해 알 수 있다. Cloudflare 빌드(`scripts/cloudflare-build.sh`)와 CI도 `build-wasm.sh`를 거치므로 자동으로 적용된다. 적용된 패치는 `apps/web/src/wasm/BUILD_INFO.json`의 `rhwpPatches`(이름·sha256)와 화면 아래 "엔진 빌드: rhwp 1a76570+패치1"에 남는다.
 
-서브모듈 URL은 **오너 포크 `https://github.com/ddommummi/rhwp`**를 가리킨다(2026-10-18 연결, 포크 `main` = 고정 커밋 `1a76570`, `git ls-remote`로 확인). 업스트림 `edwardkim/rhwp`는 `upstream` 리모트로 **변경을 가져오는 용도로만** 쓴다. 업스트림에 대한 이슈/PR/코멘트는 오너 승인 후에만 한다.
+| 패치 | 무엇을 | 왜 | 확인 | 되돌리기 |
+|---|---|---|---|---|
+| `0001-stale-inline-picture-line` | 줄이 하나뿐인 본문 문단에서 글자처럼 취급한 그림이 저장된 줄 높이의 1.25배를 넘으면 줄 높이를 그림에 맞춘다(`document.rs`: 호출 한 줄 + 함수 하나, 추가만) | 그림을 넣은 뒤 줄 정보가 갱신되지 않은 파일에서 그림이 뒤 문단과 겹치고 아래쪽이 가려진다(한글 뷰어는 정상) — D-049 | `rhwp/samples` 한컴 실물 1,205개 중 달라지는 문서는 오너 제공 문서와 `issue5169_viewtext_changetracking.hwp`(겹침이 풀림)뿐. `npm run test:rhwp-patches` | 패치 파일 삭제 |
+
+### 업스트림을 갱신할 때 (패치가 있을 때)
+1. 서브모듈 포인터를 새 커밋으로 올린다(아래 포크 운영 절차).
+2. `scripts/rhwp-patches.sh status` — `conflict`가 나오면 패치를 새 코드에 맞게 다시 만든다. 호출 한 줄은 줄 정보를 보정하는 단계(`reflow_zero_height_paragraphs` 호출) 앞에 둔다. 컴파일 오류는 `LineSeg` 필드, `TAG_IMPLEMENTATION_PROPERTY`, `Picture.common.treat_as_char`/`height` 이름 변경을 확인한다.
+3. **업스트림이 같은 문제를 고쳤는지 먼저 본다** — 패치 없이(`RHWP_PATCHES=0 scripts/build-wasm.sh`) 오너 문서와 `issue5169` 3쪽이 이미 정상이면 패치를 버린다. 둘 다 적용되면 조용히 중복될 수 있다(컴파일로 잡히지 않는다).
+4. `rhwp/samples` 전체를 패치 전후 `rhwp dump-pages`로 비교해 달라지는 문서가 이번 2개뿐인지 확인한다(방법: `tools/rhwp-patches/README.md`).
 
 ### 포크 운영 절차
 ```sh
@@ -14,9 +22,9 @@ PRD 2절 포크 운영 방침: rhwp 수정은 최후의 수단이며, 패치는 
 git -C third_party/rhwp remote add upstream https://github.com/edwardkim/rhwp
 git -C third_party/rhwp remote set-url --push upstream DISABLED   # 업스트림으로의 실수 push 방지
 ```
-- 패치 브랜치: 포크의 `sheetfly/patches`(패치 착수 시 생성). 서브모듈 포인터는 그 브랜치의 커밋을 가리킨다.
-- 업스트림 갱신: `git fetch upstream main` → 패치 브랜치를 그 위로 리베이스 → 서브모듈 포인터 갱신 → 루트 `Cargo.lock`을 rhwp 락으로 다시 시드(`docs/decisions.md` D-003) → 회귀 테스트(`tools/measure`) → `docs/patches/` 갱신.
-- 포크의 `main`에는 직접 패치를 넣지 않는다(업스트림 추적용으로 유지).
+- 패치는 포크 브랜치가 아니라 이 저장소의 `tools/rhwp-patches/*.patch`로 둔다(2026-10-21 오너 결정). 서브모듈 포인터는 업스트림 커밋을 가리킨다.
+- 업스트림 갱신: `git fetch upstream main` → 서브모듈 포인터 갱신 → 루트 `Cargo.lock`을 rhwp 락으로 다시 시드(`docs/decisions.md` D-003) → 회귀 테스트(`tools/measure`) → `docs/patches/` 갱신.
+- 포크의 `main`에는 패치를 넣지 않는다(업스트림 추적용으로 유지).
 
 ## 패치 후보 (미착수, 오너 승인 필요)
 
