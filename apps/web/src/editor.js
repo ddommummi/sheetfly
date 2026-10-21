@@ -54,6 +54,15 @@ const svg = (d) => `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden=
 const ICON = {
   undo: svg('M6 4L3 7l3 3M3 7h6a4 4 0 010 8H7'), redo: svg('M10 4l3 3-3 3M13 7H7a4 4 0 000 8h2'),
   indentLess: svg('M2 3h12M7 7h7M7 11h7M2 15h12M5 6L2 9l3 3'), indentMore: svg('M2 3h12M7 7h7M7 11h7M2 15h12M2 6l3 3-3 3'),
+  tab: {
+    format: svg('M2.5 13.5L8 2.5l5.5 11M4.7 9.5h6.6'), insert: svg('M8 3v10M3 8h10'),
+    table: svg('M2.5 3h11v10h-11zM2.5 7h11M6.5 3v10M10.5 3v10'),
+    object: svg('M2.5 3h11v10h-11zM2.5 11l3.5-3.5 3 3 2-2 2.5 2.5M10.5 6.2h.01'),
+    page: svg('M4 1.5h5.5l3 3v10H4zM9.5 1.5v3h3'),
+    find: svg('M7 12a5 5 0 100-10 5 5 0 000 10zM11 11l3.5 3.5'),
+    view: svg('M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM8 9.8a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6z'),
+  },
+  saveOpts: svg('M2 4.5h12M2 11.5h12M5 2.5v4M11 9.5v4'), save: svg('M3 2.5h8l2.5 2.5v8.5H3zM5.5 2.5v3.5h5V2.5M5.5 13.5v-4h5v4'),
   left: svg('M2 3h12M2 7h8M2 11h12M2 15h8'), center: svg('M2 3h12M4 7h8M2 11h12M4 15h8'), right: svg('M2 3h12M6 7h8M2 11h12M6 15h8'), justify: svg('M2 3h12M2 7h12M2 11h12M2 15h12'),
 };
 
@@ -701,16 +710,16 @@ export class Editor {
     head.append(hg);
     this.zoneNote = document.createElement('span'); this.zoneNote.className = 'edit-cap edit-zone'; this.zoneNote.hidden = true; this.zoneNote.setAttribute('role', 'status');
     for (const [k, label] of Object.entries(T.tabs)) {
-      const b = this.#btn('tab', label, label, () => this.#showTab(k));
+      const b = this.#btn('tab ic', label, label, () => this.#showTab(k), `${ICON.tab[k] ?? ''}<span>${label}</span>`);
       b.setAttribute('role', 'tab'); b.dataset.tab = k;
       this.tabBtns[k] = b; head.append(b);
       const pn = document.createElement('div'); pn.className = 'edit-panel'; pn.dataset.panel = k; pn.setAttribute('role', 'tabpanel'); pn.hidden = true;
       this.panels[k] = pn;
     }
     const sp = document.createElement('span'); sp.className = 'spacer'; head.append(sp);
-    this.btn.saveOpts = this.#btn('', T.saveOpts, T.saveOptsTitle, () => this.#saveOptions());
+    this.btn.saveOpts = this.#btn('ic', T.saveOpts, T.saveOptsTitle, () => this.#saveOptions(), `${ICON.saveOpts}<span>${T.saveOpts}</span>`);
     this.btn.saveOpts.setAttribute('aria-label', T.saveOpts);
-    this.btn.save = this.#btn('primary', T.save, T.saveTitle, () => this.save());
+    this.btn.save = this.#btn('primary ic', T.save, T.saveTitle, () => this.save(), `${ICON.save}<span>${T.save}</span>`);
     head.append(this.zoneNote, this.btn.saveOpts, this.btn.save);
     bar.append(head, ...Object.values(this.panels));
     this.#buildFormatPanel();
