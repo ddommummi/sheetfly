@@ -5,6 +5,7 @@
 //! office_oxide는 수정하지 않고 공개 API(`Document::as_docx`, `StyleSheet::effective_run_properties`)만 쓴다.
 //!
 //! 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
+mod docgrid;
 mod fields;
 
 use office_oxide::{Document, DocumentFormat};
@@ -35,6 +36,9 @@ struct Out<'a> {
     ir: &'a office_oxide::ir::DocumentIR,
     /// 키: 제목 수준("1".."9")
     heading_runs: BTreeMap<String, HeadingRun>,
+    /// 구역마다의 줄 격자(문서 순서, 격자가 없는 구역은 null). IR에는 이 정보가 없다(docgrid.rs). 격자가 든 구역이 없으면 이 필드는 나오지 않는다.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    doc_grid: Vec<Option<docgrid::DocGrid>>,
 }
 
 fn heading_runs(doc: &Document) -> BTreeMap<String, HeadingRun> {
@@ -77,6 +81,7 @@ fn heading_runs(doc: &Document) -> BTreeMap<String, HeadingRun> {
 #[wasm_bindgen]
 pub struct SheetflyDoc {
     inner: Document,
+    doc_grid: Vec<Option<docgrid::DocGrid>>,
 }
 
 #[wasm_bindgen]
@@ -94,16 +99,18 @@ impl SheetflyDoc {
         };
         // DOCX는 머리글/바닥글의 쪽 번호 필드를 표식으로 바꿔 넘긴다(fields.rs). 실패하면 원본을 그대로 쓴다.
         let bytes = if fmt == DocumentFormat::Docx { fields::mark_fields(data).unwrap_or_else(|| data.to_vec()) } else { data.to_vec() };
+        // 줄 격자는 IR에 없으므로 원본 DOCX에서 따로 읽는다(실패하면 빈 목록).
+        let doc_grid = if fmt == DocumentFormat::Docx { docgrid::read_doc_grids(data) } else { Vec::new() };
         Document::from_reader(Cursor::new(bytes), fmt)
-            .map(|inner| SheetflyDoc { inner })
+            .map(|inner| SheetflyDoc { inner, doc_grid })
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
-    /// `{ ir, heading_runs }` JSON 문자열.
+    /// `{ ir, heading_runs, doc_grid? }` JSON 문자열.
     #[wasm_bindgen(js_name = toJson)]
     pub fn to_json(&self) -> Result<String, JsValue> {
         let ir = self.inner.to_ir();
-        let out = Out { ir: &ir, heading_runs: heading_runs(&self.inner) };
+        let out = Out { ir: &ir, heading_runs: heading_runs(&self.inner), doc_grid: self.doc_grid.clone() };
         serde_json::to_string(&out).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 }
