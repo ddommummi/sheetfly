@@ -17,6 +17,7 @@
     "test:edit-corpus": "node tests/edit-corpus.mjs",
     "test:edit-fuzz": "node tests/edit-fuzz.mjs",
     "test:docx-edit": "node --test tests/docx-edit-model.mjs && node tests/docx-edit-fuzz.mjs --seed 1 --docs 200 && node tests/docx-edit-fuzz.mjs --seed 2 --docs 200 --ops 15",
+    "test:docx-metrics": "node --test tests/docx-wordmetrics.mjs",
     "test:docx-edit-corpus": "node tests/docx-edit-corpus.mjs",
     "test:docx-session": "node --test tests/docx-session.mjs && node tests/docx-relayout.mjs --synth 40 --seed 1 && node tests/docx-session-fuzz.mjs --seed 1 --docs 60 --ops 30 && node tests/docx-session-fuzz.mjs --seed 2 --docs 60 --ops 30",
     "test:docx-session-corpus": "node tests/docx-session-fuzz.mjs",
