@@ -112,6 +112,10 @@ jobs:
         working-directory: apps/web
         run: npm run test:docx-edit
 
+      - name: DOCX 줄 높이 보정 (선언 한글 글꼴 → Word 배수, 줄바꿈이 앞 글 글꼴을 따름)
+        working-directory: apps/web
+        run: npm run test:docx-metrics
+
       - name: DOCX 편집 모델 공개 코퍼스 왕복 (Apache POI·Tika·python-docx·Open XML SDK 시험 파일, 틀린 짝 0건)
         working-directory: apps/web
         run: |

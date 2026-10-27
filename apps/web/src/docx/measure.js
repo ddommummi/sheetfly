@@ -1,5 +1,8 @@
 // 글자 폭 측정기. 조판은 이 인터페이스만 안다: width(font, text) → px, metrics(font) → { ascent, descent } px.
 // 실제 브라우저에서는 Canvas가 그리는 쪽(SVG 텍스트)과 같은 글꼴 엔진이라 측정과 그림이 맞는다.
+// 줄 높이(metrics)는 예외다: 선언된 글꼴이 Word 정답 표에 있으면 브라우저가 실제로 쓰는 글꼴이 아니라 Word의 한 줄 높이를 따른다(wordmetrics.js).
+import { applyWordLineFactor } from './wordmetrics.js';
+
 export function createCanvasMeasurer() {
   const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -25,7 +28,7 @@ export function createCanvasMeasurer() {
         set(font);
         const t = ctx.measureText('Hg한');
         const px = parseFloat(/([\d.]+)px/.exec(font)?.[1] ?? '16');
-        m = { ascent: t.fontBoundingBoxAscent ?? px * 0.9, descent: t.fontBoundingBoxDescent ?? px * 0.25 };
+        m = applyWordLineFactor(font, { ascent: t.fontBoundingBoxAscent ?? px * 0.9, descent: t.fontBoundingBoxDescent ?? px * 0.25 });
         mets.set(font, m);
       }
       return m;

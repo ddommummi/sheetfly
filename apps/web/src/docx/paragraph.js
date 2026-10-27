@@ -35,10 +35,12 @@ const cpLen = (s) => { let n = 0; for (const _ of s) n++; return n; };
 export function inlineTokens(content, measure, notes, track = false) {
   const tokens = [];
   let prevRunLastWord = false;
+  let prevText = null;   // 줄바꿈이 글꼴을 따를 바로 앞 글 조각
   let cp = 0;
   for (const r of content ?? []) {
     if (tokens.length > MAX_TOKENS) break;
     if (r.type === 'text') {
+      prevText = r;
       const st = runStyle(r);
       const src = r.text;
       let text = st.upper ? src.toUpperCase() : src;
@@ -56,7 +58,9 @@ export function inlineTokens(content, measure, notes, track = false) {
       const last = tokens[tokens.length - 1];
       prevRunLastWord = !!last && last.kind === 'word' && !last.text.endsWith('-');
     } else if (r.type === 'line_break') {
-      const t = { kind: 'br', text: '\n', st: runStyle({}) };
+      // IR의 줄바꿈에는 서식이 없다. Word는 줄바꿈 문자가 든 글 조각의 글꼴로 줄을 쌓으므로 바로 앞 글의 글꼴·크기를 따른다
+      // (문서 기본 글꼴을 쓰면 그 높이가 줄에 섞인다). 위·아래 첨자와 작은 대문자로 줄어든 크기는 물려받지 않는다.
+      const t = { kind: 'br', text: '\n', st: runStyle(prevText ? { font_name: prevText.font_name, font_size_half_pt: prevText.font_size_half_pt, bold: prevText.bold, italic: prevText.italic } : {}) };
       if (track) { t.o0 = cp; t.o1 = ++cp; }
       tokens.push(t);
       prevRunLastWord = false;
