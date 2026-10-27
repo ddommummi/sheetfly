@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>line-height probe</title>
+<script type="module">
+const Q = new URLSearchParams(location.search);
+const root = Q.get('br') === '1' ? '/srcbr' : '/src';   // br=1이면 paragraph.js만 시제품(줄바꿈이 앞 글의 글꼴을 따름)으로 바뀐 사본
+const { layoutDocument } = await import(`${root}/docx/layout.js`);
+const { createCanvasMeasurer } = await import(`${root}/docx/measure.js`);
+const env = Q.get('env') || 'none';
+const FONT = '/fonts/NotoSansKR-Regular.ttf';
+// Windows 흉내: 글씨 모양은 Noto Sans KR로 하되, 줄 높이에 쓰이는 값만 Word에서 추출한 hhea 값으로 덮어쓴다(GenOffice word-faces.json).
+const face = (name, a, d) => `@font-face{font-family:"${name}";src:url(${FONT});ascent-override:${a}%;descent-override:${d}%;line-gap-override:0%}`;
+const CSS = {
+  none: '',
+  noto: `@font-face{font-family:"Noto Sans KR";src:url(${FONT})}`,
+  win: [face('맑은 고딕', 108.84, 24.17), face('Malgun Gothic', 108.84, 24.17), face('Batang', 85.84, 14.16), face('바탕', 85.84, 14.16)].join('\n'),
+}[env];
+const st = document.createElement('style'); st.textContent = CSS; document.head.append(st);
+await Promise.all([...document.fonts].map((f) => f.load().catch(() => {})));
+const measure = createCanvasMeasurer();
+if (Q.get('fix') === '1') {   // 시제품 (A): 선언된 한글 글꼴 → Word 한 줄 높이 배수. 글씨를 그리는 실제 글꼴과 무관하게 선언 글꼴로 정한다.
+  const orig = measure.metrics.bind(measure);
+  const WORD = [[/^["']?(맑은 고딕|Malgun Gothic)/, 1.7292], [/^["']?(Batang|바탕)/, 1.3]];
+  measure.metrics = (font) => {
+    const m = orig(font); const px = parseFloat(/([\d.]+)px/.exec(font)?.[1] ?? '16');
+    const fam = font.replace(/^((italic|bold) )*[\d.]+px\s+/, '');
+    for (const [re, f] of WORD) if (re.test(fam)) { const tot = px * f, r = m.ascent / (m.ascent + m.descent); return { ascent: tot * r, descent: tot * (1 - r) }; }
+    return m;
+  };
+}
+window.READY = true;
+window.canvasMetrics = (fontCss) => { const c = new OffscreenCanvas(1, 1).getContext('2d'); c.font = fontCss; const t = c.measureText('Hg한'); return { ascent: t.fontBoundingBoxAscent, descent: t.fontBoundingBoxDescent }; };
+window.lineHeights = (full) => {
+  const res = layoutDocument(full.ir, measure, { headingRuns: full.heading_runs });
+  const out = [];
+  for (const page of res.pages) { const seen = new Set(); for (const it of page.items) if (it.k === 't' && it.lh != null) { const key = `${it.top}`; if (seen.has(key)) continue; seen.add(key); out.push({ top: it.top, y: it.y, lh: it.lh, s: it.s, font: it.font }); } }
+  return { lines: out.sort((a, b) => a.top - b.top), pages: res.pages.length, warnings: res.warnings };
+};
+</script>
