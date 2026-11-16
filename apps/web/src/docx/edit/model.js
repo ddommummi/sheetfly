@@ -3,7 +3,7 @@
 // 편집은 "일반 문단"(필드·변경 추적·내용 컨트롤·도형 등이 없고 IR과 짝지어진 문단)만 된다. 그 밖은 잠금이고 이유를 돌려준다.
 import { readZip, hasEncrypted, partText, readPart, rewriteZip } from './zip.js';
 import { indexParagraphs, wPrefix, cpLen, cpSlice } from './xml.js';
-import { insertText as pInsert, deleteRange as pDelete, splitParagraph as pSplit, mergeParagraphs as pMerge, paraText } from './para.js';
+import { insertText as pInsert, deleteRange as pDelete, splitParagraph as pSplit, mergeParagraphs as pMerge, paraText, formatRange as pFormat, formatParagraph as pFormatPara } from './para.js';
 import { flattenIr, alignBlocks } from './ir.js';
 
 const te = new TextEncoder();
@@ -61,7 +61,7 @@ export class DocxEditModel {
    */
   attach(full, index = null) {
     index ??= this.px === null ? [] : indexParagraphs(this.xml(), this.px);
-    if (index.length !== this.paras.length) throw new EditError('internal', `문단 수가 어긋났다(${index.length} / ${this.paras.length})`);
+    if (index.length !== this.paras.length) throw new EditError('internal', `paragraph count ${index.length}/${this.paras.length}`);
     let blocks = null, align = null;
     if (full) { blocks = flattenIr(full); align = alignBlocks(blocks, index); }
     this.blocks = blocks;
@@ -132,7 +132,7 @@ export class DocxEditModel {
     return null;
   }
   canEdit(p) { return this.lock(p) === null; }
-  text(p) { const pv = this.paras[p]; if (!pv) throw new EditError('range', `문단 ${p}이 없다`); if (pv.depth > 0 || !pv.xml || !pv.xmlEditable) return pv.all; if (pv.text === null) pv.text = paraText(pv.xml, this.px); return pv.text; }
+  text(p) { const pv = this.paras[p]; if (!pv) throw new EditError('range', `no paragraph ${p}`); if (pv.depth > 0 || !pv.xml || !pv.xmlEditable) return pv.all; if (pv.text === null) pv.text = paraText(pv.xml, this.px); return pv.text; }
   length(p) { return cpLen(this.text(p)); }
   /** 보이는 IR 블록 번호(-1이면 없음). 조판이 이 번호로 문단을 가리킨다. */
   blockOf(p) { return this.paras[p]?.block ?? -1; }
@@ -141,21 +141,22 @@ export class DocxEditModel {
   #mk(xml, from, extra = {}) {
     const text = paraText(xml, this.px);
     const idx = indexParagraphs(xml, this.px);
-    if (idx.length !== 1 || !idx[0].editable) throw new EditError('internal', `편집 결과가 일반 문단이 아니다(${idx[0]?.why})`);
+    if (idx.length !== 1 || !idx[0].editable) throw new EditError('internal', `result not plain: ${idx[0]?.why}`);
     return { depth: 0, all: text, xmlEditable: true, why: '', block: from.block, risky: false, orig: from.orig, ghost: from.ghost, ghostAnchor: from.ghostAnchor, created: true, xml, text, checked: true, id: from.id, ...extra };
   }
   /** paras·items를 [p, p+n)에서 added로 바꾼다(되돌리기 기록 포함). */
-  #splice(p, n, added, hint, post) {
+  #splice(p, n, added, hint, post, fmt) {
     const removed = this.paras.slice(p, p + n);
     this.#apply(p, removed, added, hint);
+    if (fmt) this.last.fmt = fmt;   // 서식 편집: IR 거울이 같은 서식을 입히려고 본다
     // hint: 편집 전 캐럿(되돌리면 여기로), post: 편집 뒤 캐럿(다시 하면 여기로)
-    this.undoStack.push({ p, removed, added, hint, post, bundle: this.curBundle }); this.redoStack.length = 0;
+    this.undoStack.push({ p, removed, added, hint, post, bundle: this.curBundle, fmt }); this.redoStack.length = 0;
     this.dirty = true;
   }
   #apply(p, removed, added, hint) {
     this.last = { p, removed, added, hint }; this.idIndex = null;
     const first = this.items.indexOf(removed[0]), last = this.items.indexOf(removed[removed.length - 1]);
-    if (first < 0 || last < first) throw new EditError('internal', '조각 목록이 어긋났다');
+    if (first < 0 || last < first) throw new EditError('internal', 'items out of sync');
     this.items.splice(first, last - first + 1, ...added);
     this.paras.splice(p, removed.length, ...added);
   }
@@ -172,11 +173,11 @@ export class DocxEditModel {
   insertText(p, o, str) {
     this.#need(p);
     const len = this.length(p);
-    if (o < 0 || o > len) throw new EditError('range', `글 위치 ${o}가 문단 길이 ${len} 밖이다`);
+    if (o < 0 || o > len) throw new EditError('range', `offset ${o} > ${len}`);
     if (!str) return { p, o };
     const old = this.paras[p], expect = cpSlice(old.text, 0, o) + str + cpSlice(old.text, o);
     const xml = pInsert(old.xml, this.px, o, str), pv = this.#mk(xml, old);
-    if (pv.text !== expect) throw new EditError('internal', `글 넣기 결과가 다르다(기대 ${JSON.stringify(expect).slice(0, 60)}, 실제 ${JSON.stringify(pv.text).slice(0, 60)})`);
+    if (pv.text !== expect) throw new EditError('internal', 'insert result differs');
     this.#splice(p, 1, [pv], { p, o }, { p, o: o + cpLen(str) });
     return { p, o: o + cpLen(str) };
   }
@@ -187,12 +188,12 @@ export class DocxEditModel {
     for (let p = a.p; p <= b.p; p++) this.#need(p);
     for (let p = a.p; p < b.p; p++) if (!this.#siblings(p)) throw new EditError('not_sibling', '표 칸이나 다른 구역에 걸친 범위는 지울 수 없다');
     const la = this.length(a.p), lb = this.length(b.p);
-    if (a.o < 0 || a.o > la || b.o < 0 || b.o > lb) throw new EditError('range', '지울 범위가 문단 밖이다');
+    if (a.o < 0 || a.o > la || b.o < 0 || b.o > lb) throw new EditError('range', 'range outside paragraph');
     if (a.p === b.p) {
       if (a.o === b.o) return { p: a.p, o: a.o };
       const old = this.paras[a.p], expect = cpSlice(old.text, 0, a.o) + cpSlice(old.text, b.o);
       const pv = this.#mk(pDelete(old.xml, this.px, a.o, b.o), old);
-      if (pv.text !== expect) throw new EditError('internal', '글 지우기 결과가 다르다');
+      if (pv.text !== expect) throw new EditError('internal', 'delete result differs');
       this.#splice(a.p, 1, [pv], { p: a.p, o: a.o }, { p: a.p, o: a.o });
       return { p: a.p, o: a.o };
     }
@@ -200,7 +201,7 @@ export class DocxEditModel {
     const expect = cpSlice(A.text, 0, a.o) + cpSlice(B.text, b.o);
     const ax = a.o < la ? pDelete(A.xml, this.px, a.o, la) : A.xml, bx = b.o > 0 ? pDelete(B.xml, this.px, 0, b.o) : B.xml;
     const pv = this.#mk(pMerge(ax, bx, this.px), A);
-    if (pv.text !== expect) throw new EditError('internal', '문단을 가로지른 지우기 결과가 다르다');
+    if (pv.text !== expect) throw new EditError('internal', 'cross delete result differs');
     this.#splice(a.p, b.p - a.p + 1, [pv], { p: a.p, o: a.o }, { p: a.p, o: a.o });
     return { p: a.p, o: a.o };
   }
@@ -209,25 +210,58 @@ export class DocxEditModel {
   splitParagraph(p, o) {
     this.#need(p);
     const len = this.length(p);
-    if (o < 0 || o > len) throw new EditError('range', `글 위치 ${o}가 문단 길이 ${len} 밖이다`);
+    if (o < 0 || o > len) throw new EditError('range', `offset ${o} > ${len}`);
     const old = this.paras[p];
     const [x1, x2] = pSplit(old.xml, this.px, o);
     const a = this.#mk(x1, old), b = this.#mk(x2, old, { id: this.nextId++ });
-    if (a.text + b.text !== old.text || a.text !== cpSlice(old.text, 0, o)) throw new EditError('internal', '문단 나누기 결과가 다르다');
+    if (a.text + b.text !== old.text || a.text !== cpSlice(old.text, 0, o)) throw new EditError('internal', 'split result differs');
     this.#splice(p, 1, [a, b], { p, o }, { p: p + 1, o: 0 });
     return { p: p + 1, o: 0 };
   }
 
   /** 문단의 처음에서 Backspace: p를 앞 문단에 합친다. */
   mergeBack(p) {
-    if (p <= 0) throw new EditError('range', '첫 문단이다');
+    if (p <= 0) throw new EditError('range', 'first paragraph');
     this.#need(p - 1); this.#need(p);
     if (!this.#siblings(p - 1)) throw new EditError('not_sibling', '표 칸이나 다른 구역에 걸친 문단은 합칠 수 없다');
     const A = this.paras[p - 1], B = this.paras[p], at = this.length(p - 1);
     const pv = this.#mk(pMerge(A.xml, B.xml, this.px), A);
-    if (pv.text !== A.text + B.text) throw new EditError('internal', '문단 합치기 결과가 다르다');
+    if (pv.text !== A.text + B.text) throw new EditError('internal', 'merge result differs');
     this.#splice(p - 1, 2, [pv], { p: p - 1, o: at }, { p: p - 1, o: at });
     return { p: p - 1, o: at };
+  }
+
+  /**
+   * 글자 서식(굵게·크기·색 …): [a, b) 범위의 글에 props를 입힌다(문단을 가로질러도 된다. 문단마다 되돌리기 기록이 하나씩 생긴다 — 호출자가 curBundle로 묶는다).
+   * 편집할 수 없는 문단이 범위에 있으면 아무것도 바꾸지 않고 던진다. 바뀐 문단 수를 돌려준다.
+   */
+  formatRange(a, b, props) {
+    if (a.p > b.p || (a.p === b.p && a.o > b.o)) [a, b] = [b, a];
+    for (let p = a.p; p <= b.p; p++) this.#need(p);
+    let n = 0;
+    for (let p = a.p; p <= b.p; p++) {
+      const from = p === a.p ? a.o : 0, to = p === b.p ? b.o : this.length(p);
+      if (from < 0 || to > this.length(p)) throw new EditError('range', 'format range outside paragraph');
+      if (to <= from) continue;
+      const old = this.paras[p], pv = this.#mk(pFormat(old.xml, this.px, from, to, props), old);
+      if (pv.text !== old.text) throw new EditError('internal', 'format changed text');
+      this.#splice(p, 1, [pv], { p: a.p, o: a.o }, { p: b.p, o: b.o }, { kind: 'char', from, to, props });
+      n++;
+    }
+    return n;
+  }
+  /** 문단 서식(정렬·들여쓰기·문단 간격·줄 간격): a.p ~ b.p 문단 전체에 입힌다. */
+  formatParagraphs(a, b, props) {
+    if (a.p > b.p) [a, b] = [b, a];
+    for (let p = a.p; p <= b.p; p++) this.#need(p);
+    let n = 0;
+    for (let p = a.p; p <= b.p; p++) {
+      const old = this.paras[p], pv = this.#mk(pFormatPara(old.xml, this.px, props), old);
+      if (pv.text !== old.text) throw new EditError('internal', 'para format changed text');
+      this.#splice(p, 1, [pv], { p: a.p, o: a.o }, { p: b.p, o: b.o }, { kind: 'para', props });
+      n++;
+    }
+    return n;
   }
 
   /** 되돌리기 기록의 마지막 k개를 한 항목으로 합친다(같은 문단 안의 글 바꾸기가 이어진 것만). 합쳤으면 true. */
@@ -239,7 +273,7 @@ export class DocxEditModel {
       const r = rs[i];
       if (r.removed.length !== 1 || r.added.length !== 1 || r.p !== rs[0].p || r.bundle !== rs[0].bundle || (i > 0 && r.removed[0] !== rs[i - 1].added[0])) return false;
     }
-    s.splice(-k, k, { p: rs[0].p, removed: rs[0].removed, added: rs[k - 1].added, hint: rs[0].hint, post: rs[k - 1].post, bundle: rs[0].bundle });
+    s.splice(-k, k, { p: rs[0].p, removed: rs[0].removed, added: rs[k - 1].added, hint: rs[0].hint, post: rs[k - 1].post, bundle: rs[0].bundle, fmt: rs.find((r) => r.fmt)?.fmt });   // 서식이 든 묶음은 표지를 남긴다(되돌릴 때 화면을 확실히 맞추려고)
     return true;
   }
   undo() { const r = this.undoStack.pop(); if (!r) return null; this.#apply(r.p, r.added, r.removed, r.hint); this.redoStack.push(r); this.dirty = true; return r.hint; }

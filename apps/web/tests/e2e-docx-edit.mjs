@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { startServer, launch, instrument, waitState, web } from './helpers.mjs';
 import { makeDocx, p, table, fieldSimple, run, zip } from './docx-fixtures.mjs';
 import { irOf, irTexts } from './docx-edit-helpers.mjs';
+import { flattenIr } from '../src/docx/edit/ir.js';
 import { readZip, readPart } from '../src/docx/edit/zip.js';
 
 let server, url, browser;
@@ -101,9 +102,11 @@ test('편집 단추: DOCX에서 보이고, 편집을 켜면 도구줄(글 고치
   await page.waitForSelector('#edit-bar:not([hidden])');
   assert.ok(page.__rec.requests.slice(reqsBefore).some((u) => /docxedit-/.test(u)), 'DOCX 편집 묶음을 그때 받는다');
   assert.ok(!page.__rec.requests.some((u) => /hwpedit-/.test(u)), 'HWP 편집 묶음은 받지 않는다');
-  assert.equal(await page.locator('#edit-bar .btn.tab:visible').count(), 0, '아직 쓰지 않는 탭은 숨김');
+  assert.deepEqual(await page.locator('#edit-bar .btn.tab:visible').allInnerTexts(), ['서식', '찾기'], '쓰는 탭(서식·찾기)만 보인다');
   assert.equal(await page.locator('#edit-bar .btn.primary').isVisible(), true);
-  assert.match(await page.locator('#edit-bar').innerText(), /글 고치기/);
+  assert.match(await page.locator('#edit-bar').innerText(), /글·서식 고치기/);
+  assert.equal(await page.locator('#edit-bar .fmt-b').isVisible(), true);
+  assert.equal(await page.locator('#edit-bar button[aria-label="문단 부호 보이기·숨기기"]').isVisible(), false, '아직 없는 기능(문단 부호·자간·장평)은 숨김');
   await done(page);
 });
 
@@ -339,6 +342,140 @@ test('편집 중 다른 문서를 열면 저장하지 않은 변경을 묻는다
   assert.match(await page.locator('dialog[open]').innerText(), /저장하지 않은 변경/);
   await page.click('dialog[open] [data-no]');
   assert.equal(await page.locator('#file-name').innerText(), 'd.docx', '계속 편집');
+  await done(page);
+});
+
+/** 저장본의 글 조각 서식: [{text, bold, italic, underline, strikethrough, size, color, font, highlight}] (문단 순서대로 이어서) */
+const fmtOf = (bytes, i = 0) => flattenIr(irOf(bytes)).filter((b) => b.text)[i].node.content.filter((c) => c.type === 'text' && c.text !== '\t').map((c) => ({ text: c.text, bold: !!c.bold, italic: !!c.italic, underline: !!c.underline && c.underline !== 'none', strike: !!c.strikethrough, size: c.font_size_half_pt, color: c.color?.join(), font: c.font_name, hl: c.highlight?.join() }));
+const paraOf = (bytes, i = 0) => flattenIr(irOf(bytes)).filter((b) => b.text)[i].node;
+const btn = (page, title) => page.locator(`#edit-bar button[aria-label="${title}"]`);
+const shift = async (page, key, n) => { for (let i = 0; i < n; i++) await page.keyboard.press(`Shift+${key}`); await settle(page); };
+
+test('글자 서식: 선택해서 굵게·기울임·밑줄·취소선(단추·Ctrl+B), 단추 상태, 저장본에 그 범위만', async () => {
+  const page = await newPage();
+  await open(page, 'f1.docx', BASE());
+  await startEdit(page);
+  await page.keyboard.press('ArrowRight'); await shift(page, 'ArrowRight', 2);              // "나다" 선택
+  assert.equal(await page.locator('.sel').count() >= 1, true);
+  await page.click('#edit-bar .fmt-b'); await settle(page);
+  assert.equal(await page.locator('#edit-bar .fmt-b').getAttribute('aria-pressed'), 'true', '선택한 글이 굵으면 단추가 눌려 있다');
+  await page.keyboard.press('Control+i'); await settle(page);
+  await page.click('#edit-bar .fmt-u'); await page.click('#edit-bar .fmt-s'); await settle(page);
+  let r = await save(page);
+  assert.deepEqual(fmtOf(r.bytes).map((c) => [c.text, c.bold, c.italic, c.underline, c.strike]), [['가', false, false, false, false], ['나다', true, true, true, true], ['라마', false, false, false, false]]);
+  assert.deepEqual(r.texts, ['가나다라마', 'Hello world foo', '셋째 문단', '끝 문단'], '글은 그대로');
+  // 같은 글을 다시 누르면 꺼진다
+  await page.click('#edit-bar .fmt-b'); await settle(page);
+  r = await save(page);
+  assert.equal(fmtOf(r.bytes).find((c) => c.text === '나다').bold, false);
+  assert.equal(await page.locator('#edit-bar .fmt-b').getAttribute('aria-pressed'), 'false');
+  // 되돌리기: 굵게 끄기 → 켜짐으로
+  await page.keyboard.press('Control+z'); await settle(page);
+  assert.equal(await dirty(page), true, '되돌리면 변경 표시');
+  assert.equal(fmtOf((await save(page)).bytes).find((c) => c.text === '나다').bold, true);
+  await done(page);
+});
+
+test('글자 서식: 크기·색·글꼴·형광펜, 서식을 먼저 정하고 입력', async () => {
+  const page = await newPage();
+  await open(page, 'f2.docx', BASE());
+  await startEdit(page);
+  await shift(page, 'End', 1);                                                            // 첫 문단 전체 선택
+  await btn(page, '글자 크게').click(); await settle(page); await page.waitForTimeout(250);   // 서식 읽기(80ms 뒤)가 끝나야 다음 크기를 계산한다
+  await btn(page, '글자 크게').click(); await settle(page);   // 11pt → 13pt
+  await page.locator('#edit-bar .edit-color').first().fill('#ff0000'); await settle(page);
+  await page.locator('#edit-bar .edit-font').selectOption({ label: 'Arial' }); await settle(page);
+  await page.locator('#edit-bar .edit-color').nth(1).fill('#00ff00'); await settle(page);
+  let f = fmtOf((await save(page)).bytes)[0];
+  assert.deepEqual([f.size, f.color, f.font, f.hl], [26, '255,0,0', 'Arial', '0,255,0']);
+  assert.match(await page.locator('#edit-bar .edit-size').first().innerText(), /13pt/, '크기 표시');
+  // 형광펜 지우기
+  await page.locator('#edit-bar button', { hasText: '지움' }).click(); await settle(page);
+  assert.equal(fmtOf((await save(page)).bytes)[0].hl, undefined);
+  // 캐럿만 있을 때 굵게를 먼저 누르고 입력하면 넣은 글에만
+  await page.keyboard.press('Control+End'); await page.keyboard.press('Control+Home'); await page.keyboard.press('End'); await settle(page);
+  await page.click('#edit-bar .fmt-b'); await page.keyboard.type('NEW', { delay: 40 }); await settle(page);
+  const c = fmtOf((await save(page)).bytes);
+  assert.deepEqual(c.filter((x) => x.bold).map((x) => x.text), ['NEW']);
+  await page.keyboard.press('Control+z'); await settle(page);
+  assert.ok(!(await save(page)).texts[0].includes('NEW'), '입력과 서식이 한 번에 되돌아간다');
+  await done(page);
+});
+
+test('문단 서식: 가운데 맞춤·왼쪽 여백·줄 간격이 화면(캐럿 위치)과 저장본에 들어가고 되돌려진다', async () => {
+  const page = await newPage();
+  await open(page, 'f3.docx', BASE());
+  await startEdit(page);
+  const x0 = (await caret(page)).x, y1 = (await (async () => { await page.keyboard.press('ArrowDown'); await settle(page); return caret(page); })()).y;
+  await page.keyboard.press('ArrowUp'); await settle(page);
+  await btn(page, '가운데 맞춤').click(); await settle(page);
+  assert.ok((await caret(page)).x > x0 + 50, '가운데 맞춤으로 캐럿이 옮겨 갔다');
+  assert.equal(await btn(page, '가운데 맞춤').getAttribute('aria-pressed'), 'true');
+  await btn(page, '왼쪽 여백 늘리기').click(); await settle(page);
+  await page.locator('#edit-bar .edit-line').selectOption('200'); await settle(page);
+  const n = paraOf((await save(page)).bytes);
+  assert.equal(n.alignment, 'center'); assert.ok(n.indent_left_twips > 0); assert.deepEqual(n.line_spacing, { auto: 480 });
+  await page.keyboard.press('ArrowDown'); await settle(page);
+  assert.ok((await caret(page)).y > y1 + 5, '줄 간격 때문에 아래 문단이 내려갔다');
+  await page.keyboard.press('Control+z'); await settle(page); await page.keyboard.press('Control+z'); await settle(page); await page.keyboard.press('Control+z'); await settle(page);
+  const n2 = paraOf((await save(page)).bytes);
+  assert.equal(n2.alignment, undefined); assert.ok(!n2.indent_left_twips); assert.equal(n2.line_spacing, undefined);
+  await done(page);
+});
+
+test('여러 문단 서식(전체 선택 굵게)은 한 번에 되돌려지고, 잠긴 문단이 끼면 알린다', async () => {
+  const page = await newPage();
+  await open(page, 'f4.docx', makeDocx(p('앞 문단') + `<w:p>${run('쪽 ')}${fieldSimple('PAGE', '7')}</w:p>` + p('뒤 문단')));
+  await startEdit(page);
+  await page.keyboard.press('Control+a'); await settle(page);
+  await page.click('#edit-bar .fmt-b'); await settle(page);
+  assert.match(await status(page), /편집할 수 없/);
+  assert.equal(await dirty(page), false);
+  await page.keyboard.press('ArrowLeft'); await page.keyboard.press('Control+Home');
+  await page.keyboard.press('Control+Shift+End'); await settle(page);
+  const ok = await open(page, 'f5.docx', BASE()).then(() => true);
+  assert.ok(ok);
+  await startEdit(page);
+  await page.keyboard.press('Control+a'); await settle(page);
+  await page.click('#edit-bar .fmt-b'); await settle(page);
+  const r = await save(page);
+  for (let i = 0; i < 4; i++) assert.ok(fmtOf(r.bytes, i).every((c) => c.bold), `문단 ${i}`);
+  await page.keyboard.press('Control+z'); await settle(page);
+  for (let i = 0; i < 4; i++) assert.ok(fmtOf((await save(page)).bytes, i).every((c) => !c.bold), `되돌림 ${i}`);
+  await done(page);
+});
+
+test('찾아 바꾸기: 찾기 탭에서 다음·이전·바꾸기·모두 바꾸기, 못 찾으면 안내, 되돌리기', async () => {
+  const page = await newPage();
+  await open(page, 'f6.docx', makeDocx(p('고양이와 Cat') + p('cat 고양이') + p('끝')));
+  await startEdit(page);
+  await page.locator('#edit-bar button[data-tab="find"]').click();
+  const panel = page.locator('#edit-bar [data-panel="find"]');
+  await panel.locator('input').first().fill('고양이');
+  await panel.locator('input').first().press('Enter'); await settle(page);
+  assert.ok(await page.locator('.sel').count() >= 1, '찾은 글이 선택된다');
+  assert.match(await status(page), /2곳 중에서 찾았습니다/);
+  await panel.locator('input').first().press('Enter'); await settle(page);
+  await panel.locator('input').first().press('Shift+Enter'); await settle(page);
+  await panel.locator('input').nth(1).fill('강아지');
+  await panel.locator('button', { hasText: /^바꾸기$/ }).click(); await settle(page);       // 선택된 일치를 바꾸고 다음으로
+  let r = await save(page);
+  assert.equal(r.texts.filter((t) => t.includes('강아지')).length, 1);
+  await panel.locator('button', { hasText: '모두 바꾸기' }).click(); await settle(page);
+  assert.match(await status(page), /1곳을 바꿨습니다/);
+  r = await save(page);
+  assert.deepEqual(r.texts, ['강아지와 Cat', 'cat 강아지', '끝']);
+  await panel.locator('input').first().fill('없는말');
+  await panel.locator('input').first().press('Enter'); await settle(page);
+  assert.match(await status(page), /찾지 못했습니다/);
+  // 대소문자 구분
+  await panel.locator('input').first().fill('cat');
+  await panel.locator('input[type=checkbox]').check();
+  await panel.locator('input').first().press('Enter'); await settle(page);
+  assert.doesNotMatch(await status(page), /찾지 못했습니다/);
+  assert.ok(await page.locator('.sel').count() >= 1, '대소문자를 구분해도 "cat"을 찾는다');
+  await page.keyboard.press('Control+z'); await settle(page);       // 모두 바꾸기 되돌리기(한 번)
+  assert.equal((await save(page)).texts.filter((t) => t.includes('강아지')).length, 1);
   await done(page);
 });
 

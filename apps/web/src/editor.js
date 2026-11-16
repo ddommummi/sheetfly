@@ -9,6 +9,7 @@ import { installObjects } from './ed-objects.js';
 import { installPage } from './ed-page.js';
 import { installMisc } from './ed-misc.js';
 import { installRuler } from './ed-ruler.js';
+import { installFind } from './ed-find.js';
 
 const T = {
   tabs: { format: '서식', insert: '입력', table: '표', object: '개체', page: '쪽', find: '찾기', view: '보기' }, ok: '확인', cancel: '취소',
@@ -37,12 +38,12 @@ const T = {
   zones: { h: '머리글', f: '바닥글', n: '각주' }, zoneNote: (z) => `${z} 편집 중 — Esc를 누르면 본문으로 돌아갑니다`,
   zoneEnter: (z) => `${z}을(를) 편집합니다. Esc로 본문으로 돌아갑니다.`, zoneBlocked: '머리글·바닥글·각주 안에서는 쓸 수 없는 기능입니다. Esc로 본문으로 돌아가세요.',
   zoneNoChar: '각주 안에서는 글자 서식을 바꿀 수 없습니다(문단 서식만 가능).',
-  docxScope: '글 고치기 — 서식·표 구조·그림은 그대로 저장됩니다',
+  docxScope: '글·서식 고치기 — 표 구조·그림은 그대로 저장됩니다',
   lockedHere: (why) => `이 문단은 편집할 수 없습니다: ${why}`,
   docxSaveName: 'Word 문서',
 };
-// DOCX 편집기에 보이는 탭(4-2-4에서 서식·찾기를 더한다). HWP는 전부.
-const DOCX_TABS = [];
+// DOCX 편집기에 보이는 탭(표·개체·쪽·입력 탭은 아직 없다). HWP는 전부.
+const DOCX_TABS = ['format', 'find'];
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 // 머리글·바닥글·각주 안에서 쓸 수 있는 작업(그 밖의 작업은 본문 좌표를 쓰므로 막는다)
 /** 같은 표 칸인지 가리는 열쇠(칸 안 문단 번호는 뺀다). */
@@ -744,6 +745,7 @@ export class Editor {
     if (this.kind === 'hwp') { installTable(this.api); installObjects(this.api); installPage(this.api); installMisc(this.api); }
     this.#buildViewPanel();
     if (this.kind === 'hwp') installRuler(this.api);
+    if (this.kind === 'docx') installFind(this.api);   // 찾아 바꾸기는 HWP와 같은 화면(편집 계층의 find·repl·replall)
     if (this.tabKeys.length) this.#showTab(this.tabKeys[0]);
     else for (const pn of Object.values(this.panels)) pn.hidden = true;
   }
@@ -805,12 +807,14 @@ export class Editor {
       cap(T.spacing), this.#btn('icon', '−', T.spacingDown, () => this.#spacing(-1)), this.spacingLabel, this.#btn('icon', '+', T.spacingUp, () => this.#spacing(1)),
       cap(T.ratio), this.#btn('icon', '−', T.ratioDown, () => this.#ratio(-5)), this.ratioLabel, this.#btn('icon', '+', T.ratioUp, () => this.#ratio(5)),
     );
+    if (this.kind === 'docx') g.hidden = true;   // 자간·장평은 DOCX 편집에 아직 없다
     g = grp();
     for (const a of ['left', 'center', 'right', 'justify']) g.append(this.btn[a] = this.#btn('icon', '', T[a], () => this.#align(a), ICON[a]));
     this.lineSel = this.#select('edit-line', T.lineSpacing, LINE_SPACINGS.map((v) => [String(v), `${v}%`]), (v) => this.#paraFmt({ lineSpacing: Number(v), lineSpacingType: 'Percent' }));
     g.append(this.lineSel, this.#btn('icon', '', T.indentLess, () => this.#indent(-1), ICON.indentLess), this.#btn('icon', '', T.indentMore, () => this.#indent(1), ICON.indentMore));
     this.btn.marks = this.#btn('icon', '¶', T.marks, () => this.#toggleMarks());
     g.append(this.btn.marks);
+    if (this.kind === 'docx') this.btn.marks.hidden = true;   // 문단 부호 보기는 아직 없다
   }
 
   /** 그림·도형·수식을 골랐다: 글 캐럿·선택은 걷고, 틀은 개체 모듈이 그린다. */
@@ -925,13 +929,21 @@ export class Editor {
       } else if (this.#hasSel()) {
         this.#flushGroup();
         const r = await this.#req('fmt', { a: this.anchor, b: this.pos, props });
-        if (r.skipped) { this.status(T.readonlyHere); return; }
+        if (r.skipped) { this.status(r.notice ?? T.readonlyHere); return; }
         if (r.unsupported) { this.status(T.zoneNoChar); return; }
         this.#setDirty(true); this.viewer.refresh(r.sizes, this.pos?.hf ? {} : undefined); this.#scheduleProps();
         this.#updateStatus(await this.#req('status', {}));
+        await this.#refreshCaret();
       } else { Object.assign(this.pending, props); this.#updateToolbar(); }
       this.#focus();
     });
+  }
+  /** DOCX: 서식을 바꾸면 줄 높이·글 폭이 달라지므로 캐럿·선택 영역 겹침층을 다시 맞춘다(HWP는 엔진이 같은 자리를 돌려주므로 하지 않는다). */
+  async #refreshCaret() {
+    if (this.kind !== 'docx' || !this.pos) return;
+    const c = await this.#req('caret', { pos: this.pos });
+    if (c.rect) { this.rect = c.rect; this.#draw(false); }
+    this.#syncSelection();
   }
   #toggle(key) { const now = ({ ...this.cur, ...this.pending })[key]; return this.#format({ [key]: !now }); }
   #size(d) {
@@ -958,8 +970,10 @@ export class Editor {
       this.#flushGroup();
       const [x, y] = this.#range();
       const r = this.cellBlock ? await this.#req('cellfmt', { a: this.anchor, b: this.pos, kind: 'para', props }) : await this.#req('parafmt', { a: x, b: y, props });
+      if (r.skipped) { this.status(r.notice ?? T.readonlyHere); return; }
       this.#setDirty(true); this.viewer.refresh(r.sizes, this.pos?.hf ? {} : undefined); this.#scheduleProps();
       this.#updateStatus(await this.#req('status', {}));
+      await this.#refreshCaret();
       this.#focus();
     });
   }

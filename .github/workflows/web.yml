@@ -108,7 +108,7 @@ jobs:
         run: |
           for s in 1 2 3; do npm run test:edit-fuzz -- --seed "$s" --tbl 0.1 --obj 0.1 --page 0.1 --misc 0.1 --hf 0.1; done
 
-      - name: DOCX 편집 E2E (편집 단추·입력·한글 조합·선택·붙여넣기·되돌리기·잠금 안내·저장, 캐럿 == 그려진 글자 위치)
+      - name: DOCX 편집 E2E (편집 단추·입력·한글 조합·선택·붙여넣기·서식·찾아 바꾸기·되돌리기·잠금 안내·저장, 캐럿 == 그려진 글자 위치)
         working-directory: apps/web
         run: npm run test:docx-edit-e2e
 
@@ -126,7 +126,7 @@ jobs:
           sh ../../tools/edit-spike/fetch-docx-corpus.sh "$RUNNER_TEMP/corpus"
           npm run test:docx-edit-corpus -- "$RUNNER_TEMP/corpus" --seed 1 --ops 10
 
-      - name: DOCX 편집 세션·편집 계층 (캐럿·히트 테스트·증분 재조판 == 전체 조판, 거울 IR == 저장본 재읽기, 입력 묶음·붙여넣기·조합)
+      - name: DOCX 편집 세션·편집 계층·서식 (캐럿·히트 테스트·증분 재조판 == 전체 조판, 거울 IR == 저장본 재읽기, 입력 묶음·붙여넣기·조합, 글자·문단 서식, 찾아 바꾸기)
         working-directory: apps/web
         run: npm run test:docx-session
 

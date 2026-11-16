@@ -212,7 +212,7 @@ test('알 수 없는 op(엔진 내부 클립보드 등)는 빈 결과', async ()
   const { send } = await open(p('글'));
   assert.deepEqual(await send('copysel', { a: pos(0, 0), b: pos(0, 1) }), {});
   assert.deepEqual(await send('pasterich', { pos: pos(0, 0), text: 'x' }), { fallback: true });
-  assert.deepEqual((await send('fonts')).fonts, []);
+  assert.deepEqual((await send('fonts')).fonts, [], '글꼴 목록은 편집기가 흔한 글꼴 + 캐럿 자리 글꼴로 채운다');
   const pr = await send('props', { pos: pos(0, 0) });
-  assert.equal(pr.char, null); assert.equal(pr.lock, null);
+  assert.equal(pr.char.fontFamily, 'Calibri'); assert.equal(pr.table, null); assert.equal(pr.lock, null);
 });

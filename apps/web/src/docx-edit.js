@@ -32,6 +32,25 @@ function diffCount(a, b) {
   return d;
 }
 
+// 편집기(HWP와 같은 화면)가 보내는 서식 속성 이름 → DOCX 쪽 이름. 이 계층이 지원하지 않는 속성(자간·장평 등)은 버린다.
+const toChar = (p) => {
+  const o = {};
+  if (!p) return o;
+  for (const k of ['bold', 'italic', 'underline', 'strikethrough']) if (k in p) o[k] = !!p[k];
+  if (typeof p.fontSize === 'number') o.fontSize = p.fontSize / 50;                      // HWPUNIT(1pt = 100) → 반포인트
+  if ('textColor' in p) o.color = p.textColor || null;
+  if ('shadeColor' in p) o.highlight = !p.shadeColor || /^#?f{6}$/i.test(p.shadeColor) ? null : p.shadeColor;   // 흰색 = 형광펜 지우기
+  if (p.fontName) o.fontName = String(p.fontName);
+  return o;
+};
+const toPara = (p) => {
+  const o = {};
+  if (!p) return o;
+  if (['left', 'center', 'right', 'justify'].includes(p.alignment)) o.alignment = p.alignment;
+  if (typeof p.marginLeft === 'number') o.indentLeft = p.marginLeft / 5;                  // HWPUNIT(1/7200 in) → twips(1/1440 in)
+  if (typeof p.lineSpacing === 'number' && (!p.lineSpacingType || p.lineSpacingType === 'Percent')) o.lineSpacing = p.lineSpacing;
+  return o;
+};
 /** 편집 뒤 화면 갱신에 필요한 정보: 쪽 수·크기(바뀔 때만), 어느 쪽부터 다시 그릴지, 변경 표시·되돌리기 상태. */
 function out(ctx, r) {
   const s = ctx.session, v = r.view, o = { pos: r.pos, rect: r.rect, pageCount: s.pageCount, dirty: s.model.dirty, ...s.status() };
@@ -53,7 +72,7 @@ async function dispatch(ctx, m) {
     case 'wordat': return s.wordat({ pos: m.pos, whole: !!m.whole });
     case 'text': return s.text({ a: m.a, b: m.b });
     case 'selrects': return s.selrects({ a: m.a, b: m.b });
-    case 'props': return { char: null, para: null, table: null, lock: m.pos ? s.lock(m.pos.p) : null };
+    case 'props': return { table: null, ...(m.pos ? s.props({ pos: m.pos }) : { char: null, para: null, lock: null }) };
     case 'status': return s.status();
     case 'clean': s.clean(); return {};
     case 'mark': s.mark(); return {};
@@ -61,10 +80,22 @@ async function dispatch(ctx, m) {
       const a = s.move({ pos: { s: 0, p: 0, o: 0, path: null }, kind: 'docstart' }), b = s.move({ pos: { s: 0, p: 0, o: 0, path: null }, kind: 'docend' });
       return { pos: b.pos, rect: b.rect, first: a.pos };
     }
-    case 'fonts': return { fonts: [] };
+    case 'fonts': return { fonts: [] };   // 글꼴 목록은 흔한 글꼴 + 캐럿 자리의 글꼴(편집기가 더한다)
     case 'view': case 'marks': return { on: false, pageCount: s.pageCount };
     case 'pasterich': return { fallback: true };   // 이 계층은 글만 붙인다
-    case 'insert': return out(ctx, await s.insert({ pos: m.pos, text: clean(m.text), group: !!m.group, replace: m.replace | 0 }));
+    case 'insert': return out(ctx, await s.insert({ pos: m.pos, text: clean(m.text), group: !!m.group, replace: m.replace | 0, fmt: toChar(m.fmt) }));
+    case 'fmt': { const props = toChar(m.props); return Object.keys(props).length ? out(ctx, await s.fmt({ a: m.a, b: m.b, props })) : { skipped: true, dirty: s.model.dirty }; }
+    case 'parafmt': { const props = toPara(m.props); return Object.keys(props).length ? out(ctx, await s.parafmt({ a: m.a, b: m.b, props })) : { skipped: true, dirty: s.model.dirty }; }
+    case 'find': {   // HWP 찾기 패널과 같은 계약: { query, caseSensitive, forward, from } → { found, a, b, wrapped, total }
+      const f = s.find({ pos: m.from ?? m.pos, query: m.query, caseSensitive: !!m.caseSensitive, dir: m.forward === false || m.dir < 0 ? -1 : 1 });
+      return { found: !!f.a, a: f.a, b: f.b, wrapped: f.wrapped, total: f.total };
+    }
+    case 'repl': case 'replace': return out(ctx, await s.replace({ a: m.a, b: m.b, text: clean(m.text).replace(/[\r\n]+/g, ' ') }));
+    case 'replall': case 'replaceall': {
+      const r = await s.replaceAll({ query: m.query, text: clean(m.text).replace(/[\r\n]+/g, ' '), caseSensitive: !!m.caseSensitive });
+      const c = m.pos ? s.caret({ pos: m.pos }) : { pos: null, rect: null };   // 글 길이가 달라졌을 수 있어 캐럿을 문서 안으로 끌어온다
+      return { ...out(ctx, { view: r.view, pos: c.pos, rect: c.rect }), count: r.count, skipped: r.skipped };
+    }
     case 'enter': return out(ctx, await s.enter({ pos: m.pos }));
     case 'del': return out(ctx, await s.del({ pos: m.pos, dir: m.dir }));
     case 'delrange': return out(ctx, await s.delrange({ a: m.a, b: m.b }));
