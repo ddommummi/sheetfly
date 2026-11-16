@@ -5,6 +5,11 @@ import { layoutDocument, pageToSvg, createCanvasMeasurer, parseRtf, parsePptx, a
 
 let pages = null;
 let measure = null;
+let docBytes = null;   // 편집할 수 있는 DOCX의 원본 바이트(편집을 시작할 때 편집 세션이 이것으로 문서 XML을 읽는다). 그 밖의 형식은 null.
+let edit = null;       // 편집 상태 { session, readIr, count } — 편집 계층(docx-edit.js)이 만든다
+let editMod = null;    // 편집 계층(지연 로딩)
+/** 지금 보여 줄 쪽 목록: 편집을 시작했으면 편집 세션의 조판(편집으로 바뀐다), 아니면 열 때의 조판. */
+const curPages = () => (edit ? edit.session.pages : pages);
 let searchToken = 0;
 const enc = new TextEncoder();
 
@@ -40,7 +45,9 @@ async function readIr(bytes, kind) {
 }
 
 async function openDocument({ buffer, kind }) {
-  const full = await readIr(new Uint8Array(buffer), kind);
+  const bytes = new Uint8Array(buffer);
+  const full = await readIr(bytes, kind);
+  edit = null; docBytes = full.kind === 'docx' ? bytes : null;
   try {
     if (!measure) measure = createCanvasMeasurer();
     const adaptWarnings = [];
@@ -61,8 +68,9 @@ async function openDocument({ buffer, kind }) {
 }
 
 function renderPage({ page }) {
-  if (!pages || !pages[page]) throw { code: 'render_failed', message: 'no page' };
-  return { svg: enc.encode(pageToSvg(pages[page], measure)).buffer };
+  const pg = curPages()?.[page];
+  if (!pg) throw { code: 'render_failed', message: 'no page' };
+  return { svg: enc.encode(pageToSvg(pg, measure)).buffer };
 }
 
 // ── 검색 ──────────────────────────────────────────────────────────────
@@ -121,16 +129,18 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 
 async function search({ id, query, caseSensitive }) {
   const token = ++searchToken;
-  if (!pages) throw { code: 'render_failed', message: 'no document' };
+  if (!curPages()) throw { code: 'render_failed', message: 'no document' };
   const qChars = [...String(query || '')].map((c) => (caseSensitive ? c : c.toLowerCase()));
-  const total = pages.length;
+  const total = curPages().length;
   if (!qChars.length) return { done: true, total: 0, hits: 0, truncated: false };
   let found = 0;
   let batch = [];
   let lastPost = performance.now();
   for (let p = 0; p < total; p++) {
     if (token !== searchToken) return { cancelled: true };
-    const hits = pageHits(pages[p], qChars, caseSensitive, MAX_HITS - found);
+    const pg = curPages()?.[p];
+    if (!pg) break;   // 검색 중 편집으로 쪽이 줄었다
+    const hits = pageHits(pg, qChars, caseSensitive, MAX_HITS - found);
     for (const h of hits) batch.push({ page: p, rects: h.rects });
     found += hits.length;
     const now = performance.now();
@@ -169,7 +179,28 @@ self.onmessage = async (e) => {
     if (m.type === 'open') { const r = await openDocument(m); return reply(r, [r.sizes.buffer]); }
     if (m.type === 'render') { const r = renderPage(m); return reply(r, [r.svg]); }
     if (m.type === 'search') return reply(await search(m));
-    if (m.type === 'close') { pages = null; return reply({}); }
+    // 편집: 편집 계층(docx-edit.js)은 편집을 시작할 때만 받는다(지연 로딩, docs/phase4/design-docx.md 7절). 문서는 원본 바이트에서 다시 읽어 편집 세션이 따로 갖는다.
+    if (m.type === 'editInit') {
+      if (!docBytes) throw { code: 'edit_unsupported', message: 'not an editable document' };
+      if (!edit) {
+        editMod = editMod ?? await import(/* 편집 계층 URL은 메인이 알려 준다 */ m.url);
+        const full = await readIr(docBytes, 'docx');
+        edit = await editMod.openEdit({ bytes: docBytes, full, measure, layoutDocument, readIr: (b) => readIr(b, 'docx') });
+        pages = null;   // 열 때의 조판은 더 쓰지 않는다
+      }
+      const sizes = edit.session.sizes();
+      edit.count = edit.session.pageCount;
+      return reply({ sizes, pageCount: edit.count }, [sizes.buffer]);
+    }
+    if (m.type === 'edit') {
+      if (!edit || !editMod) throw { code: 'render_failed', message: 'edit not ready' };
+      const r = await editMod.run(edit, m);
+      const transfer = [];
+      if (r.sizes) transfer.push(r.sizes.buffer);
+      if (r.bytes) transfer.push(r.bytes.buffer);
+      return reply(r, transfer);
+    }
+    if (m.type === 'close') { pages = null; edit = null; docBytes = null; return reply({}); }
     fail({ code: 'unknown', message: `unknown message ${m.type}` });
   } catch (err) {
     if (m.type === 'init') return fail({ code: 'worker_failed', message: String(err && err.message || err) });

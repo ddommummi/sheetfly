@@ -8,8 +8,8 @@ import { join } from 'node:path';
 import { makeDocx, p, table, run } from './docx-fixtures.mjs';
 import { irOf } from './docx-edit-helpers.mjs';
 import { rng } from './docx-edit-oracle.mjs';
-import { DocxEditSession, spansText } from '../src/docx/edit/session.js';
 import { layoutDocument } from '../src/docx/layout.js';
+import { DocxEditSession, spansText } from '../src/docx/edit/session.js';
 import { createFakeMeasurer } from '../src/docx/measure.js';
 import { flattenIr } from '../src/docx/edit/ir.js';
 import { EditError } from '../src/docx/edit/model.js';
@@ -44,7 +44,7 @@ const fails = []; let docs = 0, ops = 0, skipped = 0; const kinds = {}, stats = 
 async function one(bytes, rand, label) {
   const full = irOf(bytes);
   let s;
-  try { s = await DocxEditSession.open(bytes, full, measure, { readIr: async (b) => irOf(b) }); } catch (e) { if (e instanceof EditError) { skipped++; return; } throw e; }
+  try { s = await DocxEditSession.open(bytes, full, measure, { readIr: async (b) => irOf(b), layoutDocument }); } catch (e) { if (e instanceof EditError) { skipped++; return; } throw e; }
   const m = s.model;
   const checkMirror = () => {
     for (let q = 0; q < m.paragraphCount; q++) {
@@ -102,15 +102,26 @@ async function one(bytes, rand, label) {
     const pos = (o) => ({ s: 0, p: q, o, path: null });
     try {
       let kind;
-      if (k < 0.34) { kind = 'insert'; await s.insert({ pos: pos(Math.floor(rand() * (len + 1))), text: POOL[Math.floor(rand() * POOL.length)] }); }
-      else if (k < 0.46) { kind = 'delrange'; const a = Math.floor(rand() * (len + 1)), b = Math.min(len, a + 1 + Math.floor(rand() * 6)); await s.delrange({ a: pos(a), b: pos(b) }); }
+      if (rand() < 0.15) s.mark();
+      if (k < 0.26) { kind = 'insert'; await s.insert({ pos: pos(Math.floor(rand() * (len + 1))), text: POOL[Math.floor(rand() * POOL.length)] }); }
+      else if (k < 0.3) {   // 연속 입력(되돌리기 한 묶음)
+        kind = 'group'; let cur = pos(Math.floor(rand() * (len + 1)));
+        for (const ch of ['한', '글', ' ', 'x']) cur = (await s.insert({ pos: cur, text: ch, group: true })).pos;
+      } else if (k < 0.34) {   // 한글 조합: 같은 자리의 글을 바꿔 넣는다
+        kind = 'comp'; const at = pos(Math.floor(rand() * (len + 1))); let n = 0;
+        for (const t of ['ㅎ', '하', '한', '한ㄱ', '한그', '한글']) { await s.insert({ pos: at, text: t, replace: n, group: true }); n = [...t].length; }
+      } else if (k < 0.38) {   // 여러 줄 붙여넣기(한 묶음, 저장본을 다시 읽어 맞춘다)
+        kind = 'paste'; const n = 2 + Math.floor(rand() * 3); const lines = Array.from({ length: n }, () => POOL[Math.floor(rand() * POOL.length)]);
+        await s.paste({ pos: pos(Math.floor(rand() * (len + 1))), text: lines.join(rand() < 0.5 ? '\n' : '\r\n') });
+      }
+      else if (k < 0.48) { kind = 'delrange'; const a = Math.floor(rand() * (len + 1)), b = Math.min(len, a + 1 + Math.floor(rand() * 6)); await s.delrange({ a: pos(a), b: pos(b) }); }
       else if (k < 0.58) { kind = 'enter'; await s.enter({ pos: pos(Math.floor(rand() * (len + 1))) }); }
-      else if (k < 0.7) { kind = 'backspace'; await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'back' }); }
-      else if (k < 0.78) { kind = 'delete'; await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'fwd' }); }
-      else if (k < 0.86) {
+      else if (k < 0.68) { kind = 'backspace'; await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'back' }); }
+      else if (k < 0.75) { kind = 'delete'; await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'fwd' }); }
+      else if (k < 0.83) {
         kind = 'cross'; let z = q; while (z + 1 < m.paragraphCount && z - q < 3 && m.canEdit(z + 1) && s.navigable(z + 1)) z++;
         if (z > q) await s.delrange({ a: pos(Math.floor(rand() * (len + 1))), b: { s: 0, p: z, o: Math.floor(rand() * (m.length(z) + 1)), path: null } });
-      } else if (k < 0.93) { kind = 'undo'; await s.undo(); }
+      } else if (k < 0.92) { kind = 'undo'; await s.undo(); }
       else { kind = 'redo'; await s.redo(); }
       if (process.env.DBGOPS) console.log(`op ${i} ${kind} q=${q} k=${k.toFixed(2)} ids=${m.paras.map((x) => x.id).join(',')} last=${JSON.stringify({ rem: m.last?.removed.map((x) => x.id), add: m.last?.added.map((x) => x.id), hint: m.last?.hint })}`);
       kinds[kind] = (kinds[kind] ?? 0) + 1; ops++;

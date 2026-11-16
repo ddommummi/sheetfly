@@ -24,4 +24,9 @@ const edit = spawnSync(process.execPath, [
   join(web, '../../tools/measure/check-budget.mjs'), join(web, '../../tools/measure/budgets-edit.json'),
   `editor=${file('editor')}`, `hwpedit=${file('hwpedit')}`,
 ], { stdio: 'inherit' });
-process.exit((r.status ?? 1) || (docx.status ?? 1) || (edit.status ?? 1));
+// DOCX 편집(지연 로딩): 공통 편집기 묶음 + DOCX 편집 계층의 종류별 합계
+const docxEdit = spawnSync(process.execPath, [
+  join(web, '../../tools/measure/check-budget.mjs'), join(web, '../../tools/measure/budgets-docxedit.json'),
+  `editor=${file('editor')}`, `docxedit=${file('docxedit')}`,
+], { stdio: 'inherit' });
+process.exit((r.status ?? 1) || (docx.status ?? 1) || (edit.status ?? 1) || (docxEdit.status ?? 1));

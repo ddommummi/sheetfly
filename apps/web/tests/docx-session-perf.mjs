@@ -3,8 +3,8 @@
 import { makeDocx, p } from './docx-fixtures.mjs';
 import { irOf } from './docx-edit-helpers.mjs';
 import { rng } from './docx-edit-oracle.mjs';
-import { DocxEditSession } from '../src/docx/edit/session.js';
 import { layoutDocument } from '../src/docx/layout.js';
+import { DocxEditSession } from '../src/docx/edit/session.js';
 import { pageToSvg } from '../src/docx/svg.js';
 import { createFakeMeasurer } from '../src/docx/measure.js';
 
@@ -18,7 +18,7 @@ for (const n of NS) {
   const body = Array.from({ length: n }, (_, i) => p(`문단 ${i} 가나다라마바사 아자차카타파하 ` + 'lorem ipsum dolor sit amet '.repeat(1 + (i % 6)))).join('');
   const bytes = new Uint8Array(makeDocx(body)), full = irOf(bytes);
   const t0 = performance.now();
-  const s = await DocxEditSession.open(bytes, full, measure, { readIr: async (b) => irOf(b) });
+  const s = await DocxEditSession.open(bytes, full, measure, { readIr: async (b) => irOf(b), layoutDocument });
   const openMs = performance.now() - t0;
   const tFull0 = performance.now(); layoutDocument(s.ir, measure, { track: true, headingRuns: s.full.heading_runs ?? {} }); const fullMs = performance.now() - tFull0;
   const typing = [], enter = [], del = [], render = [], model = [];

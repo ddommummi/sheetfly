@@ -2,7 +2,6 @@
 // 글 넣기·지우기·나누기·합치기·되돌리기는 모델에서 하고, 같은 편집을 IR 문단에 되풀이한 다음 바뀐 요소가 든 쪽만 다시 조판한다.
 // 거울로 따라 하지 못하는 편집(목록 문단 나누기 등)은 저장본을 다시 읽어 IR을 맞춘다("조정").
 import { DocxEditModel, EditError } from './model.js';
-import { layoutDocument } from '../layout.js';
 import { Geometry, wordStep, wordRange } from './geom.js';
 import { cpLen, cpSlice } from './xml.js';
 
@@ -60,7 +59,7 @@ export class DocxEditSession {
    * @param {Uint8Array} bytes .docx
    * @param {{ir:object, heading_runs?:object}} full office_oxide IR
    * @param measure 글자 폭 측정기
-   * @param {{readIr?: (bytes: Uint8Array) => Promise<object>}} opts readIr: 저장본의 IR을 다시 읽는 함수(조정에 쓴다)
+   * @param {{layoutDocument: Function, readIr?: (bytes: Uint8Array) => Promise<object>}} opts layoutDocument: 조판 함수(읽기 화면과 코드를 나눠 쓰려고 받는다 — 편집 묶음에 조판 엔진을 또 넣지 않는다), readIr: 저장본의 IR을 다시 읽는 함수(조정에 쓴다)
    */
   static async open(bytes, full, measure, opts = {}) {
     const model = await DocxEditModel.open(bytes, full);
@@ -70,11 +69,14 @@ export class DocxEditSession {
     return s;
   }
   constructor(model, full, measure, opts) {
-    this.model = model; this.full = full; this.ir = full.ir; this.measure = measure; this.readIr = opts.readIr ?? null;
+    if (typeof opts.layoutDocument !== 'function') throw new EditError('internal', 'layoutDocument가 필요하다');
+    this.model = model; this.full = full; this.ir = full.ir; this.measure = measure; this.readIr = opts.readIr ?? null; this.layoutDocument = opts.layoutDocument;
+    this.groupOpen = false;     // 직전 입력이 되돌리기 묶음에 이어 붙을 수 있는가(연속 타자·한글 조합)
     this.nodes = new Map();     // 문단 id → { node, parent, kind }
     this.tops = new Map();      // IR 문단 노드 → 그것이 든 최상위 요소
     this.snaps = new WeakMap(); // 문단 조각(pv) → 그 조각이었을 때의 IR 문단 { node, content, parent, kind }: 되돌리기·다시 하기가 서식까지 그대로 복원한다
     this.stats = { relayout: 0, full: 0, reconcile: 0 };
+    this.bundleSeq = 0;
     this.geo = new Geometry(() => this.lay.pages, measure);
   }
 
@@ -126,7 +128,7 @@ export class DocxEditSession {
     });
   }
   #layoutAll() {
-    this.lay = layoutDocument(this.ir, this.measure, { track: true, headingRuns: this.full.heading_runs ?? {} });
+    this.lay = this.layoutDocument(this.ir, this.measure, { track: true, headingRuns: this.full.heading_runs ?? {} });
     this.geo.invalidate();
     this.stats.full++;
   }
@@ -231,6 +233,7 @@ export class DocxEditSession {
     const bytes = await this.model.save();
     const full = await this.readIr(bytes);
     this.model.attach(full);
+    this.snaps = new WeakMap();   // 새 IR 노드와 짝이 안 맞는 예전 기억은 버린다(되돌리기는 글 차이로 다시 맞춘다)
     this.#attachIr(full);
     this.#layoutAll();
     this.stats.reconcile++;
@@ -255,7 +258,7 @@ export class DocxEditSession {
     if (p < 0) return { pos: null };
     return { pos: this.#pos(p, r.o, r.aff), rect: r.rect, locked: this.model.lock(p) };
   }
-  caret({ pos }) { const q = this.#clamp(pos); return { rect: this.#rect(q.p, q.o, q.aff) }; }
+  caret({ pos }) { const q = this.#clamp(pos); return { rect: this.#rect(q.p, q.o, q.aff), pos: q }; }
   /** kind: left right up down home end wordleft wordright docstart docend. px는 위·아래 이동 때 유지할 가로 위치(쪽 좌표, -1이면 지금 위치). */
   move({ pos, kind, px = -1 }) {
     const m = this.model, q = this.#clamp(pos), n = m.paragraphCount;
@@ -318,13 +321,60 @@ export class DocxEditSession {
   lock(p) { return this.model.lock(p); }
 
   // ── 편집 ────────────────────────────────────────────────────────────
-  async insert({ pos, text }) {
-    this.model.last = null;
-    const r = this.model.insertText(pos.p, pos.o, text);
-    const view = await this.#after();
+  /** 연속 입력의 되돌리기 묶음: 방금 한 편집 k개(+ 묶음이 이어지면 직전 것)를 한 항목으로 합친다. */
+  #join(k, cont) {
+    const m = this.model;
+    if (k > 1 && !m.mergeTail(k)) return;
+    if (cont) m.mergeTail(2);
+  }
+  /** 두 보기(바뀐 쪽 정보)를 하나로 합친다. */
+  static #union(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    return { ...b, from: Math.min(a.from, b.from), full: !!(a.full || b.full), reconciled: !!(a.reconciled || b.reconciled), changed: [...new Set([...(a.changed ?? []), ...(b.changed ?? [])])] };
+  }
+  /**
+   * 글 넣기. group이면 직전 입력과 한 되돌리기 묶음(연속 타자). replace > 0이면 pos 뒤의 그만큼을 먼저 지운다(한글 조합 중 글자 바꿔 넣기).
+   */
+  async insert({ pos, text, group = false, replace = 0 }) {
+    const cont = group && this.groupOpen, m = this.model, n0 = m.undoStack.length;
+    this.groupOpen = true;   // 이 입력은 뒤따르는 연속 입력(group)이 이어 붙일 수 있다(묶음의 첫 글자도 같은 항목이다)
+    let view = null;
+    if (replace > 0) {
+      m.last = null;
+      const to = Math.min(m.length(pos.p), pos.o + replace);
+      if (to > pos.o) { m.deleteRange({ p: pos.p, o: pos.o }, { p: pos.p, o: to }); view = await this.#after(); }
+    }
+    m.last = null;
+    const r = m.insertText(pos.p, pos.o, text);
+    view = DocxEditSession.#union(view, await this.#after());
+    this.#join(m.undoStack.length - n0, cont);
     return { pos: this.#pos(r.p, r.o), rect: this.#rect(r.p, r.o), view };
   }
+  /** 여러 줄 붙여넣기: 글을 줄마다 넣고 문단을 나눈다. 되돌리기 한 묶음이고, 화면은 저장본을 다시 읽어 맞춘다(구조가 크게 바뀌므로). */
+  async paste({ pos, text }) {
+    this.groupOpen = false;
+    const lines = String(text).replace(/\r\n?/g, '\n').split('\n'), m = this.model;
+    if (lines.length === 1) return this.insert({ pos, text: lines[0] });
+    m.last = null; m.curBundle = ++this.bundleSeq;
+    let at = { p: pos.p, o: pos.o };
+    try {
+      lines.forEach((ln, i) => { if (i > 0) at = m.splitParagraph(at.p, at.o); if (ln) at = m.insertText(at.p, at.o, ln); });
+    } catch (e) {
+      // 중간에 거부됐다(잠금 등): 여기까지 한 것을 되돌려 문서를 처음 상태로 둔다
+      m.curBundle = undefined;
+      const b = this.bundleSeq;
+      while (m.undoStack.length && m.undoStack.at(-1).bundle === b) m.undo();
+      m.redoStack.length = 0;
+      throw e;
+    } finally { m.curBundle = undefined; }
+    const view = await this.#reconcile();
+    return { pos: this.#pos(at.p, at.o), rect: this.#rect(at.p, at.o), view };
+  }
+  /** 되돌리기 묶음 경계(연속 입력을 여기서 끊는다). */
+  mark() { this.groupOpen = false; }
   async delrange({ a, b }) {
+    this.groupOpen = false;
     this.model.last = null;
     if (this.#cmp(a, b) > 0) [a, b] = [b, a];
     const r = this.model.deleteRange(a, b);
@@ -332,6 +382,7 @@ export class DocxEditSession {
     return { pos: this.#pos(r.p, r.o), rect: this.#rect(r.p, r.o), view };
   }
   async enter({ pos }) {
+    this.groupOpen = false;
     this.model.last = null;
     const r = this.model.splitParagraph(pos.p, pos.o);
     const view = await this.#after();
@@ -339,6 +390,7 @@ export class DocxEditSession {
   }
   /** dir: 'back' | 'fwd'. */
   async del({ pos, dir }) {
+    this.groupOpen = false;
     this.model.last = null;
     const m = this.model, len = m.length(pos.p);
     let r;
@@ -352,16 +404,27 @@ export class DocxEditSession {
     const view = await this.#after();
     return { pos: this.#pos(r.p, r.o), rect: this.#rect(r.p, r.o), view };
   }
-  async undo() { return this.#undoRedo(() => this.model.undo()); }
-  async redo() { return this.#undoRedo(() => this.model.redo()); }
-  async #undoRedo(fn) {
-    this.model.last = null;
-    const hint = fn();
-    if (!hint) return { pos: null };
-    const view = await this.#after();
-    const p = Math.min(hint.p, this.model.paragraphCount - 1), o = Math.min(hint.o, this.model.length(p));
+  async undo() { return this.#undoRedo('undo'); }
+  async redo() { return this.#undoRedo('redo'); }
+  async #undoRedo(dir) {
+    this.groupOpen = false;
+    const m = this.model, stack = dir === 'undo' ? m.undoStack : m.redoStack, top = stack.at(-1);
+    if (!top) return { pos: null };
+    m.last = null;
+    let hint, view;
+    if (top.bundle !== undefined) {   // 붙여넣기 같은 묶음: 한 항목처럼 모두 되돌리고 화면은 한 번 다시 맞춘다
+      const b = top.bundle;
+      while (stack.at(-1)?.bundle === b) hint = dir === 'undo' ? m.undo() : m.redo();
+      view = await this.#reconcile();
+    } else {
+      hint = dir === 'undo' ? m.undo() : m.redo();
+      view = await this.#after();
+    }
+    const p = Math.min(hint.p, m.paragraphCount - 1), o = Math.min(hint.o, m.length(p));
     return { pos: this.#pos(p, o), rect: this.#rect(p, o), view };
   }
   status() { return { canUndo: this.model.undoStack.length > 0, canRedo: this.model.redoStack.length > 0, dirty: this.model.dirty }; }
+  /** 저장한 것으로 표시(변경 표시만 지운다. 되돌리기 기록은 그대로). */
+  clean() { this.model.dirty = false; }
   save() { return this.model.save(); }
 }

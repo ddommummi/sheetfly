@@ -145,10 +145,11 @@ export class DocxEditModel {
     return { depth: 0, all: text, xmlEditable: true, why: '', block: from.block, risky: false, orig: from.orig, ghost: from.ghost, ghostAnchor: from.ghostAnchor, created: true, xml, text, checked: true, id: from.id, ...extra };
   }
   /** paras·items를 [p, p+n)에서 added로 바꾼다(되돌리기 기록 포함). */
-  #splice(p, n, added, hint) {
+  #splice(p, n, added, hint, post) {
     const removed = this.paras.slice(p, p + n);
     this.#apply(p, removed, added, hint);
-    this.undoStack.push({ p, removed, added, hint }); this.redoStack.length = 0;
+    // hint: 편집 전 캐럿(되돌리면 여기로), post: 편집 뒤 캐럿(다시 하면 여기로)
+    this.undoStack.push({ p, removed, added, hint, post, bundle: this.curBundle }); this.redoStack.length = 0;
     this.dirty = true;
   }
   #apply(p, removed, added, hint) {
@@ -176,7 +177,7 @@ export class DocxEditModel {
     const old = this.paras[p], expect = cpSlice(old.text, 0, o) + str + cpSlice(old.text, o);
     const xml = pInsert(old.xml, this.px, o, str), pv = this.#mk(xml, old);
     if (pv.text !== expect) throw new EditError('internal', `글 넣기 결과가 다르다(기대 ${JSON.stringify(expect).slice(0, 60)}, 실제 ${JSON.stringify(pv.text).slice(0, 60)})`);
-    this.#splice(p, 1, [pv], { p, o });
+    this.#splice(p, 1, [pv], { p, o }, { p, o: o + cpLen(str) });
     return { p, o: o + cpLen(str) };
   }
 
@@ -192,7 +193,7 @@ export class DocxEditModel {
       const old = this.paras[a.p], expect = cpSlice(old.text, 0, a.o) + cpSlice(old.text, b.o);
       const pv = this.#mk(pDelete(old.xml, this.px, a.o, b.o), old);
       if (pv.text !== expect) throw new EditError('internal', '글 지우기 결과가 다르다');
-      this.#splice(a.p, 1, [pv], { p: a.p, o: a.o });
+      this.#splice(a.p, 1, [pv], { p: a.p, o: a.o }, { p: a.p, o: a.o });
       return { p: a.p, o: a.o };
     }
     const A = this.paras[a.p], B = this.paras[b.p];
@@ -200,7 +201,7 @@ export class DocxEditModel {
     const ax = a.o < la ? pDelete(A.xml, this.px, a.o, la) : A.xml, bx = b.o > 0 ? pDelete(B.xml, this.px, 0, b.o) : B.xml;
     const pv = this.#mk(pMerge(ax, bx, this.px), A);
     if (pv.text !== expect) throw new EditError('internal', '문단을 가로지른 지우기 결과가 다르다');
-    this.#splice(a.p, b.p - a.p + 1, [pv], { p: a.p, o: a.o });
+    this.#splice(a.p, b.p - a.p + 1, [pv], { p: a.p, o: a.o }, { p: a.p, o: a.o });
     return { p: a.p, o: a.o };
   }
 
@@ -213,7 +214,7 @@ export class DocxEditModel {
     const [x1, x2] = pSplit(old.xml, this.px, o);
     const a = this.#mk(x1, old), b = this.#mk(x2, old, { id: this.nextId++ });
     if (a.text + b.text !== old.text || a.text !== cpSlice(old.text, 0, o)) throw new EditError('internal', '문단 나누기 결과가 다르다');
-    this.#splice(p, 1, [a, b], { p, o });
+    this.#splice(p, 1, [a, b], { p, o }, { p: p + 1, o: 0 });
     return { p: p + 1, o: 0 };
   }
 
@@ -225,12 +226,24 @@ export class DocxEditModel {
     const A = this.paras[p - 1], B = this.paras[p], at = this.length(p - 1);
     const pv = this.#mk(pMerge(A.xml, B.xml, this.px), A);
     if (pv.text !== A.text + B.text) throw new EditError('internal', '문단 합치기 결과가 다르다');
-    this.#splice(p - 1, 2, [pv], { p: p - 1, o: at });
+    this.#splice(p - 1, 2, [pv], { p: p - 1, o: at }, { p: p - 1, o: at });
     return { p: p - 1, o: at };
   }
 
+  /** 되돌리기 기록의 마지막 k개를 한 항목으로 합친다(같은 문단 안의 글 바꾸기가 이어진 것만). 합쳤으면 true. */
+  mergeTail(k) {
+    const s = this.undoStack;
+    if (k < 2 || s.length < k) return false;
+    const rs = s.slice(-k);
+    for (let i = 0; i < k; i++) {
+      const r = rs[i];
+      if (r.removed.length !== 1 || r.added.length !== 1 || r.p !== rs[0].p || r.bundle !== rs[0].bundle || (i > 0 && r.removed[0] !== rs[i - 1].added[0])) return false;
+    }
+    s.splice(-k, k, { p: rs[0].p, removed: rs[0].removed, added: rs[k - 1].added, hint: rs[0].hint, post: rs[k - 1].post, bundle: rs[0].bundle });
+    return true;
+  }
   undo() { const r = this.undoStack.pop(); if (!r) return null; this.#apply(r.p, r.added, r.removed, r.hint); this.redoStack.push(r); this.dirty = true; return r.hint; }
-  redo() { const r = this.redoStack.pop(); if (!r) return null; this.#apply(r.p, r.removed, r.added, r.hint); this.undoStack.push(r); this.dirty = true; return r.hint; }
+  redo() { const r = this.redoStack.pop(); if (!r) return null; this.#apply(r.p, r.removed, r.added, r.hint); this.undoStack.push(r); this.dirty = true; return r.post ?? r.hint; }
 
   /** 지금의 document.xml 전체 */
   xml() { return this.items.map((x) => (typeof x === 'string' ? x : x.xml)).join(''); }
