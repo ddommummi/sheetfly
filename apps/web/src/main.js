@@ -92,8 +92,8 @@ async function openFile(file, password, fresh = false) {
     docWorker = worker;
     editor?.dispose(); editor = null; delete body.dataset.dirty; delete body.dataset.editing;
     docKind = kind; docMeta = { ...(res.meta ?? {}), openMs }; docFresh = fresh;
-    // 편집은 HWP/HWPX만(암호 문서 제외, docs/phase4/design.md 5절)
-    const editable = kind === 'hwp' && !docMeta.encrypted;
+    // 편집은 HWP/HWPX(암호 문서 제외, docs/phase4/design.md 5절)와 DOCX(docs/phase4/design-docx.md). 구형·RTF·XLSX·PPTX는 읽기 전용이다.
+    const editable = (kind === 'hwp' && !docMeta.encrypted) || kind === 'docx';
     $('edit-btn').hidden = !editable; $('edit-btn').setAttribute('aria-pressed', 'false'); $('edit-bar').hidden = true;
     closeSearch();
     $('pages').hidden = false;
@@ -346,15 +346,19 @@ for (const id of ['new-btn', 'new-btn-empty']) $(id)?.addEventListener('click', 
 
 // ── 편집 (지연 로딩) ─────────────────────────────────────────────────
 async function toggleEdit() {
-  if (!docWorker || docKind !== 'hwp') return;
+  if (!docWorker || (docKind !== 'hwp' && docKind !== 'docx')) return;
+  const isDocx = docKind === 'docx';
   const btn = $('edit-btn');
   if (editor?.active) { editor.stop(); btn.setAttribute('aria-pressed', 'false'); stage.focus({ preventScroll: true }); return; }
   btn.disabled = true;
   try {
     if (!editor) {
-      await docWorker.request('editInit', { url: meta('sheetfly-hwp-edit') });
+      const init = await docWorker.request('editInit', { url: meta(isDocx ? 'sheetfly-docx-edit' : 'sheetfly-hwp-edit') });
+      // DOCX 편집 조판은 빈 문단까지 줄을 만들어 쪽 수·크기가 읽을 때와 다를 수 있다: 편집을 켜면 쪽을 새로 맞춘다
+      if (init.sizes) viewer.refresh(init.sizes, { from: 0 });
       const mod = await import(/* 편집기는 눌렀을 때만 받는다 */ meta('sheetfly-editor'));
       editor = mod.createEditor({
+        kind: isDocx ? 'docx' : 'hwp',
         viewer, stage, worker: docWorker, bar: $('edit-bar'), fileName: docName, meta: docMeta, status, fresh: docFresh,
         onDirty: (d) => { if (d) body.dataset.dirty = '1'; else delete body.dataset.dirty; },
       });
@@ -365,7 +369,7 @@ async function toggleEdit() {
     btn.setAttribute('aria-pressed', 'true');
   } catch (e) {
     console.warn('edit', e);
-    status(S.editFailed);
+    status(e?.code === 'edit_locked' ? S.editLocked(e.message) : S.editFailed);
   } finally { btn.disabled = false; }
 }
 $('edit-btn').addEventListener('click', toggleEdit);

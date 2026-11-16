@@ -30,6 +30,7 @@ const result = await build({
     docxworker: join(web, 'src/docx-worker.js'),
     editor: join(web, 'src/editor.js'),        // 편집(지연 로딩): 첫 화면 예산에 들어가지 않는다
     hwpedit: join(web, 'src/hwp-edit.js'),
+    docxedit: join(web, 'src/docx-edit.js'),   // DOCX 편집(지연 로딩): 편집을 시작할 때만 받는다
     theme: join(web, 'src/theme.js'),
     styles: join(web, 'src/styles.css'),
   },
@@ -73,7 +74,7 @@ try {
 const fill = (s) => s
   .replaceAll('%MAIN%', out.main).replaceAll('%WORKER%', out.worker).replaceAll('%THEME%', out.theme)
   .replaceAll('%CSS%', out.styles).replaceAll('%WASM%', out.wasm)
-  .replaceAll('%EDITOR%', out.editor).replaceAll('%HWP_EDIT%', out.hwpedit).replaceAll('%DOCX_WORKER%', out.docxworker).replaceAll('%DOCX_WASM%', out.docxwasm).replaceAll('%BUILD_INFO%', buildInfo);
+  .replaceAll('%EDITOR%', out.editor).replaceAll('%HWP_EDIT%', out.hwpedit).replaceAll('%DOCX_EDIT%', out.docxedit).replaceAll('%DOCX_WORKER%', out.docxworker).replaceAll('%DOCX_WASM%', out.docxwasm).replaceAll('%BUILD_INFO%', buildInfo);
 for (const f of ['index.html', 'licenses.html', '404.html']) {
   writeFileSync(join(dist, f), fill(readFileSync(join(web, f), 'utf8')));
 }

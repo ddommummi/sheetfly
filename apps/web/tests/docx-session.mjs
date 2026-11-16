@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeDocx, p, table, fieldSimple, run } from './docx-fixtures.mjs';
 import { irOf, irTexts } from './docx-edit-helpers.mjs';
+import { layoutDocument } from '../src/docx/layout.js';
 import { DocxEditSession } from '../src/docx/edit/session.js';
 import { EditError } from '../src/docx/edit/model.js';
 import { wordStep, wordRange } from '../src/docx/edit/geom.js';
@@ -13,7 +14,7 @@ const measure = createFakeMeasurer();
 const HAN = 11 * 96 / 72;        // 11pt 한글 한 글자 폭(가짜 측정기: 전각 1em)
 const LAT = HAN / 2;              // 영문·공백 폭
 const X0 = 96, TOP = 96;          // 쪽 여백(1440 twips)
-const open = (body) => { const bytes = new Uint8Array(makeDocx(body)); return DocxEditSession.open(bytes, irOf(bytes), measure, { readIr: async (b) => irOf(b) }); };
+const open = (body) => { const bytes = new Uint8Array(makeDocx(body)); return DocxEditSession.open(bytes, irOf(bytes), measure, { readIr: async (b) => irOf(b), layoutDocument }); };
 const pos = (p, o, aff) => ({ s: 0, p, o, path: null, ...(aff ? { aff } : {}) });
 const near = (a, b, msg, eps = 0.05) => assert.ok(Math.abs(a - b) <= eps, `${msg}: ${a} ≈ ${b}`);
 const canon = (pages) => JSON.stringify(pages.map((pg) => ({ w: pg.width, h: pg.height, no: pg.no, items: pg.items })));

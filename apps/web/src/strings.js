@@ -21,6 +21,7 @@ export const S = {
   edit: '편집',
   editTitle: '편집 시작/끝',
   editFailed: '편집 기능을 불러오지 못했습니다. 페이지를 새로고침해 주세요.',
+  editLocked: (why) => `이 문서는 편집할 수 없습니다: ${why}`,
   search: '검색',
   searchTitle: '검색 (Ctrl+F)',
   searchPlaceholder: '문서에서 찾기',

@@ -36,7 +36,7 @@ const nameParts = (px) => (px ? `${px}:` : '');
 
 function paraNode(T) {
   const p = T.root.children.find((c) => c.name === 'w:p');
-  if (!p) throw new Error('문단이 아니다');
+  if (!p) throw new Error('not a paragraph');
   return p;
 }
 /** 글 단위 목록: 문단 직속 런과 하이퍼링크 안 런의 w:t·탭·줄바꿈·비분리 하이픈. */
@@ -73,9 +73,9 @@ function intoItems(px, str) {   // 글 → [t, tab, t …]
 /** 글 넣기: 위치가 든 w:t에 끼운다(앞 글자의 서식을 잇는다). w:t가 없으면 경계의 런에 새 w:t를 넣고, 런이 없는 문단이면 문단 부호 서식을 물려받은 런을 만든다. */
 export function insertText(pxml, px, o, str) {
   if (!str) return pxml;
-  if (/[\n\r]/.test(str)) throw new Error('줄바꿈은 문단 나누기로 넣는다');
+  if (/[\n\r]/.test(str)) throw new Error('newline in text');
   const T = parseTree(pxml, px), p = paraNode(T), { list, total } = units(p);
-  if (o < 0 || o > total) throw new Error(`글 위치 ${o}가 문단 길이 ${total} 밖이다`);
+  if (o < 0 || o > total) throw new Error(`offset ${o} > ${total}`);
   const ts = list.filter((u) => u.node.name === 'w:t');
   const t = ts.find((u) => u.start < o && o <= u.end) ?? ts.find((u) => u.start === o);
   if (t) {
@@ -121,7 +121,7 @@ function wrap(T, p) {
 export function deleteRange(pxml, px, a, b) {
   if (b <= a) return pxml;
   const T = parseTree(pxml, px), p = paraNode(T), { list, total } = units(p);
-  if (a < 0 || b > total) throw new Error('지울 범위가 문단 밖이다');
+  if (a < 0 || b > total) throw new Error('range outside paragraph');
   for (const u of list) {
     if (u.end <= a || u.start >= b) continue;
     if (u.node.name === 'w:t') {
@@ -151,7 +151,7 @@ function prune(p) {
 /** 문단 나누기: [앞, 뒤] XML. 구역 나누기(w:sectPr)는 뒤 문단에 남는다. */
 export function splitParagraph(pxml, px, o) {
   const T = parseTree(pxml, px), p = paraNode(T), total = lenOf(p);
-  if (o < 0 || o > total) throw new Error(`글 위치 ${o}가 문단 길이 ${total} 밖이다`);
+  if (o < 0 || o > total) throw new Error(`offset ${o} > ${total}`);
   const [L, R] = cutNode(p, o, true);
   prune(L); prune(R);
   // 새로 생기는 뒤 문단은 문단 고유 번호(w14:paraId·textId)를 물려받으면 안 된다(Word는 고유해야 한다)
@@ -202,4 +202,123 @@ export function mergeParagraphs(axml, bxml, px) {
   }
   for (const c of B.children) if (c.name !== 'w:pPr') inner.push(ser(c, TB.xml));
   return `${openNoSelf(A.open)}${inner.join('')}</${tagOf(A.open)}>`;
+}
+
+
+// ── 서식(4-2-4) ────────────────────────────────────────────────────────
+// 글자 서식은 런(w:r)의 w:rPr에, 문단 서식은 w:pPr에 쓴다. 범위의 양끝에서 런을 쪼개 범위 안의 런에만 입히고, 속성은 스키마 순서대로 끼워 넣는다
+// (Word는 rPr·pPr 자식의 순서가 어긋나면 파일이 손상됐다고 할 수 있다). 바뀌지 않은 노드는 원문 조각 그대로 쓴다.
+const ORDER = (list) => new Map(list.split(' ').map((n, i) => [`w:${n}`, i]));
+const RPR = ORDER('rStyle rFonts b bCs i iCs caps smallCaps strike dstrike outline shadow emboss imprint noProof snapToGrid vanish webHidden color spacing w kern position sz szCs highlight u effect bdr shd fitText vertAlign rtl cs em lang eastAsianLayout specVanish oMath rPrChange');
+const PPR = ORDER('pStyle keepNext keepLines pageBreakBefore framePr widowControl numPr suppressLineNumbers pBdr shd tabs suppressAutoHyphens kinsoku wordWrap overflowPunct topLinePunct autoSpaceDE autoSpaceDN bidi adjustRightInd snapToGrid spacing ind contextualSpacing mirrorIndents suppressOverlap jc textDirection textAlignment textboxTightWrap outlineLvl divId cnfStyle rPr sectPr pPrChange');
+const attrEsc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/** 속성이 있는 자기 닫힘 요소 */
+const mkEl = (px, name, attrs = {}) => ({ name: `w:${name}`, open: `<${nameParts(px)}${name}${Object.entries(attrs).map(([k, v]) => ` ${nameParts(px)}${k}="${attrEsc(v)}"`).join('')}/>`, children: [], dirty: true });
+/** parent의 자식 중 node와 같은 이름(과 drop에 든 이름)을 지우고 node를 스키마 순서 자리에 넣는다. node가 null이면 지우기만 한다. */
+function setChild(parent, order, node, drop = []) {
+  const names = new Set([node?.name, ...drop].filter(Boolean));
+  parent.children = parent.children.filter((c) => !names.has(c.name));
+  parent.dirty = true;
+  if (!node) return;
+  const rank = order.get(node.name) ?? 999;
+  let i = parent.children.findIndex((c) => c.name !== '#text' && (order.get(c.name) ?? 999) > rank);
+  if (i < 0) i = parent.children.length;
+  parent.children.splice(i, 0, node);
+}
+const hex6 = (c) => String(c).replace(/^#/, '').toUpperCase();
+/** 요소의 속성 → { 이름(접두사 없이): 값 } (값은 원문 그대로, 이스케이프된 채) */
+const attrsOf = (open) => { const o = {}; for (const m of open.matchAll(/\s(?:[\w.-]+:)?([\w.-]+)="([^"]*)"/g)) o[m[1]] = m[2]; return o; };
+const mkRaw = (px, name, attrs) => ({ name: `w:${name}`, open: `<${nameParts(px)}${name}${Object.entries(attrs).map(([k, v]) => ` ${nameParts(px)}${k}="${v}"`).join('')}/>`, children: [], dirty: true });
+
+/** 글자 서식 props: { bold, italic, underline, strikethrough: 참거짓, fontSize: 반포인트, color: '#rrggbb'|null, fontName, highlight: '#rrggbb'|null } 중 있는 것만. */
+function applyChar(run, px, props) {
+  let rPr = run.children.find((c) => c.name === 'w:rPr');
+  if (!rPr) { rPr = { name: 'w:rPr', open: `<${nameParts(px)}rPr>`, children: [], dirty: true }; run.children.unshift(rPr); }
+  run.dirty = true; rPr.dirty = true;
+  const tog = (key, name) => { if (key in props) setChild(rPr, RPR, mkEl(px, name, props[key] ? {} : { val: 0 })); };
+  // 굵게·기울임은 복합 문자(아랍·히브리 등)용 bCs·iCs도 함께 쓴다(Word가 하는 대로) — 읽는 쪽은 글자 종류에 따라 둘 중 하나를 본다
+  tog('bold', 'b'); tog('bold', 'bCs'); tog('italic', 'i'); tog('italic', 'iCs'); tog('strikethrough', 'strike');
+  if ('underline' in props) setChild(rPr, RPR, mkEl(px, 'u', { val: props.underline ? 'single' : 'none' }));
+  if ('fontSize' in props) { const n = Math.max(2, Math.min(1638, Math.round(props.fontSize))); setChild(rPr, RPR, mkEl(px, 'sz', { val: n })); setChild(rPr, RPR, mkEl(px, 'szCs', { val: n })); }
+  if ('color' in props) setChild(rPr, RPR, mkEl(px, 'color', { val: props.color ? hex6(props.color) : 'auto' }));
+  if ('fontName' in props && props.fontName) { const f = props.fontName; setChild(rPr, RPR, mkEl(px, 'rFonts', { ascii: f, hAnsi: f, eastAsia: f, cs: f })); }   // 테마 글꼴 속성은 지운다(있으면 이쪽이 이긴다)
+  if ('highlight' in props) {
+    setChild(rPr, RPR, null, ['w:highlight', 'w:shd']);
+    if (props.highlight) setChild(rPr, RPR, mkEl(px, 'shd', { val: 'clear', color: 'auto', fill: hex6(props.highlight) }));
+  }
+}
+const JC = { left: 'left', center: 'center', right: 'right', justify: 'both' };
+/** 문단 서식 props: { alignment, indentLeft: twips, firstLine: twips(음수=내어쓰기), spaceBefore, spaceAfter: twips, lineSpacing: 퍼센트 }. */
+function applyPara(p, px, props) {
+  let pPr = p.children.find((c) => c.name === 'w:pPr');
+  if (!pPr) { pPr = { name: 'w:pPr', open: `<${nameParts(px)}pPr>`, children: [], dirty: true }; p.children.unshift(pPr); }
+  p.dirty = true; pPr.dirty = true;
+  if ('alignment' in props && JC[props.alignment]) setChild(pPr, PPR, mkEl(px, 'jc', { val: JC[props.alignment] }));
+  const edit = (name, change) => {
+    const cur = pPr.children.find((c) => c.name === `w:${name}`), a = cur ? attrsOf(cur.open) : {};
+    change(a);
+    setChild(pPr, PPR, Object.keys(a).length ? mkRaw(px, name, a) : null);
+  };
+  const num = (v) => String(Math.round(v));
+  if ('indentLeft' in props || 'firstLine' in props) edit('ind', (a) => {
+    if ('indentLeft' in props) { delete a.leftChars; delete a.start; delete a.startChars; a.left = num(Math.max(0, props.indentLeft)); }
+    if ('firstLine' in props) { delete a.firstLineChars; delete a.hangingChars; delete a.firstLine; delete a.hanging; if (props.firstLine > 0) a.firstLine = num(props.firstLine); else if (props.firstLine < 0) a.hanging = num(-props.firstLine); }
+  });
+  if ('spaceBefore' in props || 'spaceAfter' in props || 'lineSpacing' in props) edit('spacing', (a) => {
+    if ('spaceBefore' in props) { delete a.beforeLines; delete a.beforeAutospacing; a.before = num(Math.max(0, props.spaceBefore)); }
+    if ('spaceAfter' in props) { delete a.afterLines; delete a.afterAutospacing; a.after = num(Math.max(0, props.spaceAfter)); }
+    if ('lineSpacing' in props) { a.line = num(Math.max(24, Math.min(5760, props.lineSpacing * 2.4))); a.lineRule = 'auto'; }
+  });
+}
+const cloneNode = (n) => ({ ...n, children: n.children ? n.children.map(cloneNode) : n.children });
+function runsOf(p) {   // 문단 직속·하이퍼링크 안 런: 글 안 위치 범위와 함께
+  const out = []; let acc = 0;
+  const walk = (children) => { for (const c of children) { if (c.name === 'w:r') { const len = lenOf(c); out.push({ run: c, container: children, start: acc, end: acc + len }); acc += len; } else if (c.name === 'w:hyperlink') walk(c.children); } };
+  walk(p.children);
+  return out;
+}
+/** 위치 o가 런 한가운데면 그 런을 둘로 쪼갠다(양쪽이 같은 서식을 갖도록 rPr는 복사한다). */
+function ensureBoundary(p, o) {
+  for (const r of runsOf(p)) {
+    if (!(r.start < o && o < r.end)) continue;
+    const [L, R] = cutNode(r.run, o - r.start);
+    R.children = R.children.map((c) => (c.name === 'w:rPr' ? cloneNode(c) : c));
+    r.container.splice(r.container.indexOf(r.run), 1, L, R);
+    return;
+  }
+}
+/** 범위 [a, b)와 닿은 런 중 서식이 같은 이웃 런을 하나로 합친다(서식을 입히며 쪼갠 런이 조각조각 남지 않게). 글·탭만 든 바로 이웃한 런끼리만. */
+function mergeRuns(p, T, a, b) {
+  const key = (r) => { const rp = r.children.find((c) => c.name === 'w:rPr'); return rp ? ser(rp, T.xml) : ''; };
+  const bareT = (n) => n.name === 'w:t' && /^<[^\s>/]+(\s+xml:space="preserve")?\s*>$/.test(n.open ?? '');
+  const plain = (r) => r.children.every((c) => c.name === '#text' || c.name === 'w:rPr' || RUN_TEXT_ONLY.has(c.name));
+  for (let again = true; again;) {
+    again = false;
+    const rs = runsOf(p);
+    for (let i = 0; i + 1 < rs.length && !again; i++) {
+      const x = rs[i], y = rs[i + 1], c = x.container, j = c.indexOf(x.run);
+      if (c !== y.container || c[j + 1] !== y.run || x.end < a || x.start > b || x.start === x.end || y.start === y.end || !plain(x.run) || !plain(y.run) || key(x.run) !== key(y.run)) continue;
+      x.run.children.push(...y.run.children.filter((n) => n.name !== 'w:rPr' && n.name !== '#text'));
+      const k = x.run.children;
+      for (let n = k.length - 1; n > 0; n--) if (bareT(k[n]) && bareT(k[n - 1])) { k[n - 1].text += k[n].text; k[n - 1].dirty = true; k.splice(n, 1); }   // 이어진 w:t도 하나로(읽는 쪽이 w:t마다 글 조각을 만든다)
+      x.run.dirty = true; c.splice(j + 1, 1); again = true;
+    }
+  }
+}
+const RUN_TEXT_ONLY = new Set(['w:t', 'w:tab', 'w:br', 'w:cr', 'w:noBreakHyphen']);
+/** [a,b) 글에 글자 서식을 입힌다(한 문단 안). */
+export function formatRange(pxml, px, a, b, props) {
+  const T = parseTree(pxml, px), p = paraNode(T), total = lenOf(p);
+  if (a < 0 || b > total || b < a) throw new Error(`format range [${a}, ${b}) outside`);
+  if (b === a) return pxml;
+  ensureBoundary(p, a); ensureBoundary(p, b);
+  for (const r of runsOf(p)) if (r.end > r.start && r.start >= a && r.end <= b) applyChar(r.run, px, props);
+  mergeRuns(p, T, a, b);
+  return wrap(T, p);
+}
+/** 문단 서식을 입힌다. */
+export function formatParagraph(pxml, px, props) {
+  const T = parseTree(pxml, px), p = paraNode(T);
+  applyPara(p, px, props);
+  return wrap(T, p);
 }

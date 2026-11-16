@@ -8,8 +8,8 @@ import { join } from 'node:path';
 import { makeDocx, p, table, run } from './docx-fixtures.mjs';
 import { irOf } from './docx-edit-helpers.mjs';
 import { rng } from './docx-edit-oracle.mjs';
-import { DocxEditSession, spansText } from '../src/docx/edit/session.js';
 import { layoutDocument } from '../src/docx/layout.js';
+import { DocxEditSession, spansText } from '../src/docx/edit/session.js';
 import { createFakeMeasurer } from '../src/docx/measure.js';
 import { flattenIr } from '../src/docx/edit/ir.js';
 import { EditError } from '../src/docx/edit/model.js';
@@ -38,14 +38,18 @@ const BLOCKS = [
 ];
 const POOL = ['a', 'Z', '한', '글', ' ', 'Hello', '세계', '😀', '가나다라 마바사', 'x'.repeat(30), '  ', '\t', long()];
 
+const FMT = [{ bold: true }, { bold: false }, { italic: true }, { underline: true }, { strikethrough: true }, { fontSize: 24 }, { fontSize: 44 }, { color: '#ff0000' }, { highlight: '#ffff00' }, { highlight: null }, { fontName: 'Arial' }, { color: null }];
+const PFMT = [{ alignment: 'center' }, { alignment: 'justify' }, { indentLeft: 480 }, { spaceAfter: 200 }, { lineSpacing: 150 }, { firstLine: -240, indentLeft: 480 }];
 const canon = (pages) => JSON.stringify(pages.map((pg) => ({ w: pg.width, h: pg.height, no: pg.no, items: pg.items })));
 const fails = []; let docs = 0, ops = 0, skipped = 0; const kinds = {}, stats = { relayout: 0, full: 0, reconcile: 0 };
 
 async function one(bytes, rand, label) {
   const full = irOf(bytes);
   let s;
-  try { s = await DocxEditSession.open(bytes, full, measure, { readIr: async (b) => irOf(b) }); } catch (e) { if (e instanceof EditError) { skipped++; return; } throw e; }
+  try { s = await DocxEditSession.open(bytes, full, measure, { readIr: async (b) => irOf(b), layoutDocument }); } catch (e) { if (e instanceof EditError) { skipped++; return; } throw e; }
   const m = s.model;
+  const merged = new Set();    // 문단을 합친 적 있는 문단(id): 합치면 뒤 문단 글이 앞 문단 스타일을 따르는데 거울은 뒤 문단의 글자 서식을 그대로 둔다(기존 한계) — 서식 비교에서 뺀다
+  const touched = new Set();   // 문단 서식을 입힌 문단(id): 문단 속성은 이것만 저장본과 견준다(빈 문단·목록 문단이 스타일에서 받는 간격은 기존 한계다)
   const checkMirror = () => {
     for (let q = 0; q < m.paragraphCount; q++) {
       const pv = m.paras[q], ent = s.nodes.get(pv.id);
@@ -99,20 +103,41 @@ async function one(bytes, rand, label) {
     const nav = []; for (let q = 0; q < m.paragraphCount; q++) if (s.navigable(q) && m.canEdit(q)) nav.push(q);
     if (!nav.length) break;
     const q = nav[Math.floor(rand() * nav.length)], len = m.length(q), k = rand();
+    if (len === 0 || (s.nodes.get(m.paras[q].id)?.node.content ?? []).every((c) => c.type !== 'text' || c.text === '\t')) merged.add(m.paras[q].id);   // 빈 문단(또는 탭뿐인 문단)에 넣은 글은 XML에서는 문단 부호·탭 런의 서식(크기·글꼴·색·형광펜 …)을 물려받는데 IR은 그 서식을 주지 않아 거울이 모른다(기존 한계) — 서식 비교에서 뺀다
     const pos = (o) => ({ s: 0, p: q, o, path: null });
     try {
       let kind;
-      if (k < 0.34) { kind = 'insert'; await s.insert({ pos: pos(Math.floor(rand() * (len + 1))), text: POOL[Math.floor(rand() * POOL.length)] }); }
-      else if (k < 0.46) { kind = 'delrange'; const a = Math.floor(rand() * (len + 1)), b = Math.min(len, a + 1 + Math.floor(rand() * 6)); await s.delrange({ a: pos(a), b: pos(b) }); }
-      else if (k < 0.58) { kind = 'enter'; await s.enter({ pos: pos(Math.floor(rand() * (len + 1))) }); }
-      else if (k < 0.7) { kind = 'backspace'; await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'back' }); }
-      else if (k < 0.78) { kind = 'delete'; await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'fwd' }); }
+      if (rand() < 0.15) s.mark();
+      if (k < 0.22) { kind = 'insert'; await s.insert({ pos: pos(Math.floor(rand() * (len + 1))), text: POOL[Math.floor(rand() * POOL.length)] }); }
+      else if (k < 0.25) {   // 연속 입력(되돌리기 한 묶음)
+        kind = 'group'; let cur = pos(Math.floor(rand() * (len + 1)));
+        for (const ch of ['한', '글', ' ', 'x']) cur = (await s.insert({ pos: cur, text: ch, group: true, fmt: rand() < 0.3 ? { bold: true } : null })).pos;
+      } else if (k < 0.28) {   // 한글 조합: 같은 자리의 글을 바꿔 넣는다
+        kind = 'comp'; const at = pos(Math.floor(rand() * (len + 1))); let n = 0;
+        for (const t of ['ㅎ', '하', '한', '한ㄱ', '한그', '한글']) { await s.insert({ pos: at, text: t, replace: n, group: true }); n = [...t].length; }
+      } else if (k < 0.31) {   // 여러 줄 붙여넣기(한 묶음, 저장본을 다시 읽어 맞춘다)
+        kind = 'paste'; const n = 2 + Math.floor(rand() * 3); const lines = Array.from({ length: n }, () => POOL[Math.floor(rand() * POOL.length)]);
+        await s.paste({ pos: pos(Math.floor(rand() * (len + 1))), text: lines.join(rand() < 0.5 ? '\n' : '\r\n') });
+      } else if (k < 0.40) {   // 글자 서식(한 문단 안 또는 몇 문단에 걸쳐)
+        kind = 'fmt'; let z = q; if (rand() < 0.3) while (z + 1 < m.paragraphCount && z - q < 2 && m.canEdit(z + 1) && s.navigable(z + 1)) z++;
+        const a = Math.floor(rand() * (len + 1)), b = { s: 0, p: z, o: z === q ? Math.min(len, a + 1 + Math.floor(rand() * 8)) : Math.floor(rand() * (m.length(z) + 1)), path: null };
+        await s.fmt({ a: pos(a), b, props: FMT[Math.floor(rand() * FMT.length)] });
+      } else if (k < 0.45) { kind = 'parafmt'; for (let t = q; t <= Math.min(m.paragraphCount - 1, q + 1); t++) touched.add(m.paras[t].id); await s.parafmt({ a: pos(0), b: { s: 0, p: Math.min(m.paragraphCount - 1, q + Math.floor(rand() * 2)), o: 0, path: null }, props: PFMT[Math.floor(rand() * PFMT.length)] }); }
+      else if (k < 0.49) {   // 일치 하나 바꾸기
+        kind = 'replace'; const t = m.text(q), o = Math.floor(rand() * (len + 1)), w = [...t].slice(o, o + 1 + Math.floor(rand() * 3)).join('');
+        if (w && !/[\t\n]/.test(w)) { const f = s.find({ pos: pos(o), query: w, caseSensitive: true }); if (f.a && m.canEdit(f.a.p)) await s.replace({ a: f.a, b: f.b, text: POOL[Math.floor(rand() * 5)] }); }
+      } else if (k < 0.5) { kind = 'replaceall'; const t = [...m.text(q)].slice(0, 2).join(''); if (t && !/[\t\n]/.test(t)) await s.replaceAll({ query: t, text: 'ab', caseSensitive: true }); }
+      else if (k < 0.58) { kind = 'delrange'; const a = Math.floor(rand() * (len + 1)), b = Math.min(len, a + 1 + Math.floor(rand() * 6)); await s.delrange({ a: pos(a), b: pos(b) }); }
+      else if (k < 0.66) { kind = 'enter'; await s.enter({ pos: pos(Math.floor(rand() * (len + 1))) }); }
+      else if (k < 0.74) { kind = 'backspace'; for (const t of [q - 1, q, q + 1]) if (m.paras[t]) merged.add(m.paras[t].id); await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'back' }); }
+      else if (k < 0.80) { kind = 'delete'; for (const t of [q - 1, q, q + 1]) if (m.paras[t]) merged.add(m.paras[t].id); await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'fwd' }); }
       else if (k < 0.86) {
-        kind = 'cross'; let z = q; while (z + 1 < m.paragraphCount && z - q < 3 && m.canEdit(z + 1) && s.navigable(z + 1)) z++;
+        kind = 'cross'; for (const t of [q - 1, q, q + 1]) if (m.paras[t]) merged.add(m.paras[t].id); let z = q; while (z + 1 < m.paragraphCount && z - q < 3 && m.canEdit(z + 1) && s.navigable(z + 1)) z++;
         if (z > q) await s.delrange({ a: pos(Math.floor(rand() * (len + 1))), b: { s: 0, p: z, o: Math.floor(rand() * (m.length(z) + 1)), path: null } });
-      } else if (k < 0.93) { kind = 'undo'; await s.undo(); }
+      } else if (k < 0.94) { kind = 'undo'; await s.undo(); }
       else { kind = 'redo'; await s.redo(); }
       if (process.env.DBGOPS) console.log(`op ${i} ${kind} q=${q} k=${k.toFixed(2)} ids=${m.paras.map((x) => x.id).join(',')} last=${JSON.stringify({ rem: m.last?.removed.map((x) => x.id), add: m.last?.added.map((x) => x.id), hint: m.last?.hint })}`);
+      if (process.env.DBGPID) { const e = s.nodes.get(Number(process.env.DBGPID)); console.log('  spans', JSON.stringify((e?.node.content ?? []).map((c) => [c.text, c.bold ? 'B' : '', c._sz ? 'sz' : ''].join('|')))); }
       kinds[kind] = (kinds[kind] ?? 0) + 1; ops++;
     } catch (e) { if (e instanceof EditError && (e.code === 'locked' || e.code === 'not_sibling')) continue; fails.push(`${label}: 편집 ${i} 예외 ${String(e.stack ?? e).slice(0, 300)}`); return; }
     if (i % CHECK_EVERY === 0) { try { check(); } catch (e) { fails.push(`${label}: 편집 ${i}(${[...Object.keys(kinds)].length ? '' : ''}) ${e.message}`); return; } }
@@ -121,11 +146,30 @@ async function one(bytes, rand, label) {
   try {
     check();
     const out = await s.save();
-    const after = flattenIr(irOf(out)).filter((b) => b.text).map((b) => b.text);
+    const reIr = irOf(out);
+    const after = flattenIr(reIr).filter((b) => b.text).map((b) => b.text);
     const mirror = flattenIr({ ir: s.ir }).filter((b) => b.text).map((b) => b.text);
     if (after.length !== mirror.length || after.some((t, j) => t !== mirror[j])) {
       let j = 0; while (j < after.length && after[j] === mirror[j]) j++;
       throw new Error(`저장 뒤 글이 거울 IR과 다르다(블록 ${j}): 읽은 ${JSON.stringify(after[j])?.slice(0, 60)} / 거울 ${JSON.stringify(mirror[j])?.slice(0, 60)} (개수 ${after.length}/${mirror.length})`);
+    }
+    // 서식도 같아야 한다: 저장본을 다시 읽은 글자마다의 서식과 문단 서식이 거울 IR과 같다.
+    // 글자 단위로 비교한다(탭은 건너뛴다: 저장본은 탭을 따로 두고 거울은 앞 글에 붙인다). 글꼴·크기는 거울 쪽이 편집으로 직접 정한 글자(_sz·_font)만 본다 — 빈 문단에 넣은 글의 기본 글꼴·크기는 기존 한계다.
+    const chars = (content) => { const o = []; for (const c of (content ?? []).filter((x) => x.type === 'text')) for (const ch of c.text) if (ch !== '\t') o.push({ ch, c }); return o; };
+    const A = flattenIr(reIr).filter((b) => b.text), B = flattenIr({ ir: s.ir }).filter((b) => b.text);
+    for (let j = 0; j < A.length; j++) {
+      if (A[j].kind === 'heading' || B[j].kind === 'heading') continue;   // 제목 문단의 화면 서식은 제목 스타일과 겹쳐 읽는 값이 다르다(조판이 입힌다)
+      if (merged.has(B[j].node.pid)) continue;
+      const ca = chars(A[j].node.content), cb = chars(B[j].node.content);
+      if (ca.length !== cb.length) throw new Error(`저장 뒤 글자 수가 거울 IR과 다르다(블록 ${j})`);
+      for (let i = 0; i < ca.length; i++) {
+        const x = ca[i].c, y = cb[i].c, a1 = [!!x.bold, !!x.italic, !!x.underline && x.underline !== 'none', !!x.strikethrough, JSON.stringify(x.color ?? null), JSON.stringify(x.highlight ?? null)], b1 = [!!y.bold, !!y.italic, !!y.underline && y.underline !== 'none', !!y.strikethrough, JSON.stringify(y.color ?? null), JSON.stringify(y.highlight ?? null)];
+        // 거울이 "꺼짐"인데 저장본을 다시 읽으면 "켜짐"인 경우는 문자 스타일(w:rStyle)의 굵게 위에 직접 끄기(w:b val=0)를 쓴 것이다: Word는 끄지만 office_oxide 읽기는 스타일을 이긴다(기존 한계)
+        for (let t = 0; t < 4; t++) if (a1[t] === true && b1[t] === false) a1[t] = false;
+        if (a1.join() !== b1.join() || (y._sz && x.font_size_half_pt !== y.font_size_half_pt) || (y._font && x.font_name !== y.font_name)) throw new Error(`저장 뒤 글자 서식이 거울 IR과 다르다(블록 ${j} ${JSON.stringify(A[j].text).slice(0, 24)} ${i}번째 글자 ${JSON.stringify(ca[i].ch)}): 읽은 ${JSON.stringify([...a1, x.font_size_half_pt, x.font_name])} / 거울 ${JSON.stringify([...b1, y.font_size_half_pt, y.font_name, y._sz, y._font])}`);
+      }
+      const psig = (n) => JSON.stringify([n.alignment ?? null, n.indent_left_twips ?? 0, n.first_line_indent_twips ?? 0, n.space_before_twips ?? null, n.space_after_twips ?? null, n.line_spacing ?? null]);
+      if (touched.has(B[j].node.pid) && psig(A[j].node) !== psig(B[j].node)) throw new Error(`저장 뒤 문단 서식이 거울 IR과 다르다(블록 ${j}): 읽은 ${psig(A[j].node)} / 거울 ${psig(B[j].node)}`);
     }
   } catch (e) { fails.push(`${label}: 끝 검사 ${e.message}`); return; }
   docs++;
@@ -148,7 +192,7 @@ if (dir) {
     if (FILE && !f.includes(FILE)) continue;
     let bytes; try { bytes = new Uint8Array(readFileSync(f)); if (flattenIr(irOf(bytes)).length > MAXB) continue; } catch { continue; }
     k++;
-    const h = [...f].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+    const h = [...f.split('/').slice(-2).join('/')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);   // 폴더 위치가 아니라 "폴더/파일" 이름으로 시드를 정한다(CI와 로컬이 같은 편집 열을 쓴다)
     await one(bytes, rng(SEED * 131 + h), f.split('/').slice(-2).join('/'));
   }
 }

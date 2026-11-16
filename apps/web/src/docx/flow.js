@@ -405,11 +405,11 @@ function withHeadingStyle(el, hr) {
   if (!hr) return el;
   const content = (el.content ?? []).map((r) => (r.type !== 'text' ? r : {
     ...r,
-    font_size_half_pt: hr.font_size_half_pt ?? r.font_size_half_pt,
+    font_size_half_pt: r._sz ? r.font_size_half_pt : hr.font_size_half_pt ?? r.font_size_half_pt,   // _sz·_font: 편집이 직접 정한 값(제목 스타일보다 우선)
     bold: r.bold ?? hr.bold,
     italic: r.italic ?? hr.italic,
     color: r.color ?? hr.color,
-    font_name: hr.font_name ?? r.font_name,
+    font_name: r._font ? r.font_name : hr.font_name ?? r.font_name,
     char_spacing_half_pt: r.char_spacing_half_pt ?? hr.char_spacing_twips,
   }));
   return { ...el, content };

@@ -1,4 +1,4 @@
-// dist의 자산 압축 크기(brotli q11)를 tools/measure/budgets.json 상한과 비교한다. 초과하면 종료 코드 1.
+// dist의 자산 압축 크기(brotli q11)를 보고한다. 상한은 두지 않는다(D-055: 같은 품질 안에서 최대한 적게가 목표). 상한이 필요해지면 tools/measure/budgets*.json의 brotliBytes에 넣는다.
 // 예산 수치는 1단계 실측 기반 잠정값이며 오너가 승인했다 (docs/decisions.md D-007).
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -24,4 +24,9 @@ const edit = spawnSync(process.execPath, [
   join(web, '../../tools/measure/check-budget.mjs'), join(web, '../../tools/measure/budgets-edit.json'),
   `editor=${file('editor')}`, `hwpedit=${file('hwpedit')}`,
 ], { stdio: 'inherit' });
-process.exit((r.status ?? 1) || (docx.status ?? 1) || (edit.status ?? 1));
+// DOCX 편집(지연 로딩): 공통 편집기 묶음 + DOCX 편집 계층의 종류별 합계
+const docxEdit = spawnSync(process.execPath, [
+  join(web, '../../tools/measure/check-budget.mjs'), join(web, '../../tools/measure/budgets-docxedit.json'),
+  `editor=${file('editor')}`, `docxedit=${file('docxedit')}`,
+], { stdio: 'inherit' });
+process.exit((r.status ?? 1) || (docx.status ?? 1) || (edit.status ?? 1) || (docxEdit.status ?? 1));

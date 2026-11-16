@@ -9,6 +9,7 @@ import { installObjects } from './ed-objects.js';
 import { installPage } from './ed-page.js';
 import { installMisc } from './ed-misc.js';
 import { installRuler } from './ed-ruler.js';
+import { installFind } from './ed-find.js';
 
 const T = {
   tabs: { format: '서식', insert: '입력', table: '표', object: '개체', page: '쪽', find: '찾기', view: '보기' }, ok: '확인', cancel: '취소',
@@ -37,7 +38,13 @@ const T = {
   zones: { h: '머리글', f: '바닥글', n: '각주' }, zoneNote: (z) => `${z} 편집 중 — Esc를 누르면 본문으로 돌아갑니다`,
   zoneEnter: (z) => `${z}을(를) 편집합니다. Esc로 본문으로 돌아갑니다.`, zoneBlocked: '머리글·바닥글·각주 안에서는 쓸 수 없는 기능입니다. Esc로 본문으로 돌아가세요.',
   zoneNoChar: '각주 안에서는 글자 서식을 바꿀 수 없습니다(문단 서식만 가능).',
+  docxScope: '글·서식 고치기 — 표 구조·그림은 그대로 저장됩니다',
+  lockedHere: (why) => `이 문단은 편집할 수 없습니다: ${why}`,
+  docxSaveName: 'Word 문서',
 };
+// DOCX 편집기에 보이는 탭(표·개체·쪽·입력 탭은 아직 없다). HWP는 전부.
+const DOCX_TABS = ['format', 'find'];
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 // 머리글·바닥글·각주 안에서 쓸 수 있는 작업(그 밖의 작업은 본문 좌표를 쓰므로 막는다)
 /** 같은 표 칸인지 가리는 열쇠(칸 안 문단 번호는 뺀다). */
 const cellKey = (p) => `${p.s}:${p.p}:${p.path.map((e) => `${e.controlIndex}.${e.cellIndex}`).join('/')}`;
@@ -75,7 +82,7 @@ export class Editor {
    */
   constructor(env) {
     Object.assign(this, env);
-    this.kind ??= 'hwp';              // 편집하는 문서 종류: 'hwp'(rhwp 편집 API 모듈 전부) | 'docx'(4-2: 서식·찾기·보기만, 모듈은 4-2-3에서 연결)
+    this.kind ??= 'hwp';              // 편집하는 문서 종류: 'hwp'(rhwp 편집 API 모듈 전부) | 'docx'(글 입력·삭제·붙여넣기·되돌리기·저장, docs/phase4/design-docx.md)
     this.pos = null; this.anchor = null; this.rect = null; this.px = -1;
     this.dirty = false; this.active = false;
     this.q = Promise.resolve();
@@ -150,12 +157,14 @@ export class Editor {
   /** (작업 안에서) 문서를 바꾸는 요청과 그 결과 반영: 위치·화면. */
   async #doMutate(op, payload, { keepSel = false } = {}) {
     const r = await this.#req(op, payload);
+    if (r.notice) this.status(r.notice);   // 편집할 수 없는 문단·범위(DOCX)
     if (r.skipped) return r;
     if (r.dirty !== undefined) this.#setDirty(!!r.dirty);
     // 바뀐 곳은 캐럿이 있던 쪽과 새 캐럿이 있는 쪽(줄바꿈이 쪽을 넘길 수 있다). 선택 삭제는 시작 쪽을 모르므로 처음부터.
     const oldPage = this.rect?.page, newPage = r.rect?.page;
     const hot = [oldPage, newPage].filter((x) => x !== undefined);
     if (payload.pos?.hf || payload.a?.hf) this.viewer.refresh(r.sizes, {});   // 머리글·바닥글은 모든 쪽에 보이므로 쪽 전체를 다시 그린다
+    else if (r.from !== undefined) this.viewer.refresh(r.sizes, { from: Math.min(r.from, ...hot), hot: hot.length ? hot : null });   // DOCX: 엔진이 다시 조판한 쪽부터
     else this.viewer.refresh(r.sizes, op === 'delrange' || !hot.length ? { hot: hot.length ? hot : null } : { from: Math.min(...hot), hot });
     if (r.pos) this.#set(r.pos, r.rect, { keepSel });
     else { this.#draw(); this.#updateStatus(r); }
@@ -447,7 +456,7 @@ export class Editor {
       if (r.form) { this.#flushGroup(); this.#clearObj(); for (const f of this.formListeners) this.#enqueue(() => f(r.form)); return; }
       if (r.obj) { this.#flushGroup(); this.#selectObj(r.obj, add); return; }
       if (add) return;   // Shift+누르기로 개체를 더 고르는 중에 개체가 아닌 곳을 눌렀다: 그대로 둔다
-      if (r.pos) { this.#clearObj(); this.#flushGroup(); this.pending = {}; this.#set(r.pos, r.rect, { extend }); }
+      if (r.pos) { this.#clearObj(); this.#flushGroup(); this.pending = {}; this.#set(r.pos, r.rect, { extend }); if (r.locked && !extend) this.status(T.lockedHere(r.locked)); }
       else if (!extend) this.status(T.readonlyHere);
     }).finally(() => {
       this.hitBusy = false;
@@ -537,6 +546,11 @@ export class Editor {
     const t = e.inputType;
     if (t === 'insertCompositionText' || e.isComposing) return;   // 조합 이벤트로 처리
     e.preventDefault();
+    if (t === 'insertText' && e.data && this.comp) {   // 조합이 끝 이벤트 없이 일반 입력으로 확정됐다(새 Chromium·일부 IME): 그 입력이 조합 글자를 바꿔 놓는다. 그대로 넣으면 조합 글자가 두 번 들어간다.
+      const c = this.comp; this.comp = null;
+      this.#applyComp(c, e.data).then(() => { this.input.value = ''; this.#flushGroup(); });
+      return;
+    }
     if (t === 'insertText' && e.data) this.#type(e.data);
     else if (t === 'insertLineBreak' || t === 'insertParagraph') { if (!this.keyHandled) this.#enter(); }
     else if (t === 'deleteContentBackward') { if (!this.keyHandled) this.#delete('back'); }
@@ -587,8 +601,8 @@ export class Editor {
         return;
       }
       // 같은 구역의 본문 전체(처음 ~ 마지막 문단 끝)
-      const first = { s: this.pos.s, p: 0, o: 0, path: null };
       const last = await this.#req('endOf', { s: this.pos.s });
+      const first = last.first ?? { s: this.pos.s, p: 0, o: 0, path: null };
       if (last.pos) { this.#flushGroup(); this.anchor = first; this.#set(last.pos, last.rect, { extend: true }); }
     });
   }
@@ -598,7 +612,7 @@ export class Editor {
       const r = await this.#req(op, { pos: this.pos });
       if (r.empty) return;
       this.#setDirty(true);
-      this.viewer.refresh(r.sizes);
+      this.viewer.refresh(r.sizes, r.from !== undefined ? { from: r.from } : {});
       this.#updateStatus(r);
       // 캐럿은 그 편집이 일어난 자리로 돌아간다. 자리가 없어졌으면 문서 처음으로.
       let pos = r.pos ?? this.pos, c = null;
@@ -610,7 +624,7 @@ export class Editor {
 
   // 한글 조합 입력: 조합 중 글자를 문서에 바로 넣고 갱신 때마다 바꿔 넣는다(조합 전체가 되돌리기 한 묶음)
   #onCompStart() {
-    if (!this.active) return;
+    if (!this.active || this.comp) return;   // 조합 중에 또 시작 이벤트가 오면(끝 이벤트 없이: 새 Chromium·일부 IME) 같은 조합의 연속이다. 새로 시작하면 지금 글자를 지우지 않고 뒤에 이어 붙인다.
     const c = this.comp = { start: null, len: 0, fmt: Object.keys(this.pending).length ? { ...this.pending } : undefined };
     this.#enqueue(async () => {
       this.#flushGroup();
@@ -709,9 +723,11 @@ export class Editor {
     this.btn.undo.disabled = true; this.btn.redo.disabled = true;
     head.append(hg);
     this.zoneNote = document.createElement('span'); this.zoneNote.className = 'edit-cap edit-zone'; this.zoneNote.hidden = true; this.zoneNote.setAttribute('role', 'status');
+    const shown = this.kind === 'docx' ? DOCX_TABS : Object.keys(T.tabs);   // 이 종류에서 쓰는 탭만 보인다
+    this.tabKeys = shown;
     for (const [k, label] of Object.entries(T.tabs)) {
       const b = this.#btn('tab ic', label, label, () => this.#showTab(k), `${ICON.tab[k] ?? ''}<span>${label}</span>`);
-      b.setAttribute('role', 'tab'); b.dataset.tab = k;
+      b.setAttribute('role', 'tab'); b.dataset.tab = k; b.hidden = !shown.includes(k);
       this.tabBtns[k] = b; head.append(b);
       const pn = document.createElement('div'); pn.className = 'edit-panel'; pn.dataset.panel = k; pn.setAttribute('role', 'tabpanel'); pn.hidden = true;
       this.panels[k] = pn;
@@ -720,6 +736,11 @@ export class Editor {
     this.btn.saveOpts = this.#btn('ic', T.saveOpts, T.saveOptsTitle, () => this.#saveOptions(), `${ICON.saveOpts}<span>${T.saveOpts}</span>`);
     this.btn.saveOpts.setAttribute('aria-label', T.saveOpts);
     this.btn.save = this.#btn('primary ic', T.save, T.saveTitle, () => this.save(), `${ICON.save}<span>${T.save}</span>`);
+    if (this.kind === 'docx') {   // DOCX: 저장 형식·암호 선택 없음, 범위 안내
+      this.btn.saveOpts.hidden = true;
+      this.scopeNote = document.createElement('span'); this.scopeNote.className = 'edit-cap'; this.scopeNote.textContent = T.docxScope;
+      head.append(this.scopeNote);
+    }
     head.append(this.zoneNote, this.btn.saveOpts, this.btn.save);
     bar.append(head, ...Object.values(this.panels));
     this.#buildFormatPanel();
@@ -729,7 +750,9 @@ export class Editor {
     if (this.kind === 'hwp') { installTable(this.api); installObjects(this.api); installPage(this.api); installMisc(this.api); }
     this.#buildViewPanel();
     if (this.kind === 'hwp') installRuler(this.api);
-    this.#showTab('format');
+    if (this.kind === 'docx') installFind(this.api);   // 찾아 바꾸기는 HWP와 같은 화면(편집 계층의 find·repl·replall)
+    if (this.tabKeys.length) this.#showTab(this.tabKeys[0]);
+    else for (const pn of Object.values(this.panels)) pn.hidden = true;
   }
   /** 보기 탭: 문서를 바꾸지 않는 표시 옵션. */
   #buildViewPanel() {
@@ -752,6 +775,7 @@ export class Editor {
     });
   }
   #showTab(k) {
+    if (!this.tabKeys.includes(k)) return;
     this.tab = k;
     for (const [name, pn] of Object.entries(this.panels)) pn.hidden = name !== k;
     for (const [name, b] of Object.entries(this.tabBtns)) { b.setAttribute('aria-selected', String(name === k)); b.setAttribute('aria-pressed', String(name === k)); }
@@ -788,12 +812,14 @@ export class Editor {
       cap(T.spacing), this.#btn('icon', '−', T.spacingDown, () => this.#spacing(-1)), this.spacingLabel, this.#btn('icon', '+', T.spacingUp, () => this.#spacing(1)),
       cap(T.ratio), this.#btn('icon', '−', T.ratioDown, () => this.#ratio(-5)), this.ratioLabel, this.#btn('icon', '+', T.ratioUp, () => this.#ratio(5)),
     );
+    if (this.kind === 'docx') g.hidden = true;   // 자간·장평은 DOCX 편집에 아직 없다
     g = grp();
     for (const a of ['left', 'center', 'right', 'justify']) g.append(this.btn[a] = this.#btn('icon', '', T[a], () => this.#align(a), ICON[a]));
     this.lineSel = this.#select('edit-line', T.lineSpacing, LINE_SPACINGS.map((v) => [String(v), `${v}%`]), (v) => this.#paraFmt({ lineSpacing: Number(v), lineSpacingType: 'Percent' }));
     g.append(this.lineSel, this.#btn('icon', '', T.indentLess, () => this.#indent(-1), ICON.indentLess), this.#btn('icon', '', T.indentMore, () => this.#indent(1), ICON.indentMore));
     this.btn.marks = this.#btn('icon', '¶', T.marks, () => this.#toggleMarks());
     g.append(this.btn.marks);
+    if (this.kind === 'docx') this.btn.marks.hidden = true;   // 문단 부호 보기는 아직 없다
   }
 
   /** 그림·도형·수식을 골랐다: 글 캐럿·선택은 걷고, 틀은 개체 모듈이 그린다. */
@@ -908,13 +934,21 @@ export class Editor {
       } else if (this.#hasSel()) {
         this.#flushGroup();
         const r = await this.#req('fmt', { a: this.anchor, b: this.pos, props });
-        if (r.skipped) { this.status(T.readonlyHere); return; }
+        if (r.skipped) { this.status(r.notice ?? T.readonlyHere); return; }
         if (r.unsupported) { this.status(T.zoneNoChar); return; }
         this.#setDirty(true); this.viewer.refresh(r.sizes, this.pos?.hf ? {} : undefined); this.#scheduleProps();
         this.#updateStatus(await this.#req('status', {}));
+        await this.#refreshCaret();
       } else { Object.assign(this.pending, props); this.#updateToolbar(); }
       this.#focus();
     });
+  }
+  /** DOCX: 서식을 바꾸면 줄 높이·글 폭이 달라지므로 캐럿·선택 영역 겹침층을 다시 맞춘다(HWP는 엔진이 같은 자리를 돌려주므로 하지 않는다). */
+  async #refreshCaret() {
+    if (this.kind !== 'docx' || !this.pos) return;
+    const c = await this.#req('caret', { pos: this.pos });
+    if (c.rect) { this.rect = c.rect; this.#draw(false); }
+    this.#syncSelection();
   }
   #toggle(key) { const now = ({ ...this.cur, ...this.pending })[key]; return this.#format({ [key]: !now }); }
   #size(d) {
@@ -941,8 +975,10 @@ export class Editor {
       this.#flushGroup();
       const [x, y] = this.#range();
       const r = this.cellBlock ? await this.#req('cellfmt', { a: this.anchor, b: this.pos, kind: 'para', props }) : await this.#req('parafmt', { a: x, b: y, props });
+      if (r.skipped) { this.status(r.notice ?? T.readonlyHere); return; }
       this.#setDirty(true); this.viewer.refresh(r.sizes, this.pos?.hf ? {} : undefined); this.#scheduleProps();
       this.#updateStatus(await this.#req('status', {}));
+      await this.#refreshCaret();
       this.#focus();
     });
   }
@@ -950,11 +986,12 @@ export class Editor {
 
   // ── 저장 ──────────────────────────────────────────────────────────
   #ext() {
+    if (this.kind === 'docx') return 'docx';
     const f = this.saveOpts?.format;
     if (f && f !== 'auto') return f;
     return /\.hwpx$/i.test(this.fileName) ? 'hwpx' : 'hwp';
   }
-  #suggested() { return `${this.fileName.replace(/\.(hwpx?|txt)$/i, '')}${this.fresh ? '' : ' (편집)'}.${this.#ext()}`; }
+  #suggested() { return `${this.fileName.replace(/\.(hwpx?|txt|docx)$/i, '')}${this.fresh ? '' : ' (편집)'}.${this.#ext()}`; }
   async #saveOptions() {
     const cur = this.saveOpts ?? { format: 'auto', password: '' };
     const v = await askForm(T.saveOptsTitle, [
@@ -1014,7 +1051,7 @@ export class Editor {
       if (this.meta?.hwp3 && format !== 'txt') warn.push(T.hwp3);
       if (format === 'txt') warn.push(T.txtNote);
       if (warn.length && !(await this.#ask(T.warnTitle, warn, T.keepSaving, T.cancelSave))) { this.status(T.saveCancelled); return; }
-      const blob = new Blob([r.bytes], { type: 'application/octet-stream' });
+      const blob = new Blob([r.bytes], { type: this.kind === 'docx' ? DOCX_MIME : 'application/octet-stream' });
       const where = await this.#write(blob, this.#suggested());
       if (where === null) { this.status(T.saveCancelled); return; }
       if (format !== 'txt') { await this.#call('clean'); this.#setDirty(false); }   // 글만 내보낸 것은 문서를 저장한 것이 아니다
@@ -1033,7 +1070,7 @@ export class Editor {
     if (typeof window.showSaveFilePicker === 'function') {
       try {
         const ext = '.' + name.split('.').pop();
-        const h = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: '한글 문서', accept: { 'application/octet-stream': [ext] } }] });
+        const h = await window.showSaveFilePicker({ suggestedName: name, types: [this.kind === 'docx' ? { description: T.docxSaveName, accept: { [DOCX_MIME]: [ext] } } : { description: '한글 문서', accept: { 'application/octet-stream': [ext] } }] });
         const w = await h.createWritable();
         await w.write(blob); await w.close();
         return h.name;
