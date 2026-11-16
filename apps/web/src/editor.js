@@ -546,6 +546,11 @@ export class Editor {
     const t = e.inputType;
     if (t === 'insertCompositionText' || e.isComposing) return;   // 조합 이벤트로 처리
     e.preventDefault();
+    if (t === 'insertText' && e.data && this.comp) {   // 조합이 끝 이벤트 없이 일반 입력으로 확정됐다(새 Chromium·일부 IME): 그 입력이 조합 글자를 바꿔 놓는다. 그대로 넣으면 조합 글자가 두 번 들어간다.
+      const c = this.comp; this.comp = null;
+      this.#applyComp(c, e.data).then(() => { this.input.value = ''; this.#flushGroup(); });
+      return;
+    }
     if (t === 'insertText' && e.data) this.#type(e.data);
     else if (t === 'insertLineBreak' || t === 'insertParagraph') { if (!this.keyHandled) this.#enter(); }
     else if (t === 'deleteContentBackward') { if (!this.keyHandled) this.#delete('back'); }
