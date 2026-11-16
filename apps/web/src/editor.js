@@ -619,7 +619,7 @@ export class Editor {
 
   // 한글 조합 입력: 조합 중 글자를 문서에 바로 넣고 갱신 때마다 바꿔 넣는다(조합 전체가 되돌리기 한 묶음)
   #onCompStart() {
-    if (!this.active) return;
+    if (!this.active || this.comp) return;   // 조합 중에 또 시작 이벤트가 오면(끝 이벤트 없이: 새 Chromium·일부 IME) 같은 조합의 연속이다. 새로 시작하면 지금 글자를 지우지 않고 뒤에 이어 붙인다.
     const c = this.comp = { start: null, len: 0, fmt: Object.keys(this.pending).length ? { ...this.pending } : undefined };
     this.#enqueue(async () => {
       this.#flushGroup();
