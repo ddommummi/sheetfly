@@ -1,11 +1,3 @@
 {
-  "_note": "용량 예산(오너 승인 2026-10-18, docs/decisions.md D-007). 1단계 실측(rhwp v0.8.7, wasm-opt -Oz) 기준 회귀 방지선이며 목표치가 아니다. 앱 자산 상한은 2단계 실측(main 6.3KB / worker 12.7KB / css 2.2KB)에 여유를 둔 값.",
-  "brotliBytes": {
-    "wasm": 3300000,
-    "js_main": 12000,
-    "js_worker": 25000,
-    "css": 5000,
-    "js": 40000,
-    "total": 3340000
-  }
+  "_note": "용량 상한(예산)은 두지 않는다 — 오너 결정 2026-11-16(\"바이트 예산은 큰 의미 없다. 예산 한도 없이, 같은 품질 안에서 최대한 적게\"), docs/decisions.md D-055. 이 파일은 크기 보고(npm run budget)만 위해 남겨 둔다. 예전 상한: {\"wasm\": 3300000, \"js_main\": 12000, \"js_worker\": 25000, \"css\": 5000, \"js\": 40000, \"total\": 3340000} (이전 설명: 용량 예산(오너 승인 2026-10-18, docs/decisions.md D-007). 1단계 실측(rhwp v0.8.7, wasm-opt -Oz) 기준 회귀 방지선이며 목표치가 아니다. 앱 자산 상한은 2단계 실측(main 6.3KB / worker 12.7KB / css 2.2KB…)"
 }

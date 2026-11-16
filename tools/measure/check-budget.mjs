@@ -1,4 +1,4 @@
-// 용량 예산 검사: 압축 크기(brotli q11)가 budgets.json의 상한을 넘으면 종료 코드 1.
+// 용량 보고: 압축 크기(brotli q11)를 출력한다. budgets.json에 상한(brotliBytes)이 있으면 넘을 때 종료 코드 1이지만, 지금은 상한을 두지 않는다(D-055).
 // 사용: node check-budget.mjs <budgets.json> <이름=파일경로>...   (예: wasm=pkg/rhwp_bg.wasm js=pkg/rhwp.js)
 // 예산 수치는 1단계 실측을 근거로 한 **잠정값**이며 오너 승인 전이다 (docs/decisions.md).
 import { readFileSync } from 'node:fs';

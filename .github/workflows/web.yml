@@ -89,7 +89,7 @@ jobs:
         working-directory: apps/web
         run: npm run test:e2e
 
-      - name: rhwp 패치 회귀 (tools/rhwp-patches: 빌드에 들어갔는지, 고치기로 한 모양)
+      - name: "rhwp 패치 회귀 (tools/rhwp-patches — 빌드에 들어갔는지, 고치기로 한 모양)"
         working-directory: apps/web
         run: npm run test:rhwp-patches
 
@@ -134,7 +134,7 @@ jobs:
         working-directory: apps/web
         run: npm run test:docx-session-corpus -- "$RUNNER_TEMP/corpus" --seed 1 --ops 10
 
-      - name: DOCX 편집 입력 지연 (문단 300·1,000개: 글 입력 p95 50ms 이하)
+      - name: "DOCX 편집 입력 지연 (문단 300·1,000개: 글 입력 p95 50ms 이하)"
         working-directory: apps/web
         run: npm run test:docx-session-perf -- --n 300,1000
 
