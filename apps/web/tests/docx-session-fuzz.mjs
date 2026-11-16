@@ -103,6 +103,7 @@ async function one(bytes, rand, label) {
     const nav = []; for (let q = 0; q < m.paragraphCount; q++) if (s.navigable(q) && m.canEdit(q)) nav.push(q);
     if (!nav.length) break;
     const q = nav[Math.floor(rand() * nav.length)], len = m.length(q), k = rand();
+    if (len === 0 || (s.nodes.get(m.paras[q].id)?.node.content ?? []).every((c) => c.type !== 'text' || c.text === '\t')) merged.add(m.paras[q].id);   // 빈 문단(또는 탭뿐인 문단)에 넣은 글은 XML에서는 문단 부호·탭 런의 서식(크기·글꼴·색·형광펜 …)을 물려받는데 IR은 그 서식을 주지 않아 거울이 모른다(기존 한계) — 서식 비교에서 뺀다
     const pos = (o) => ({ s: 0, p: q, o, path: null });
     try {
       let kind;
@@ -128,14 +129,15 @@ async function one(bytes, rand, label) {
       } else if (k < 0.5) { kind = 'replaceall'; const t = [...m.text(q)].slice(0, 2).join(''); if (t && !/[\t\n]/.test(t)) await s.replaceAll({ query: t, text: 'ab', caseSensitive: true }); }
       else if (k < 0.58) { kind = 'delrange'; const a = Math.floor(rand() * (len + 1)), b = Math.min(len, a + 1 + Math.floor(rand() * 6)); await s.delrange({ a: pos(a), b: pos(b) }); }
       else if (k < 0.66) { kind = 'enter'; await s.enter({ pos: pos(Math.floor(rand() * (len + 1))) }); }
-      else if (k < 0.74) { kind = 'backspace'; merged.add(m.paras[q].id); await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'back' }); }
-      else if (k < 0.80) { kind = 'delete'; merged.add(m.paras[q].id); await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'fwd' }); }
+      else if (k < 0.74) { kind = 'backspace'; for (const t of [q - 1, q, q + 1]) if (m.paras[t]) merged.add(m.paras[t].id); await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'back' }); }
+      else if (k < 0.80) { kind = 'delete'; for (const t of [q - 1, q, q + 1]) if (m.paras[t]) merged.add(m.paras[t].id); await s.del({ pos: pos(Math.floor(rand() * (len + 1))), dir: 'fwd' }); }
       else if (k < 0.86) {
-        kind = 'cross'; merged.add(m.paras[q].id); let z = q; while (z + 1 < m.paragraphCount && z - q < 3 && m.canEdit(z + 1) && s.navigable(z + 1)) z++;
+        kind = 'cross'; for (const t of [q - 1, q, q + 1]) if (m.paras[t]) merged.add(m.paras[t].id); let z = q; while (z + 1 < m.paragraphCount && z - q < 3 && m.canEdit(z + 1) && s.navigable(z + 1)) z++;
         if (z > q) await s.delrange({ a: pos(Math.floor(rand() * (len + 1))), b: { s: 0, p: z, o: Math.floor(rand() * (m.length(z) + 1)), path: null } });
       } else if (k < 0.94) { kind = 'undo'; await s.undo(); }
       else { kind = 'redo'; await s.redo(); }
       if (process.env.DBGOPS) console.log(`op ${i} ${kind} q=${q} k=${k.toFixed(2)} ids=${m.paras.map((x) => x.id).join(',')} last=${JSON.stringify({ rem: m.last?.removed.map((x) => x.id), add: m.last?.added.map((x) => x.id), hint: m.last?.hint })}`);
+      if (process.env.DBGPID) { const e = s.nodes.get(Number(process.env.DBGPID)); console.log('  spans', JSON.stringify((e?.node.content ?? []).map((c) => [c.text, c.bold ? 'B' : '', c._sz ? 'sz' : ''].join('|')))); }
       kinds[kind] = (kinds[kind] ?? 0) + 1; ops++;
     } catch (e) { if (e instanceof EditError && (e.code === 'locked' || e.code === 'not_sibling')) continue; fails.push(`${label}: 편집 ${i} 예외 ${String(e.stack ?? e).slice(0, 300)}`); return; }
     if (i % CHECK_EVERY === 0) { try { check(); } catch (e) { fails.push(`${label}: 편집 ${i}(${[...Object.keys(kinds)].length ? '' : ''}) ${e.message}`); return; } }
@@ -190,7 +192,7 @@ if (dir) {
     if (FILE && !f.includes(FILE)) continue;
     let bytes; try { bytes = new Uint8Array(readFileSync(f)); if (flattenIr(irOf(bytes)).length > MAXB) continue; } catch { continue; }
     k++;
-    const h = [...f].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+    const h = [...f.split('/').slice(-2).join('/')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);   // 폴더 위치가 아니라 "폴더/파일" 이름으로 시드를 정한다(CI와 로컬이 같은 편집 열을 쓴다)
     await one(bytes, rng(SEED * 131 + h), f.split('/').slice(-2).join('/'));
   }
 }

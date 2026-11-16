@@ -36,11 +36,11 @@ export function insertSpans(content, o, str) {
   });
   if (target >= 0) { const s = out[target], k = o - spanStart(out, target); out[target] = { ...s, text: cpSlice(s.text, 0, k) + str + cpSlice(s.text, k) }; return out; }
   if (first >= 0) { out[first] = { ...out[first], text: str + out[first].text }; return out; }
-  // 글 조각이 없거나 앞뒤가 줄바꿈·탭뿐: 가까운 글 조각의 서식으로 새 조각
-  const near = out.find((s) => s.type === 'text' && s.text !== '\t');
-  const { text: _t, ...fmt } = near ?? { type: 'text' };
+  // 글 조각이 없거나 앞뒤가 줄바꿈·탭뿐: 맞닿은 조각(앞, 없으면 뒤)의 서식으로 새 조각(XML도 맞닿은 런에 넣는다)
   let idx = 0, pos = 0;
   while (idx < out.length && pos + spanLen(out[idx]) <= o) { pos += spanLen(out[idx]); idx++; }
+  const adj = [out[idx - 1], out[idx]].find((x) => x?.type === 'text') ?? out.find((x) => x.type === 'text' && x.text !== '\t');
+  const { text: _t, ...fmt } = adj ?? { type: 'text' };
   out.splice(idx, 0, { ...fmt, type: 'text', text: str });
   return out;
 }
